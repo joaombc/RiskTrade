@@ -1,6 +1,5 @@
+import { SYMBOL_PATTERN } from "@/lib/market";
 import { AssetNotFoundError, getAssetSummary } from "@/lib/yahoo";
-
-const SYMBOL_PATTERN = /^[A-Za-z0-9.\-=^]{1,20}$/;
 
 export async function GET(request: Request) {
   const symbol = new URL(request.url).searchParams.get("symbol")?.trim() ?? "";
