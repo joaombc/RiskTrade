@@ -1,4 +1,5 @@
 import type {
+  AutoscaleInfo,
   IChartApi,
   IPrimitivePaneRenderer,
   IPrimitivePaneView,
@@ -40,6 +41,8 @@ export interface DrawingsState {
   /** Desenho em construção (inclui a posição atual do cursor como último ponto). */
   preview: Drawing | null;
   selectedId: string | null;
+  /** Desenhos só de leitura (ex.: exemplo do glossário): desenhados, mas não selecionáveis. */
+  fixed: Drawing[];
 }
 
 const HIT_TOLERANCE_PX = 6;
@@ -144,7 +147,8 @@ export class DrawingsPrimitive implements ISeriesPrimitive<Time> {
   private chart: IChartApi | null = null;
   private series: ISeriesApi<SeriesType> | null = null;
   private requestUpdate: (() => void) | null = null;
-  private state: DrawingsState = { bars: [], drawings: [], preview: null, selectedId: null };
+  private state: DrawingsState = { bars: [], drawings: [], preview: null, selectedId: null, fixed: [] };
+  private fixedIds = new Set<string>();
   private axis: TimeAxis = createTimeAxis([]);
   private shapeCache = new Map<Drawing, Shape[]>();
   private readonly views = [new DrawingsPaneView(this)];
@@ -209,8 +213,9 @@ export class DrawingsPrimitive implements ISeriesPrimitive<Time> {
       return x === null || y === null ? null : { x, y };
     };
 
-    const { drawings, preview, selectedId } = this.state;
-    const all = preview ? [...drawings, preview] : drawings;
+    const { drawings, preview, selectedId, fixed } = this.state;
+    this.fixedIds = new Set(fixed.map((d) => d.id));
+    const all = [...fixed, ...drawings, ...(preview ? [preview] : [])];
     const live = new Set(all);
     for (const key of this.shapeCache.keys()) if (!live.has(key)) this.shapeCache.delete(key);
 
@@ -247,12 +252,26 @@ export class DrawingsPrimitive implements ISeriesPrimitive<Time> {
     });
   }
 
+  /** A escala de preço inclui os desenhos fixos (exemplos), para o alvo projetado ficar visível. */
+  autoscaleInfo(): AutoscaleInfo | null {
+    const prices = this.state.fixed.flatMap((drawing) => {
+      let shapes = this.shapeCache.get(drawing);
+      if (!shapes) {
+        shapes = buildShapes(drawing, this.state.bars, this.axis);
+        this.shapeCache.set(drawing, shapes);
+      }
+      return shapes.flatMap((s) => (s.type === "line" ? [s.from.price, s.to.price] : [s.at.price]));
+    });
+    if (prices.length === 0) return null;
+    return { priceRange: { minValue: Math.min(...prices), maxValue: Math.max(...prices) } };
+  }
+
   hitTest(x: number, y: number): PrimitiveHoveredItem | null {
     const cursor = { x, y };
     // Percorre de trás para frente: o desenho mais recente fica por cima.
     for (let i = this.pixelDrawings.length - 1; i >= 0; i--) {
       const drawing = this.pixelDrawings[i];
-      if (drawing.id === PREVIEW_ID) continue;
+      if (drawing.id === PREVIEW_ID || this.fixedIds.has(drawing.id)) continue;
       for (const shape of drawing.shapes) {
         if (shape.type !== "line") continue;
         const distance = distanceToSegment(cursor, shape.from, shape.to);

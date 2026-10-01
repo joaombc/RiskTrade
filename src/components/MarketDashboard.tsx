@@ -1,11 +1,13 @@
 "use client";
 
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import type { AssetSummary } from "@/lib/market";
+import { GLOSSARY } from "@/lib/glossary/terms";
+import { HISTORY_RANGES, SYMBOL_PATTERN, type AssetSummary, type HistoryRange } from "@/lib/market";
 import type { PlanLevel } from "@/lib/risk";
 import { AssetSearch } from "./AssetSearch";
 import { AssetSummaryPanel } from "./AssetSummaryPanel";
-import { PriceChart } from "./chart/PriceChart";
+import { PriceChart, type ChartExample } from "./chart/PriceChart";
 import { RiskCalculator } from "./risk/RiskCalculator";
 import { WatchlistPanel } from "./watchlist/WatchlistPanel";
 
@@ -24,16 +26,47 @@ async function fetchSummary(symbol: string): Promise<AssetSummary> {
   return data.summary;
 }
 
+/**
+ * Lê o link do glossário ("Ver no gráfico real"): /?ativo=PETR4.SA&periodo=5y&exemplo=oco.
+ * Parâmetros inválidos são ignorados.
+ */
+function readLink(params: URLSearchParams) {
+  const rawSymbol = params.get("ativo")?.trim().toUpperCase() ?? "";
+  const symbol = SYMBOL_PATTERN.test(rawSymbol) ? rawSymbol : null;
+  const rawRange = params.get("periodo") ?? "";
+  const range = Object.hasOwn(HISTORY_RANGES, rawRange) ? (rawRange as HistoryRange) : undefined;
+  const term = GLOSSARY.find((t) => t.slug === params.get("exemplo") && t.example);
+  const example: ChartExample | null =
+    term?.example && term.example.symbol === symbol ? { slug: term.slug, name: term.name, example: term.example } : null;
+  return { symbol, range, example };
+}
+
 export function MarketDashboard() {
-  const [symbol, setSymbol] = useState<string | null>(null);
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  // Só a URL de entrada importa: depois disso o estado é do próprio painel.
+  const [link] = useState(() => readLink(new URLSearchParams(searchParams.toString())));
+  const [symbol, setSymbol] = useState<string | null>(link.symbol);
   const [state, setState] = useState<State>({ kind: "idle" });
-  // Ao abrir um ativo pela watchlist, remonta a busca para exibir o ticker escolhido.
-  const [searchKey, setSearchKey] = useState(0);
+  // Remonta a busca para exibir o ticker aberto por fora dela (watchlist ou link do glossário).
+  const [searchKey, setSearchKey] = useState(link.symbol ? 1 : 0);
   const [planLevels, setPlanLevels] = useState<PlanLevel[]>([]);
+  const [example, setExample] = useState<ChartExample | null>(link.example);
+
+  const selectSymbol = (target: string) => {
+    setSymbol(target);
+    setExample(null);
+  };
 
   const selectFromWatchlist = (target: string) => {
-    setSymbol(target);
+    selectSymbol(target);
     setSearchKey((k) => k + 1);
+  };
+
+  const closeExample = () => {
+    setExample(null);
+    // Tira o exemplo da URL para que recarregar a página não o reabra.
+    if (symbol) router.replace(`/?ativo=${encodeURIComponent(symbol)}`, { scroll: false });
   };
 
   useEffect(() => {
@@ -65,7 +98,7 @@ export function MarketDashboard() {
   return (
     <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
       <div className="flex min-w-0 flex-col gap-6">
-        <AssetSearch key={searchKey} initialQuery={searchKey > 0 ? (symbol ?? "") : ""} onSelect={setSymbol} />
+        <AssetSearch key={searchKey} initialQuery={searchKey > 0 ? (symbol ?? "") : ""} onSelect={selectSymbol} />
 
         {state.kind === "idle" && (
           <p className="text-center text-sm text-muted">Busque um ativo para ver cotação, variação, range do dia e volume.</p>
@@ -81,7 +114,14 @@ export function MarketDashboard() {
         {state.kind === "ready" && (
           <>
             <AssetSummaryPanel summary={state.summary} />
-            <PriceChart key={`chart-${state.summary.symbol}`} symbol={state.summary.symbol} levels={planLevels} />
+            <PriceChart
+              key={`chart-${state.summary.symbol}`}
+              symbol={state.summary.symbol}
+              levels={planLevels}
+              initialRange={state.summary.symbol === link.symbol ? link.range : undefined}
+              example={example?.example.symbol === state.summary.symbol ? example : null}
+              onCloseExample={closeExample}
+            />
             <RiskCalculator
               key={`risk-${state.summary.symbol}`}
               symbol={state.summary.symbol}
