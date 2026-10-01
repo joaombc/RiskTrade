@@ -7,6 +7,8 @@ import {
   createChart,
   CrosshairMode,
   HistogramSeries,
+  LineStyle,
+  type AutoscaleInfo,
   type IChartApi,
   type ISeriesApi,
   type MouseEventParams,
@@ -16,6 +18,7 @@ import {
 import { loadDrawings, saveDrawings } from "@/lib/drawings/storage";
 import { TOOLS, type Anchor, type Bar, type Drawing, type DrawingKind, type DrawingOptions } from "@/lib/drawings/types";
 import { HISTORY_RANGES, type HistoryRange } from "@/lib/market";
+import type { PlanLevel } from "@/lib/risk";
 import { DrawingsPrimitive } from "./DrawingsPrimitive";
 import { DrawingToolbar } from "./DrawingToolbar";
 import { CHART_THEMES } from "./theme";
@@ -26,6 +29,7 @@ const MAGNET_PX = 10;
 /** Deslocamento máximo (px) entre pressionar e soltar para contar como clique, não arrasto. */
 const CLICK_TOLERANCE_PX = 5;
 const RANGE_KEYS = Object.keys(HISTORY_RANGES) as HistoryRange[];
+const NO_LEVELS: PlanLevel[] = [];
 
 interface ChartHandles {
   chart: IChartApi;
@@ -72,7 +76,13 @@ function toAnchor(x: number, y: number, handles: ChartHandles, bars: Bar[]): Anc
   return { time: handles.drawings.timeAxis.toTime(logical), price };
 }
 
-export function PriceChart({ symbol }: { symbol: string }) {
+interface PriceChartProps {
+  symbol: string;
+  /** Níveis do plano de risco (entrada, stop, alvo…) desenhados como linhas de preço. */
+  levels?: PlanLevel[];
+}
+
+export function PriceChart({ symbol, levels = NO_LEVELS }: PriceChartProps) {
   const theme = CHART_THEMES[useColorScheme()];
   const containerRef = useRef<HTMLDivElement>(null);
   const handlesRef = useRef<ChartHandles | null>(null);
@@ -216,6 +226,43 @@ export function PriceChart({ symbol }: { symbol: string }) {
     });
     handles.drawings.setPalette(theme.drawings);
   }, [theme]);
+
+  useEffect(() => {
+    const handles = handlesRef.current;
+    if (!handles) return;
+    const colors: Record<PlanLevel["kind"], string> = {
+      entry: theme.drawings.primary,
+      stop: theme.down,
+      target: theme.up,
+      partial: theme.drawings.target,
+    };
+    const lines = levels.map((level) =>
+      handles.candles.createPriceLine({
+        price: level.price,
+        color: colors[level.kind],
+        lineWidth: 1,
+        lineStyle: level.kind === "entry" ? LineStyle.Solid : LineStyle.Dashed,
+        axisLabelVisible: true,
+        title: level.label,
+      }),
+    );
+    // Expande a escala automática para que stop e alvo fiquem sempre visíveis.
+    const prices = levels.map((l) => l.price);
+    handles.candles.applyOptions({
+      autoscaleInfoProvider: (original: () => AutoscaleInfo | null) => {
+        const base = original();
+        if (!base?.priceRange || prices.length === 0) return base;
+        return {
+          ...base,
+          priceRange: {
+            minValue: Math.min(base.priceRange.minValue, ...prices),
+            maxValue: Math.max(base.priceRange.maxValue, ...prices),
+          },
+        };
+      },
+    });
+    return () => lines.forEach((line) => handles.candles.removePriceLine(line));
+  }, [levels, theme]);
 
   useEffect(() => {
     const controller = new AbortController();
