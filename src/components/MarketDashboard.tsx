@@ -2,9 +2,11 @@
 
 import { useEffect, useState } from "react";
 import type { AssetSummary } from "@/lib/market";
+import type { PlanLevel } from "@/lib/risk";
 import { AssetSearch } from "./AssetSearch";
 import { AssetSummaryPanel } from "./AssetSummaryPanel";
 import { PriceChart } from "./chart/PriceChart";
+import { RiskCalculator } from "./risk/RiskCalculator";
 import { WatchlistPanel } from "./watchlist/WatchlistPanel";
 
 const REFRESH_MS = 30_000;
@@ -27,6 +29,7 @@ export function MarketDashboard() {
   const [state, setState] = useState<State>({ kind: "idle" });
   // Ao abrir um ativo pela watchlist, remonta a busca para exibir o ticker escolhido.
   const [searchKey, setSearchKey] = useState(0);
+  const [planLevels, setPlanLevels] = useState<PlanLevel[]>([]);
 
   const selectFromWatchlist = (target: string) => {
     setSymbol(target);
@@ -78,7 +81,14 @@ export function MarketDashboard() {
         {state.kind === "ready" && (
           <>
             <AssetSummaryPanel summary={state.summary} />
-            <PriceChart key={state.summary.symbol} symbol={state.summary.symbol} />
+            <PriceChart key={`chart-${state.summary.symbol}`} symbol={state.summary.symbol} levels={planLevels} />
+            <RiskCalculator
+              key={`risk-${state.summary.symbol}`}
+              symbol={state.summary.symbol}
+              currency={state.summary.currency}
+              currentPrice={state.summary.price}
+              onLevelsChange={setPlanLevels}
+            />
           </>
         )}
       </div>
