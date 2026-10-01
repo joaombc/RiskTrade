@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import type { AssetSummary } from "@/lib/market";
 import { AssetSearch } from "./AssetSearch";
 import { AssetSummaryPanel } from "./AssetSummaryPanel";
+import { PriceChart } from "./chart/PriceChart";
 
 const REFRESH_MS = 30_000;
 
@@ -65,7 +66,12 @@ export function MarketDashboard() {
           {state.message}
         </div>
       )}
-      {state.kind === "ready" && <AssetSummaryPanel summary={state.summary} />}
+      {state.kind === "ready" && (
+        <>
+          <AssetSummaryPanel summary={state.summary} />
+          <PriceChart key={state.summary.symbol} symbol={state.summary.symbol} />
+        </>
+      )}
     </div>
   );
 }
