@@ -25,6 +25,15 @@ describe("searchTerms", () => {
     expect(searchTerms(GLOSSARY, "OCO", "Gaps")).toEqual([]);
   });
 
+  it("encontra bandeiras, flâmulas e cunhas como padrões de continuação", () => {
+    expect(searchTerms(GLOSSARY, "bandeira", null)[0].slug).toBe("bandeira");
+    expect(searchTerms(GLOSSARY, "flamula", null)[0].slug).toBe("flamula");
+    expect(searchTerms(GLOSSARY, "pennant", null)[0].slug).toBe("flamula");
+    expect(searchTerms(GLOSSARY, "cunha", null).map((t) => t.slug).slice(0, 2).sort()).toEqual(["cunha-ascendente", "cunha-descendente"]);
+    const continuation = searchTerms(GLOSSARY, "", "Padrões de Continuação").map((t) => t.slug);
+    expect(continuation).toEqual(expect.arrayContaining(["bandeira", "flamula", "cunha-ascendente", "cunha-descendente"]));
+  });
+
   it("exige todas as palavras da busca", () => {
     expect(searchTerms(GLOSSARY, "triângulo ascendente", null).map((t) => t.slug)[0]).toBe("triangulo-ascendente");
     expect(searchTerms(GLOSSARY, "triangulo xyz", null)).toEqual([]);

@@ -105,6 +105,46 @@ const DESCENDING_TRIANGLE: Diagram = {
   points: [{ at: [120, 55], label: "Rompimento", placement: "left" }],
 };
 
+// Bandeira de alta: mastro vertical e consolidação num canal estreito inclinado contra a tendência.
+const FLAG: Diagram = {
+  path: [[10, 90], [30, 70], [40, 72], [55, 45], [63, 60], [72, 49.3], [82, 64.9], [92, 54.4], [100, 69.5], [108, 58.5], [118, 45], [135, 30], [160, 18], [185, 12]],
+  lines: [
+    { from: [55, 45], to: [115, 60.3], tone: "resistance" },
+    { from: [55, 58], to: [115, 73.3], tone: "support" },
+    { from: [10, 90], to: [10, 45], tone: "muted", dashed: true, label: "mastro" },
+    { from: [108, 58.5], to: [108, 13.5], tone: "target", dashed: true },
+    { from: [108, 13.5], to: [195, 13.5], tone: "target", dashed: true, label: "Alvo" },
+  ],
+  points: [{ at: [108, 58.5], label: "Rompimento", placement: "right" }],
+  volume: [0.8, 0.9, 1, 0.35, 0.3, 0.25, 0.9, 0.8, 0.6, 0.5, 0.45, 0.4].map((h, i) => ({ h, up: i < 3 || i > 5 })),
+};
+
+// Flâmula de alta: mastro vertical e um pequeno triângulo simétrico.
+const PENNANT: Diagram = {
+  path: [[10, 90], [30, 70], [40, 72], [55, 45], [62, 67], [72, 49.4], [82, 64.1], [92, 54.6], [99, 61.1], [104, 57.7], [115, 44], [135, 30], [160, 18], [185, 12]],
+  lines: [
+    { from: [55, 45], to: [110, 59.3], tone: "resistance" },
+    { from: [60, 68], to: [110, 59.1], tone: "support" },
+    { from: [10, 90], to: [10, 45], tone: "muted", dashed: true, label: "mastro" },
+    { from: [104, 57.7], to: [104, 12.7], tone: "target", dashed: true },
+    { from: [104, 12.7], to: [195, 12.7], tone: "target", dashed: true, label: "Alvo" },
+  ],
+  points: [{ at: [104, 57.7], label: "Rompimento", placement: "right" }],
+  volume: [0.8, 0.9, 1, 0.35, 0.3, 0.25, 0.9, 0.8, 0.6, 0.5, 0.45, 0.4].map((h, i) => ({ h, up: i < 3 || i > 5 })),
+};
+
+// Cunha descendente: duas linhas caindo e convergindo; rompe para cima.
+const FALLING_WEDGE: Diagram = {
+  path: [[5, 60], [15, 15], [30, 47.8], [50, 27.6], [70, 55.1], [90, 42], [110, 62.5], [125, 54.6], [135, 67.1], [150, 45], [170, 25], [190, 14]],
+  lines: [
+    { from: [15, 15], to: [160, 67.2], tone: "resistance" },
+    { from: [15, 45], to: [160, 71.7], tone: "support" },
+    { from: [140, 15], to: [195, 15], tone: "target", dashed: true, label: "Alvo: início da cunha" },
+  ],
+  points: [{ at: [140, 60], label: "Rompimento", placement: "right" }],
+};
+const RISING_WEDGE = mirror(FALLING_WEDGE);
+
 const GAP_COMMON = candleSeries([
   [38, 42, 36, 40], [40, 43, 38, 39], [39, 41, 36, 37], [37, 40, 35, 39], [39, 42, 38, 41], [44, 46, 43.5, 45],
   [45, 46, 41.5, 43], [43, 44, 39, 40], [40, 42, 38, 41], [41, 43, 39, 40], [40, 41, 37, 38], [38, 41, 37, 40],
@@ -397,6 +437,52 @@ const TERMS: GlossaryTerm[] = [
       "Confirma-se com fechamento abaixo do suporte plano; aqui o volume é menos decisivo que nos rompimentos de alta. Alvo: altura da base projetada para baixo.",
     tool: "triangle",
     diagram: DESCENDING_TRIANGLE,
+  },
+  {
+    slug: "bandeira",
+    name: "Bandeira",
+    aliases: ["bandeira", "flag", "bull flag", "bear flag", "mastro", "meio mastro"],
+    category: "Padrões de Continuação",
+    definition:
+      "Pausa curta depois de um movimento forte e quase vertical (o mastro). Os preços se consolidam num canal estreito, inclinado contra a tendência, antes de retomá-la.",
+    validation:
+      "O mastro vem com volume alto, e o volume cai durante a bandeira. A consolidação é breve: de uma a três semanas no gráfico diário. Confirma-se com o rompimento no sentido da tendência, com volume. Alvo: o tamanho do mastro, projetado a partir do rompimento. Como costuma aparecer na metade do movimento, diz-se que a bandeira tremula a meio mastro.",
+    tool: "channel",
+    diagram: FLAG,
+  },
+  {
+    slug: "flamula",
+    name: "Flâmula",
+    aliases: ["flâmula", "flamula", "pennant", "galhardete", "mastro"],
+    category: "Padrões de Continuação",
+    definition:
+      "Parente da bandeira: também vem depois de um mastro, mas a consolidação forma um pequeno triângulo simétrico, quase horizontal, em vez de um canal inclinado.",
+    validation:
+      "Mesmas regras da bandeira: mastro com volume forte, volume baixo na consolidação, duração de uma a três semanas e rompimento no sentido da tendência com volume. Alvo: tamanho do mastro projetado a partir do rompimento. Se durar muito mais, trate como um triângulo comum.",
+    tool: "triangle",
+    diagram: PENNANT,
+  },
+  {
+    slug: "cunha-descendente",
+    name: "Cunha Descendente",
+    aliases: ["cunha", "cunha descendente", "falling wedge", "wedge"],
+    category: "Padrões de Continuação",
+    definition:
+      "Duas linhas inclinadas para baixo e convergentes: os topos caem mais rápido que os fundos. Tem viés de alta. Numa tendência de alta, é uma correção que tende a ser retomada para cima; no fim de uma queda, pode marcar a reversão.",
+    validation:
+      "Leva mais tempo que bandeiras e flâmulas (normalmente mais de três semanas). O volume diminui durante a formação. Confirma-se com o fechamento acima da linha superior, de preferência entre 2/3 e 3/4 do caminho até o ápice. Alvo: no mínimo, a volta ao início da cunha.",
+    diagram: FALLING_WEDGE,
+  },
+  {
+    slug: "cunha-ascendente",
+    name: "Cunha Ascendente",
+    aliases: ["cunha", "cunha ascendente", "rising wedge", "wedge"],
+    category: "Padrões de Continuação",
+    definition:
+      "Duas linhas inclinadas para cima e convergentes: os fundos sobem mais rápido que os topos. Tem viés de baixa. Numa tendência de baixa, é um repique que tende a ser retomado para baixo; no topo de uma alta, pode marcar a reversão.",
+    validation:
+      "Leva mais tempo que bandeiras e flâmulas (normalmente mais de três semanas). O volume diminui durante a formação. Confirma-se com o fechamento abaixo da linha inferior, de preferência entre 2/3 e 3/4 do caminho até o ápice. Alvo: no mínimo, a volta ao início da cunha.",
+    diagram: RISING_WEDGE,
   },
 
   // Gaps
