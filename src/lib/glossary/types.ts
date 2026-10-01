@@ -1,4 +1,4 @@
-import type { DrawingKind } from "../drawings/types";
+import type { DrawingKind, DrawingOptions } from "../drawings/types";
 import type { HistoryRange } from "../market";
 
 export const CATEGORIES = [
@@ -62,6 +62,8 @@ export interface ExampleAnchor {
 export interface ExampleDrawing {
   kind: DrawingKind;
   points: ExampleAnchor[];
+  /** Sobrescreve as opções padrão da ferramenta (ex.: linha de tendência sem prolongar). */
+  options?: DrawingOptions;
 }
 
 export interface ExampleMarker {
@@ -77,6 +79,8 @@ export interface TermExample {
   description: string;
   drawings?: ExampleDrawing[];
   markers?: ExampleMarker[];
+  /** Janela de datas exibida ao abrir; sem ela, o gráfico calcula uma a partir dos desenhos. */
+  view?: { from: string; to: string };
 }
 
 export interface GlossaryTerm {

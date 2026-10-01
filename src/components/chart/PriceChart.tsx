@@ -379,6 +379,12 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
     if (times.length === 0) return;
     zoomedExampleRef.current = zoomKey;
     const axis = createTimeAxis(bars);
+    const toLogical = (date: string) => axis.toLogical(Date.parse(`${date}T23:59:59Z`) / 1000);
+    const { view } = example.example;
+    if (view) {
+      handles.chart.timeScale().setVisibleLogicalRange({ from: toLogical(view.from), to: toLogical(view.to) });
+      return;
+    }
     const from = axis.toLogical(Math.min(...times));
     const to = axis.toLogical(Math.max(...times));
     // Mais folga à direita: é onde ficam o rompimento e a projeção do alvo.

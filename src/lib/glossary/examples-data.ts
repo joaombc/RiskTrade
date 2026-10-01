@@ -172,4 +172,68 @@ export const EXAMPLES: Record<string, TermExample> = {
       { date: "2026-01-05", text: "Topo 2 sem OBV", position: "aboveBar" },
     ],
   },
+  bandeira: {
+    symbol: "JPM",
+    range: "5y",
+    view: { from: "2025-03-24", to: "2025-06-27" },
+    description: "Mastro de alta de cerca de 19% em apenas 5 pregões em abr/2025, bandeira descendente com volume menor e rompimento em 23/04/2025; o alvo (tamanho do mastro) foi atingido em jun/2025.",
+    drawings: [
+      { kind: "trendline", options: { extend: false }, points: [{ date: "2025-04-07", price: "low" }, { date: "2025-04-14", price: "high" }] },
+      { kind: "trendline", options: { extend: false }, points: [{ date: "2025-04-14", price: "high" }, { date: "2025-04-23", price: 235.23 }] },
+      { kind: "trendline", options: { extend: false }, points: [{ date: "2025-04-16", price: "low" }, { date: "2025-04-23", price: 224.75 }] },
+      { kind: "trendline", options: { extend: false }, points: [{ date: "2025-04-23", price: 272.85 }, { date: "2025-06-18", price: 272.85 }] },
+    ],
+    markers: [
+      { date: "2025-04-07", text: "Mastro", position: "belowBar" },
+      { date: "2025-04-23", text: "Rompimento", position: "belowBar" },
+      { date: "2025-06-18", text: "Alvo atingido", position: "aboveBar" },
+    ],
+  },
+  flamula: {
+    symbol: "NVDA",
+    range: "5y",
+    view: { from: "2024-04-08", to: "2024-06-07" },
+    description: "Mastro de alta de cerca de 22% entre abr e mai/2024, flâmula de 6 pregões com topos caindo e fundos subindo, rompimento em 15/05/2024; o alvo (tamanho do mastro) foi atingido em 28/05/2024.",
+    drawings: [
+      { kind: "trendline", options: { extend: false }, points: [{ date: "2024-04-19", price: "low" }, { date: "2024-05-06", price: "high" }] },
+      { kind: "trendline", options: { extend: false }, points: [{ date: "2024-05-06", price: "high" }, { date: "2024-05-15", price: 91.56 }] },
+      { kind: "trendline", options: { extend: false }, points: [{ date: "2024-05-09", price: "low" }, { date: "2024-05-15", price: 88.83 }] },
+      { kind: "trendline", options: { extend: false }, points: [{ date: "2024-05-15", price: 108.17 }, { date: "2024-05-28", price: 108.17 }] },
+    ],
+    markers: [
+      { date: "2024-04-19", text: "Mastro", position: "belowBar" },
+      { date: "2024-05-15", text: "Rompimento", position: "belowBar" },
+      { date: "2024-05-28", text: "Alvo atingido", position: "aboveBar" },
+    ],
+  },
+  "cunha-descendente": {
+    symbol: "AMD",
+    range: "5y",
+    view: { from: "2024-02-26", to: "2024-07-24" },
+    description: "Depois de alta de cerca de 35%, cunha descendente em abr/2024, rompida para cima em 14/05/2024; o preço voltou ao início da cunha em jul/2024.",
+    drawings: [
+      { kind: "trendline", options: { extend: false }, points: [{ date: "2024-04-01", price: 187.24 }, { date: "2024-05-14", price: 150.41 }] },
+      { kind: "trendline", options: { extend: false }, points: [{ date: "2024-04-01", price: 151.71 }, { date: "2024-05-14", price: 137.49 }] },
+      { kind: "trendline", options: { extend: false }, points: [{ date: "2024-05-14", price: 187.24 }, { date: "2024-07-10", price: 187.24 }] },
+    ],
+    markers: [
+      { date: "2024-05-14", text: "Rompimento", position: "belowBar" },
+      { date: "2024-07-10", text: "Alvo atingido", position: "aboveBar" },
+    ],
+  },
+  "cunha-ascendente": {
+    symbol: "VALE3.SA",
+    range: "5y",
+    view: { from: "2024-02-26", to: "2024-08-16" },
+    description: "Em plena tendência de baixa, cunha ascendente entre abr e mai/2024, rompida para baixo em 28/05/2024; o preço voltou ao início da cunha em ago/2024.",
+    drawings: [
+      { kind: "trendline", options: { extend: false }, points: [{ date: "2024-04-05", price: 63.73 }, { date: "2024-05-28", price: 66.21 }] },
+      { kind: "trendline", options: { extend: false }, points: [{ date: "2024-04-05", price: 59.61 }, { date: "2024-05-28", price: 65.22 }] },
+      { kind: "trendline", options: { extend: false }, points: [{ date: "2024-05-28", price: 59.61 }, { date: "2024-08-02", price: 59.61 }] },
+    ],
+    markers: [
+      { date: "2024-05-28", text: "Rompimento", position: "aboveBar" },
+      { date: "2024-08-02", text: "Alvo atingido", position: "belowBar" },
+    ],
+  },
 };
