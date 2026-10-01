@@ -27,6 +27,19 @@ export interface DailyBar {
   volume: number | null;
 }
 
+/** Formato aceito para tickers do Yahoo (ex: AAPL, PETR4.SA, BTC-USD, ^BVSP, EURUSD=X). */
+export const SYMBOL_PATTERN = /^[A-Za-z0-9.\-=^]{1,20}$/;
+
+/** Períodos do gráfico diário: duração em dias corridos e rótulo exibido. */
+export const HISTORY_RANGES = {
+  "3m": { days: 92, label: "3M" },
+  "6m": { days: 183, label: "6M" },
+  "1y": { days: 365, label: "1A" },
+  "2y": { days: 730, label: "2A" },
+  "5y": { days: 1826, label: "5A" },
+} as const;
+export type HistoryRange = keyof typeof HISTORY_RANGES;
+
 export const AVG_VOLUME_PERIOD = 20;
 
 /**
