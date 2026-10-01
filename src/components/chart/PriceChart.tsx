@@ -1,24 +1,30 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   CandlestickSeries,
   ColorType,
   createChart,
   CrosshairMode,
+  createSeriesMarkers,
   HistogramSeries,
+  LineSeries,
   LineStyle,
   type AutoscaleInfo,
   type IChartApi,
   type ISeriesApi,
+  type ISeriesMarkersPluginApi,
   type MouseEventParams,
+  type SeriesMarker,
   type Time,
   type UTCTimestamp,
 } from "lightweight-charts";
 import { loadDrawings, saveDrawings } from "@/lib/drawings/storage";
 import { TOOLS, type Anchor, type Bar, type Drawing, type DrawingKind, type DrawingOptions } from "@/lib/drawings/types";
+import { computeOBV, findDivergences, type Divergence } from "@/lib/indicators";
 import { HISTORY_RANGES, type HistoryRange } from "@/lib/market";
 import type { PlanLevel } from "@/lib/risk";
+import { DivergencePanel } from "./DivergencePanel";
 import { DrawingsPrimitive } from "./DrawingsPrimitive";
 import { DrawingToolbar } from "./DrawingToolbar";
 import { CHART_THEMES } from "./theme";
@@ -31,10 +37,18 @@ const CLICK_TOLERANCE_PX = 5;
 const RANGE_KEYS = Object.keys(HISTORY_RANGES) as HistoryRange[];
 const NO_LEVELS: PlanLevel[] = [];
 
+/** Painéis do gráfico, de cima para baixo. */
+const PRICE_PANE = 0;
+const VOLUME_PANE = 1;
+const OBV_PANE = 2;
+
 interface ChartHandles {
   chart: IChartApi;
   candles: ISeriesApi<"Candlestick">;
   volume: ISeriesApi<"Histogram">;
+  obv: ISeriesApi<"Line">;
+  priceMarkers: ISeriesMarkersPluginApi<Time>;
+  obvMarkers: ISeriesMarkersPluginApi<Time>;
   drawings: DrawingsPrimitive;
 }
 
@@ -100,6 +114,9 @@ export function PriceChart({ symbol, levels = NO_LEVELS }: PriceChartProps) {
   const key = `${symbol}:${range}`;
   const bars = history?.bars;
   const loading = history?.key !== key;
+  const obvValues = useMemo(() => (bars ? computeOBV(bars) : []), [bars]);
+  const divergences = useMemo(() => (bars ? findDivergences(bars, obvValues) : []), [bars, obvValues]);
+  const [showDivergences, setShowDivergences] = useState(true);
   const liveRef = useRef<LiveState>({ bars: [], drawings, tool, pending, selectedId });
 
   /** Envia o estado atual ao plugin, incluindo a pré-visualização do desenho em construção. */
@@ -129,30 +146,48 @@ export function PriceChart({ symbol, levels = NO_LEVELS }: PriceChartProps) {
       timeScale: { rightOffset: 12, borderVisible: false },
       rightPriceScale: { borderVisible: false },
     });
-    const candles = chart.addSeries(CandlestickSeries, {});
-    candles.priceScale().applyOptions({ scaleMargins: { top: 0.08, bottom: 0.25 } });
-    const volume = chart.addSeries(HistogramSeries, {
-      priceScaleId: "volume",
-      priceFormat: { type: "volume" },
-      lastValueVisible: false,
-      priceLineVisible: false,
-    });
-    chart.priceScale("volume").applyOptions({ scaleMargins: { top: 0.8, bottom: 0 } });
+    const candles = chart.addSeries(CandlestickSeries, {}, PRICE_PANE);
+    candles.priceScale().applyOptions({ scaleMargins: { top: 0.08, bottom: 0.08 } });
+    const volume = chart.addSeries(
+      HistogramSeries,
+      { priceFormat: { type: "volume" }, lastValueVisible: false, priceLineVisible: false, title: "Volume" },
+      VOLUME_PANE,
+    );
+    const obv = chart.addSeries(
+      LineSeries,
+      { priceFormat: { type: "volume" }, lineWidth: 2, priceLineVisible: false, title: "OBV" },
+      OBV_PANE,
+    );
+    const [pricePane, volumePane, obvPane] = chart.panes();
+    pricePane.setStretchFactor(5);
+    volumePane.setStretchFactor(1.2);
+    obvPane.setStretchFactor(1.5);
 
     const drawingsPrimitive = new DrawingsPrimitive(CHART_THEMES.light.drawings);
     candles.attachPrimitive(drawingsPrimitive);
-    const handles: ChartHandles = { chart, candles, volume, drawings: drawingsPrimitive };
+    const handles: ChartHandles = {
+      chart,
+      candles,
+      volume,
+      obv,
+      priceMarkers: createSeriesMarkers(candles, []),
+      obvMarkers: createSeriesMarkers(obv, []),
+      drawings: drawingsPrimitive,
+    };
     handlesRef.current = handles;
 
     const onMove = (param: MouseEventParams<Time>) => {
       if (!liveRef.current.tool) return;
-      cursorRef.current = param.point ? toAnchor(param.point.x, param.point.y, handles, liveRef.current.bars) : null;
+      // Desenhos só existem no painel de preço; fora dele não há pré-visualização.
+      const inPricePane = (param.paneIndex ?? PRICE_PANE) === PRICE_PANE;
+      cursorRef.current =
+        param.point && inPricePane ? toAnchor(param.point.x, param.point.y, handles, liveRef.current.bars) : null;
       pushToChart();
     };
 
     const onClick = (x: number, y: number) => {
       const live = liveRef.current;
-      const pane = chart.paneSize();
+      const pane = chart.paneSize(PRICE_PANE);
       if (x < 0 || y < 0 || x > pane.width || y > pane.height) return;
 
       if (!live.tool) {
@@ -213,7 +248,11 @@ export function PriceChart({ symbol, levels = NO_LEVELS }: PriceChartProps) {
     const handles = handlesRef.current;
     if (!handles) return;
     handles.chart.applyOptions({
-      layout: { background: { type: ColorType.Solid, color: theme.background }, textColor: theme.text },
+      layout: {
+        background: { type: ColorType.Solid, color: theme.background },
+        textColor: theme.text,
+        panes: { separatorColor: theme.grid },
+      },
       grid: { vertLines: { color: theme.grid }, horzLines: { color: theme.grid } },
     });
     handles.candles.applyOptions({
@@ -224,6 +263,7 @@ export function PriceChart({ symbol, levels = NO_LEVELS }: PriceChartProps) {
       wickUpColor: theme.up,
       wickDownColor: theme.down,
     });
+    handles.obv.applyOptions({ color: theme.drawings.target });
     handles.drawings.setPalette(theme.drawings);
   }, [theme]);
 
@@ -261,7 +301,9 @@ export function PriceChart({ symbol, levels = NO_LEVELS }: PriceChartProps) {
         };
       },
     });
-    return () => lines.forEach((line) => handles.candles.removePriceLine(line));
+    return () => {
+      if (handlesRef.current) lines.forEach((line) => handles.candles.removePriceLine(line));
+    };
   }, [levels, theme]);
 
   useEffect(() => {
@@ -293,14 +335,77 @@ export function PriceChart({ symbol, levels = NO_LEVELS }: PriceChartProps) {
       bars.map((b) => ({
         time: b.time as UTCTimestamp,
         value: b.volume,
-        color: `${b.close >= b.open ? theme.up : theme.down}55`,
+        color: `${b.close >= b.open ? theme.up : theme.down}99`,
       })),
     );
+    handles.obv.setData(bars.map((b, i) => ({ time: b.time as UTCTimestamp, value: obvValues[i] })));
     if (history && fittedKeyRef.current !== history.key) {
       fittedKeyRef.current = history.key;
       handles.chart.timeScale().fitContent();
     }
-  }, [bars, history, theme]);
+  }, [bars, history, theme, obvValues]);
+
+  // Divergências: seta no candle do novo topo/fundo e uma linha ligando os dois pontos,
+  // no preço e no OBV, para comparar as inclinações.
+  useEffect(() => {
+    const handles = handlesRef.current;
+    if (!handles || !bars) return;
+    const visible: Divergence[] = showDivergences ? divergences : [];
+    const time = (i: number) => bars[i].time as UTCTimestamp;
+    const colorOf = (d: Divergence) => (d.kind === "bearish" ? theme.down : theme.up);
+
+    handles.priceMarkers.setMarkers(
+      visible.map(
+        (d): SeriesMarker<Time> => ({
+          time: time(d.to),
+          position: d.kind === "bearish" ? "aboveBar" : "belowBar",
+          shape: d.kind === "bearish" ? "arrowDown" : "arrowUp",
+          color: colorOf(d),
+          // Texto curto: divergências encadeadas ficam próximas; cor e seta já indicam o tipo.
+          text: "Div.",
+        }),
+      ),
+    );
+    handles.obvMarkers.setMarkers(
+      visible.map(
+        (d): SeriesMarker<Time> => ({
+          time: time(d.to),
+          position: d.kind === "bearish" ? "aboveBar" : "belowBar",
+          shape: "circle",
+          color: colorOf(d),
+        }),
+      ),
+    );
+
+    const segment = (pane: number, color: string, from: [number, number], to: [number, number]) => {
+      const series = handles.chart.addSeries(
+        LineSeries,
+        {
+          color,
+          lineWidth: 2,
+          lineStyle: LineStyle.Dashed,
+          lastValueVisible: false,
+          priceLineVisible: false,
+          crosshairMarkerVisible: false,
+          autoscaleInfoProvider: () => null,
+        },
+        pane,
+      );
+      series.setData([
+        { time: time(from[0]), value: from[1] },
+        { time: time(to[0]), value: to[1] },
+      ]);
+      return series;
+    };
+    const segments = visible.flatMap((d) => [
+      segment(PRICE_PANE, colorOf(d), [d.from, d.priceFrom], [d.to, d.priceTo]),
+      segment(OBV_PANE, colorOf(d), [d.from, d.obvFrom], [d.to, d.obvTo]),
+    ]);
+    return () => {
+      // Se o gráfico já foi desmontado, as séries foram junto.
+      if (handlesRef.current) segments.forEach((s) => handles.chart.removeSeries(s));
+    };
+  }, [bars, divergences, showDivergences, theme]);
 
   useEffect(() => {
     liveRef.current = { bars: bars ?? [], drawings, tool, pending, selectedId };
@@ -378,7 +483,7 @@ export function PriceChart({ symbol, levels = NO_LEVELS }: PriceChartProps) {
         }}
       />
 
-      <div className="relative mt-2 h-[420px] sm:h-[480px]">
+      <div className="relative mt-2 h-[560px] sm:h-[640px]">
         <div ref={containerRef} className={`h-full w-full ${tool ? "cursor-crosshair" : ""}`} />
         {loading && (
           <div role="status" className="absolute inset-0 flex items-center justify-center bg-surface/60 text-sm text-muted">
@@ -391,6 +496,14 @@ export function PriceChart({ symbol, levels = NO_LEVELS }: PriceChartProps) {
           </div>
         )}
       </div>
+      {bars && bars.length > 0 && (
+        <DivergencePanel
+          bars={bars}
+          divergences={divergences}
+          show={showDivergences}
+          onShowChange={setShowDivergences}
+        />
+      )}
     </section>
   );
 }

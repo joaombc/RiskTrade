@@ -64,7 +64,7 @@ export interface FanResult {
   reversal?: DataPoint;
 }
 
-function isSwing(bars: Bar[], i: number, kind: "low" | "high", window: number): boolean {
+export function isSwing(bars: Bar[], i: number, kind: "low" | "high", window: number): boolean {
   if (i - window < 0 || i + window >= bars.length) return false;
   for (let j = i - window; j <= i + window; j++) {
     if (kind === "low" ? bars[j].low < bars[i].low : bars[j].high > bars[i].high) return false;
