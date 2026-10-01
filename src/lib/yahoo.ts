@@ -9,6 +9,7 @@ import {
   type HistoryRange,
   type SearchResult,
 } from "./market";
+import { SPARKLINE_SESSIONS, type WatchlistQuote } from "./watchlist";
 
 const yahooFinance = new YahooFinance({ suppressNotices: ["yahooSurvey"] });
 
@@ -37,6 +38,8 @@ export async function searchAssets(query: string): Promise<SearchResult[]> {
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+// ~45 dias corridos cobrem 20 pregões (média de volume) e os 30 do sparkline, mesmo com feriados.
+const VOLUME_LOOKBACK_MS = 45 * DAY_MS;
 
 /** Candles diários do período, descartando barras sem OHLC completo. */
 export async function getHistory(symbol: string, range: HistoryRange): Promise<Bar[]> {
@@ -62,8 +65,35 @@ export async function getHistory(symbol: string, range: HistoryRange): Promise<B
   );
 }
 
-// ~45 dias corridos cobrem 20 pregões mesmo com feriados.
-const VOLUME_LOOKBACK_MS = 45 * DAY_MS;
+/** Fechamentos diários desde `period1`. Sem histórico, devolve lista vazia em vez de falhar. */
+async function recentCloses(symbol: string, period1: Date): Promise<number[]> {
+  try {
+    const chart = await yahooFinance.chart(symbol, { period1, interval: "1d" });
+    return chart.quotes.flatMap((bar) => (bar.close == null ? [] : [bar.close]));
+  } catch {
+    return [];
+  }
+}
+
+/** Cotações da watchlist numa só chamada, mais os fechamentos recentes para o sparkline. */
+export async function getWatchlistQuotes(symbols: string[]): Promise<WatchlistQuote[]> {
+  const quotes = await yahooFinance.quote(symbols, { return: "array" });
+  const period1 = new Date(Date.now() - VOLUME_LOOKBACK_MS);
+  const priced = quotes.filter(
+    (q): q is typeof q & { regularMarketPrice: number } => q.regularMarketPrice !== undefined,
+  );
+
+  return Promise.all(
+    priced.map(async (q) => ({
+      symbol: q.symbol,
+      currency: q.currency ?? "",
+      price: q.regularMarketPrice,
+      changePercent: q.regularMarketChangePercent ?? 0,
+      volume: q.regularMarketVolume ?? 0,
+      sparkline: (await recentCloses(q.symbol, period1)).slice(-SPARKLINE_SESSIONS),
+    })),
+  );
+}
 
 export async function getAssetSummary(symbol: string): Promise<AssetSummary> {
   const quote = await yahooFinance.quote(symbol);
