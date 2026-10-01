@@ -7,11 +7,12 @@ const DEBOUNCE_MS = 250;
 
 interface Props {
   onSelect: (symbol: string) => void;
+  initialQuery?: string;
 }
 
-export function AssetSearch({ onSelect }: Props) {
+export function AssetSearch({ onSelect, initialQuery = "" }: Props) {
   const listId = useId();
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(initialQuery);
   const [results, setResults] = useState<SearchResult[]>([]);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -21,8 +22,8 @@ export function AssetSearch({ onSelect }: Props) {
 
   useEffect(() => {
     const term = query.trim();
-    // Com a busca vazia a lista já fica oculta (showList), então não há o que limpar.
-    if (!term) return;
+    // Com a busca vazia ou a lista fechada não há sugestões para mostrar.
+    if (!term || !open) return;
 
     const controller = new AbortController();
     const timer = setTimeout(async () => {
@@ -39,7 +40,7 @@ export function AssetSearch({ onSelect }: Props) {
         setResults([]);
         setError(err instanceof Error && err.message ? err.message : "Falha ao buscar ativos.");
       } finally {
-        if (!controller.signal.aborted) setLoading(false);
+        setLoading(false);
       }
     }, DEBOUNCE_MS);
 
@@ -47,7 +48,7 @@ export function AssetSearch({ onSelect }: Props) {
       clearTimeout(timer);
       controller.abort();
     };
-  }, [query]);
+  }, [query, open]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {

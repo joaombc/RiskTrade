@@ -1,4 +1,5 @@
 import type { AssetSummary, MarketStatus } from "@/lib/market";
+import { FavoriteButton } from "./watchlist/FavoriteButton";
 
 const STATUS_LABEL: Record<MarketStatus, { label: string; className: string }> = {
   open: { label: "Aberto", className: "bg-positive/15 text-positive" },
@@ -33,7 +34,10 @@ export function AssetSummaryPanel({ summary }: { summary: AssetSummary }) {
             {summary.name} · {summary.exchange}
           </p>
         </div>
-        <span className={`rounded-full px-3 py-1 text-xs font-semibold ${status.className}`}>{status.label}</span>
+        <div className="flex items-center gap-2">
+          <span className={`rounded-full px-3 py-1 text-xs font-semibold ${status.className}`}>{status.label}</span>
+          <FavoriteButton symbol={summary.symbol} name={summary.name} />
+        </div>
       </header>
 
       <div className="mt-6 flex flex-wrap items-baseline gap-x-4 gap-y-1">
