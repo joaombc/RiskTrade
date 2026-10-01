@@ -33,7 +33,7 @@ export function resolveExample(slug: string, example: TermExample, bars: Bar[]):
         id: `example:${slug}:${i}`,
         kind: d.kind,
         points: points as NonNullable<(typeof points)[number]>[],
-        options: { ...TOOLS[d.kind].defaults },
+        options: { ...TOOLS[d.kind].defaults, ...d.options },
       },
     ];
   });

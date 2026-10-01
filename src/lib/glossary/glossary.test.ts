@@ -65,6 +65,7 @@ describe("conteúdo do glossário", () => {
       const dates = [
         ...(t.example!.drawings ?? []).flatMap((d) => d.points.map((p) => p.date)),
         ...(t.example!.markers ?? []).map((m) => m.date),
+        ...(t.example!.view ? [t.example!.view.from, t.example!.view.to] : []),
       ];
       expect(dates.length, t.slug).toBeGreaterThan(0);
       for (const d of dates) expect(d, t.slug).toMatch(/^\d{4}-\d{2}-\d{2}$/);
@@ -94,6 +95,13 @@ describe("resolveExample", () => {
     expect(drawings[0].options).toEqual({ extend: true });
   });
 
+  it("aplica as opções do exemplo sobre as padrão da ferramenta", () => {
+    const { drawings } = resolveExample("x", { symbol: "X", range: "1y", description: "", drawings: [
+      { kind: "trendline", points: [{ date: "2025-03-03", price: "low" }, { date: "2025-03-05", price: "low" }], options: { extend: false } },
+    ] }, bars);
+    expect(drawings[0].options).toEqual({ extend: false });
+  });
+
   it("cai no pregão seguinte quando a data não teve negócio", () => {
     const { markers } = resolveExample("x", { symbol: "X", range: "1y", description: "", markers: [
       { date: "2025-03-06", text: "Gap", position: "aboveBar" },
@@ -110,6 +118,12 @@ describe("resolveExample", () => {
 });
 
 describe("exemplos cadastrados", () => {
+  it("bandeira, flâmula e cunhas têm exemplo real", () => {
+    for (const slug of ["bandeira", "flamula", "cunha-descendente", "cunha-ascendente"]) {
+      expect(GLOSSARY.find((t) => t.slug === slug)?.example, slug).toBeDefined();
+    }
+  });
+
   it("cada exemplo pertence a um termo existente", async () => {
     const { EXAMPLES } = await import("./examples-data");
     const slugs = new Set(GLOSSARY.map((t) => t.slug));
