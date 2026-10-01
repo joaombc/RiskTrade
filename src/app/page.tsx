@@ -1,13 +1,15 @@
+import { Suspense } from "react";
 import { MarketDashboard } from "@/components/MarketDashboard";
+import { SiteHeader } from "@/components/SiteHeader";
 
 export default function Home() {
   return (
     <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-8 px-4 py-12 sm:px-6">
-      <header>
-        <h1 className="text-3xl font-bold tracking-tight">RiskTrade</h1>
-        <p className="mt-1 text-muted">Análise técnica de mercado</p>
-      </header>
-      <MarketDashboard />
+      <SiteHeader current="/" />
+      {/* O painel lê o ativo e o exemplo da URL (links do glossário). */}
+      <Suspense>
+        <MarketDashboard />
+      </Suspense>
     </main>
   );
 }

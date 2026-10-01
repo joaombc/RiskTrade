@@ -20,7 +20,10 @@ import {
   type UTCTimestamp,
 } from "lightweight-charts";
 import { loadDrawings, saveDrawings } from "@/lib/drawings/storage";
+import { createTimeAxis } from "@/lib/drawings/timeAxis";
 import { TOOLS, type Anchor, type Bar, type Drawing, type DrawingKind, type DrawingOptions } from "@/lib/drawings/types";
+import { resolveExample, type ResolvedExample } from "@/lib/glossary/examples";
+import type { TermExample } from "@/lib/glossary/types";
 import { computeOBV, findDivergences, type Divergence } from "@/lib/indicators";
 import { HISTORY_RANGES, type HistoryRange } from "@/lib/market";
 import type { PlanLevel } from "@/lib/risk";
@@ -36,6 +39,7 @@ const MAGNET_PX = 10;
 const CLICK_TOLERANCE_PX = 5;
 const RANGE_KEYS = Object.keys(HISTORY_RANGES) as HistoryRange[];
 const NO_LEVELS: PlanLevel[] = [];
+const NO_EXAMPLE: ResolvedExample = { drawings: [], markers: [] };
 
 /** Painéis do gráfico, de cima para baixo. */
 const PRICE_PANE = 0;
@@ -64,6 +68,7 @@ interface LiveState {
   tool: DrawingKind | null;
   pending: Anchor[];
   selectedId: string | null;
+  fixed: Drawing[];
 }
 
 /** Converte uma posição (px, relativa ao painel) em âncora, com ímã para o OHLC do candle. */
@@ -90,20 +95,31 @@ function toAnchor(x: number, y: number, handles: ChartHandles, bars: Bar[]): Anc
   return { time: handles.drawings.timeAxis.toTime(logical), price };
 }
 
+/** Exemplo do glossário aberto pelo botão "Ver no gráfico real". */
+export interface ChartExample {
+  slug: string;
+  name: string;
+  example: TermExample;
+}
+
 interface PriceChartProps {
   symbol: string;
   /** Níveis do plano de risco (entrada, stop, alvo…) desenhados como linhas de preço. */
   levels?: PlanLevel[];
+  initialRange?: HistoryRange;
+  example?: ChartExample | null;
+  onCloseExample?: () => void;
 }
 
-export function PriceChart({ symbol, levels = NO_LEVELS }: PriceChartProps) {
+export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", example = null, onCloseExample }: PriceChartProps) {
   const theme = CHART_THEMES[useColorScheme()];
   const containerRef = useRef<HTMLDivElement>(null);
   const handlesRef = useRef<ChartHandles | null>(null);
   const cursorRef = useRef<Anchor | null>(null);
   const fittedKeyRef = useRef<string | null>(null);
+  const zoomedExampleRef = useRef<string | null>(null);
 
-  const [range, setRange] = useState<HistoryRange>("1y");
+  const [range, setRange] = useState<HistoryRange>(initialRange);
   const [history, setHistory] = useState<History | null>(null);
   // O componente só é montado no cliente (após a cotação carregar), então o localStorage está disponível.
   const [drawings, setDrawings] = useState<Drawing[]>(() => loadDrawings(symbol));
@@ -117,7 +133,11 @@ export function PriceChart({ symbol, levels = NO_LEVELS }: PriceChartProps) {
   const obvValues = useMemo(() => (bars ? computeOBV(bars) : []), [bars]);
   const divergences = useMemo(() => (bars ? findDivergences(bars, obvValues) : []), [bars, obvValues]);
   const [showDivergences, setShowDivergences] = useState(true);
-  const liveRef = useRef<LiveState>({ bars: [], drawings, tool, pending, selectedId });
+  const resolvedExample = useMemo(
+    () => (example && bars ? resolveExample(example.slug, example.example, bars) : NO_EXAMPLE),
+    [example, bars],
+  );
+  const liveRef = useRef<LiveState>({ bars: [], drawings, tool, pending, selectedId, fixed: [] });
 
   /** Envia o estado atual ao plugin, incluindo a pré-visualização do desenho em construção. */
   const pushToChart = useCallback(() => {
@@ -132,6 +152,7 @@ export function PriceChart({ symbol, levels = NO_LEVELS }: PriceChartProps) {
       drawings: live.drawings,
       preview,
       selectedId: live.selectedId,
+      fixed: live.fixed,
     });
   }, []);
 
@@ -345,6 +366,26 @@ export function PriceChart({ symbol, levels = NO_LEVELS }: PriceChartProps) {
     }
   }, [bars, history, theme, obvValues]);
 
+  // Exemplo do glossário: aproxima o gráfico da janela do padrão (uma vez por exemplo carregado).
+  useEffect(() => {
+    const handles = handlesRef.current;
+    if (!handles || !bars || !example || !history) return;
+    const zoomKey = `${example.slug}:${history.key}`;
+    if (zoomedExampleRef.current === zoomKey) return;
+    const times = [
+      ...resolvedExample.drawings.flatMap((d) => d.points.map((p) => p.time)),
+      ...resolvedExample.markers.map((m) => m.time),
+    ];
+    if (times.length === 0) return;
+    zoomedExampleRef.current = zoomKey;
+    const axis = createTimeAxis(bars);
+    const from = axis.toLogical(Math.min(...times));
+    const to = axis.toLogical(Math.max(...times));
+    // Mais folga à direita: é onde ficam o rompimento e a projeção do alvo.
+    const span = to - from;
+    handles.chart.timeScale().setVisibleLogicalRange({ from: from - Math.max(25, span * 0.25), to: to + Math.max(45, span * 0.8) });
+  }, [bars, example, history, resolvedExample]);
+
   // Divergências: seta no candle do novo topo/fundo e uma linha ligando os dois pontos,
   // no preço e no OBV, para comparar as inclinações.
   useEffect(() => {
@@ -354,17 +395,28 @@ export function PriceChart({ symbol, levels = NO_LEVELS }: PriceChartProps) {
     const time = (i: number) => bars[i].time as UTCTimestamp;
     const colorOf = (d: Divergence) => (d.kind === "bearish" ? theme.down : theme.up);
 
+    const divergenceMarkers = visible.map(
+      (d): SeriesMarker<Time> => ({
+        time: time(d.to),
+        position: d.kind === "bearish" ? "aboveBar" : "belowBar",
+        shape: d.kind === "bearish" ? "arrowDown" : "arrowUp",
+        color: colorOf(d),
+        // Texto curto: divergências encadeadas ficam próximas; cor e seta já indicam o tipo.
+        text: "Div.",
+      }),
+    );
+    const exampleMarkers = resolvedExample.markers.map(
+      (m): SeriesMarker<Time> => ({
+        time: m.time as UTCTimestamp,
+        position: m.position,
+        shape: "circle",
+        color: theme.drawings.target,
+        text: m.text,
+      }),
+    );
+    // A API exige marcadores em ordem cronológica.
     handles.priceMarkers.setMarkers(
-      visible.map(
-        (d): SeriesMarker<Time> => ({
-          time: time(d.to),
-          position: d.kind === "bearish" ? "aboveBar" : "belowBar",
-          shape: d.kind === "bearish" ? "arrowDown" : "arrowUp",
-          color: colorOf(d),
-          // Texto curto: divergências encadeadas ficam próximas; cor e seta já indicam o tipo.
-          text: "Div.",
-        }),
-      ),
+      [...divergenceMarkers, ...exampleMarkers].sort((a, b) => (a.time as number) - (b.time as number)),
     );
     handles.obvMarkers.setMarkers(
       visible.map(
@@ -405,13 +457,13 @@ export function PriceChart({ symbol, levels = NO_LEVELS }: PriceChartProps) {
       // Se o gráfico já foi desmontado, as séries foram junto.
       if (handlesRef.current) segments.forEach((s) => handles.chart.removeSeries(s));
     };
-  }, [bars, divergences, showDivergences, theme]);
+  }, [bars, divergences, showDivergences, theme, resolvedExample]);
 
   useEffect(() => {
-    liveRef.current = { bars: bars ?? [], drawings, tool, pending, selectedId };
+    liveRef.current = { bars: bars ?? [], drawings, tool, pending, selectedId, fixed: resolvedExample.drawings };
     if (!tool) cursorRef.current = null;
     pushToChart();
-  }, [bars, drawings, tool, pending, selectedId, pushToChart]);
+  }, [bars, drawings, tool, pending, selectedId, pushToChart, resolvedExample]);
 
   useEffect(() => {
     saveDrawings(symbol, drawings);
@@ -464,6 +516,34 @@ export function PriceChart({ symbol, levels = NO_LEVELS }: PriceChartProps) {
           ))}
         </div>
       </header>
+
+      {example && (
+        <div role="status" className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border border-target/40 bg-target/10 p-3 text-sm">
+          <span className="min-w-0 flex-1">
+            <strong className="text-target">Exemplo do glossário: {example.name}.</strong> {example.example.description}
+            {bars && resolvedExample.drawings.length < (example.example.drawings?.length ?? 0) && (
+              <span className="text-muted"> Parte do exemplo está fora do período carregado.</span>
+            )}
+          </span>
+          {resolvedExample.drawings.length > 0 && (
+            <button
+              type="button"
+              onClick={() =>
+                setDrawings((current) => [
+                  ...current,
+                  ...resolvedExample.drawings.map((d) => ({ ...d, id: crypto.randomUUID() })),
+                ])
+              }
+              className="rounded-md bg-target px-2.5 py-1 text-xs font-medium text-white hover:opacity-90"
+            >
+              Copiar para meus desenhos
+            </button>
+          )}
+          <button type="button" onClick={onCloseExample} className="text-xs font-medium text-muted hover:text-foreground">
+            Fechar exemplo
+          </button>
+        </div>
+      )}
 
       <DrawingToolbar
         activeTool={tool}
