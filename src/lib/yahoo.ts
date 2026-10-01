@@ -21,6 +21,25 @@ export class AssetNotFoundError extends Error {
   }
 }
 
+/**
+ * O Yahoo responde "No data found, symbol may be delisted" quando o ticker não tem histórico
+ * (inexistente ou fora de negociação). É o critério indicado pela própria biblioteca, já que
+ * o erro não traz código nem status.
+ */
+function isNoDataError(error: unknown): boolean {
+  return error instanceof Error && error.message.includes("No data found");
+}
+
+/** Histórico diário desde `period1`; ticker sem dados vira AssetNotFoundError. */
+async function fetchChart(symbol: string, period1: Date) {
+  try {
+    return await yahooFinance.chart(symbol, { period1, interval: "1d" });
+  } catch (error) {
+    if (isNoDataError(error)) throw new AssetNotFoundError(symbol);
+    throw error;
+  }
+}
+
 export async function searchAssets(query: string): Promise<SearchResult[]> {
   const { quotes } = await yahooFinance.search(query, { quotesCount: 8, newsCount: 0 });
 
@@ -43,10 +62,7 @@ const VOLUME_LOOKBACK_MS = 45 * DAY_MS;
 
 /** Candles diários do período, descartando barras sem OHLC completo. */
 export async function getHistory(symbol: string, range: HistoryRange): Promise<Bar[]> {
-  const chart = await yahooFinance.chart(symbol, {
-    period1: new Date(Date.now() - HISTORY_RANGES[range].days * DAY_MS),
-    interval: "1d",
-  });
+  const chart = await fetchChart(symbol, new Date(Date.now() - HISTORY_RANGES[range].days * DAY_MS));
   if (chart.quotes.length === 0) throw new AssetNotFoundError(symbol);
 
   return chart.quotes.flatMap((q) =>
@@ -68,7 +84,7 @@ export async function getHistory(symbol: string, range: HistoryRange): Promise<B
 /** Fechamentos diários desde `period1`. Sem histórico, devolve lista vazia em vez de falhar. */
 async function recentCloses(symbol: string, period1: Date): Promise<number[]> {
   try {
-    const chart = await yahooFinance.chart(symbol, { period1, interval: "1d" });
+    const chart = await fetchChart(symbol, period1);
     return chart.quotes.flatMap((bar) => (bar.close == null ? [] : [bar.close]));
   } catch {
     return [];
@@ -101,9 +117,10 @@ export async function getAssetSummary(symbol: string): Promise<AssetSummary> {
     throw new AssetNotFoundError(symbol);
   }
 
-  const chart = await yahooFinance.chart(quote.symbol, {
-    period1: new Date(Date.now() - VOLUME_LOOKBACK_MS),
-    interval: "1d",
+  // Sem histórico o resumo ainda é útil (cotação do dia); só a média de volume fica indisponível.
+  const history = await fetchChart(quote.symbol, new Date(Date.now() - VOLUME_LOOKBACK_MS)).catch((error) => {
+    if (error instanceof AssetNotFoundError) return null;
+    throw error;
   });
 
   return {
@@ -116,7 +133,7 @@ export async function getAssetSummary(symbol: string): Promise<AssetSummary> {
     dayHigh: quote.regularMarketDayHigh ?? quote.regularMarketPrice,
     dayLow: quote.regularMarketDayLow ?? quote.regularMarketPrice,
     volume: quote.regularMarketVolume ?? 0,
-    avgVolume20d: averageVolume(chart.quotes),
+    avgVolume20d: history ? averageVolume(history.quotes) : null,
     marketStatus: toMarketStatus(quote.marketState),
     updatedAt: (quote.regularMarketTime ?? new Date()).toISOString(),
   };
