@@ -11,6 +11,7 @@
   --negative: #dc2626;
   --warning: #b45309;
   --target: #9333ea;
+  color-scheme: light;
 }
 
 @theme inline {
@@ -28,8 +29,12 @@
   --font-mono: var(--font-geist-mono);
 }
 
+/*
+ * Tema escuro: segue o sistema, a menos que o usuário tenha escolhido um tema no botão do
+ * cabeçalho (atributo data-theme no <html>, que tem prioridade).
+ */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --background: #0b0d10;
     --foreground: #e8eaed;
     --surface: #14171c;
@@ -40,7 +45,22 @@
     --negative: #f87171;
     --warning: #fbbf24;
     --target: #c084fc;
+    color-scheme: dark;
   }
+}
+
+:root[data-theme="dark"] {
+  --background: #0b0d10;
+  --foreground: #e8eaed;
+  --surface: #14171c;
+  --border: #262b33;
+  --muted: #9aa3af;
+  --accent: #60a5fa;
+  --positive: #34d399;
+  --negative: #f87171;
+  --warning: #fbbf24;
+  --target: #c084fc;
+  color-scheme: dark;
 }
 
 body {
