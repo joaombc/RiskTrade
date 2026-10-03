@@ -27,12 +27,12 @@ import { resolveExample, type ResolvedExample } from "@/lib/glossary/examples";
 import type { TermExample } from "@/lib/glossary/types";
 import { computeOBV, findDivergences, type Divergence } from "@/lib/indicators";
 import { HISTORY_RANGES, INTERVAL_LABELS, isIntraday, type HistoryRange } from "@/lib/market";
+import { useTheme } from "@/lib/theme";
 import type { PlanLevel } from "@/lib/risk";
 import { DivergencePanel } from "./DivergencePanel";
 import { DrawingsPrimitive } from "./DrawingsPrimitive";
 import { DrawingToolbar } from "./DrawingToolbar";
 import { CHART_THEMES } from "./theme";
-import { useColorScheme } from "./useColorScheme";
 
 /** Distância máxima (px) para o clique "grudar" na máxima/mínima/abertura/fechamento do candle. */
 const MAGNET_PX = 10;
@@ -146,7 +146,7 @@ interface PriceChartProps {
 }
 
 export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", example = null, onCloseExample }: PriceChartProps) {
-  const theme = CHART_THEMES[useColorScheme()];
+  const theme = CHART_THEMES[useTheme()];
   const containerRef = useRef<HTMLDivElement>(null);
   const handlesRef = useRef<ChartHandles | null>(null);
   const cursorRef = useRef<Anchor | null>(null);

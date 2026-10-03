@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ThemeToggle } from "./ThemeToggle";
 
 const LINKS = [
   { href: "/", label: "Painel" },
@@ -15,7 +16,8 @@ export function SiteHeader({ current }: { current: (typeof LINKS)[number]["href"
         </h1>
         <p className="mt-1 text-muted">Análise técnica de mercado</p>
       </div>
-      <nav aria-label="Principal" className="flex gap-1 text-sm font-medium">
+      <div className="flex items-center gap-2">
+        <nav aria-label="Principal" className="flex gap-1 text-sm font-medium">
         {LINKS.map((link) => (
           <Link
             key={link.href}
@@ -26,7 +28,9 @@ export function SiteHeader({ current }: { current: (typeof LINKS)[number]["href"
             {link.label}
           </Link>
         ))}
-      </nav>
+        </nav>
+        <ThemeToggle />
+      </div>
     </header>
   );
 }
