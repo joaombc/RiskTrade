@@ -3,6 +3,7 @@ import Link from "next/link";
 const LINKS = [
   { href: "/", label: "Painel" },
   { href: "/glossario", label: "Glossário" },
+  { href: "/candles", label: "Candles" },
 ] as const;
 
 export function SiteHeader({ current }: { current: (typeof LINKS)[number]["href"] }) {

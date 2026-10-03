@@ -13,6 +13,7 @@ Os dados vêm do Yahoo Finance pela biblioteca [`yahoo-finance2`](https://github
 - **Watchlist**: favoritos com sparkline, ordenação e etiquetas de cenário.
 - **Gestão de risco**: tamanho da posição pelo risco por operação, validação da relação recompensa/risco (mínimo 3:1) e saída em terços. Entrada, stop e alvo aparecem no gráfico.
 - **Glossário** (`/glossario`): termos com diagrama, regra de validação e o botão "Ver no gráfico real", que abre um exemplo histórico no gráfico.
+- **Padrões de candles** (`/candles`): todos os padrões de candlesticks da biblioteca do capítulo 12 do Murphy (velas básicas, reversões e continuações), com diagrama no contexto da tendência, como reconhecer, psicologia e confirmação.
 
 Desenhos, favoritos e preferências ficam no `localStorage` do navegador. Não há login nem banco de dados.
 
@@ -59,19 +60,22 @@ src/
 ├── app/
 │   ├── page.tsx               # painel principal
 │   ├── glossario/             # página do glossário
+│   ├── candles/               # página dos padrões de candles
 │   └── api/                   # rotas que consultam o Yahoo Finance no servidor
 │       ├── search/            #   autocomplete de ativos
 │       ├── quote/             #   resumo do ativo
-│       ├── history/           #   candles diários
+│       ├── history/           #   candles diários e intradiários
 │       └── watchlist/         #   cotações em lote para os favoritos
 ├── components/
 │   ├── chart/                 # gráfico, plugin de desenhos, painel de divergências
 │   ├── watchlist/             # estrela, painel lateral, sparkline
 │   ├── risk/                  # calculadora de risco
-│   └── glossary/              # cards, diagramas SVG, busca
+│   ├── glossary/              # cards, diagramas SVG, busca, aulas
+│   └── candles/               # cards e diagramas dos padrões de candles
 └── lib/                       # lógica pura e testada
     ├── drawings/              #   geometria dos desenhos, eixo de tempo, persistência
-    ├── glossary/              #   termos, exemplos históricos, busca
+    ├── glossary/              #   termos, exemplos históricos, aulas, busca
+    ├── candles/               #   biblioteca de padrões de candles, busca
     ├── indicators.ts          #   OBV e divergências
     ├── risk.ts                #   dimensionamento de posição
     ├── watchlist.ts           #   ordenação e etiquetas
