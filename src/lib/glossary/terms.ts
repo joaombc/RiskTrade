@@ -1,3 +1,4 @@
+import { BANANAS } from "./banana-data";
 import { DETAILS } from "./details-data";
 import { EXAMPLES } from "./examples-data";
 import type { Diagram, DiagramCandle, DiagramPoint, GlossaryTerm, Pt } from "./types";
@@ -687,9 +688,10 @@ const TERMS: GlossaryTerm[] = [
   },
 ];
 
-/** Termos com o exemplo histórico de "Ver no gráfico real" e o conteúdo do card ampliado. */
+/** Termos com o exemplo histórico de "Ver no gráfico real", o conteúdo do card ampliado e o modo banana. */
 export const GLOSSARY: GlossaryTerm[] = TERMS.map((term) => ({
   ...term,
   ...(EXAMPLES[term.slug] && { example: EXAMPLES[term.slug] }),
   ...(DETAILS[term.slug] && { details: DETAILS[term.slug] }),
+  ...(BANANAS[term.slug] && { banana: BANANAS[term.slug] }),
 }));

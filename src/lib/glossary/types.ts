@@ -99,6 +99,18 @@ export interface TermDetails {
   source: string;
 }
 
+/** Modo banana: o termo explicado como uma cena numa feira de bananas. */
+export interface BananaExplanation {
+  /** O cenário na feira. */
+  scene: string;
+  /** O conceito explicado com bananas. */
+  concept: string;
+  /** Como reconhecer e validar, em termos da feira. */
+  rule: string;
+  /** O resumo em uma frase. */
+  moral: string;
+}
+
 export interface GlossaryTerm {
   slug: string;
   name: string;
@@ -112,6 +124,7 @@ export interface GlossaryTerm {
   tool?: DrawingKind;
   example?: TermExample;
   details?: TermDetails;
+  banana?: BananaExplanation;
 }
 
 export interface LessonSection {
