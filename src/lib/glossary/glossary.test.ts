@@ -143,6 +143,25 @@ describe("card ampliado", () => {
   });
 });
 
+describe("modo banana", () => {
+  it("todo termo tem cena, conceito, regra e moral com bananas", () => {
+    for (const t of GLOSSARY) {
+      expect(t.banana, t.slug).toBeDefined();
+      for (const key of ["scene", "concept", "rule", "moral"] as const) {
+        expect(t.banana![key].length, `${t.slug}.${key}`).toBeGreaterThan(key === "moral" ? 20 : 60);
+      }
+      const text = `${t.banana!.scene} ${t.banana!.concept}`.toLowerCase();
+      expect(/banana|cacho|feira/.test(text), `${t.slug} sem bananas`).toBe(true);
+    }
+  });
+
+  it("cada explicação pertence a um termo existente", async () => {
+    const { BANANAS } = await import("./banana-data");
+    const slugs = new Set(GLOSSARY.map((t) => t.slug));
+    for (const slug of Object.keys(BANANAS)) expect(slugs.has(slug), slug).toBe(true);
+  });
+});
+
 describe("aulas", () => {
   it("têm slugs únicos, seções com conteúdo e termos relacionados existentes", async () => {
     const { LESSONS } = await import("./lessons");
