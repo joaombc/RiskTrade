@@ -146,6 +146,7 @@ export async function getAssetSummary(symbol: string): Promise<AssetSummary> {
     dayLow: quote.regularMarketDayLow ?? quote.regularMarketPrice,
     volume: quote.regularMarketVolume ?? 0,
     avgVolume20d: history ? averageVolume(history.quotes) : null,
+    openInterest: quote.openInterest ?? null,
     marketStatus: toMarketStatus(quote.marketState),
     updatedAt: (quote.regularMarketTime ?? new Date()).toISOString(),
   };

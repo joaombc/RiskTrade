@@ -274,6 +274,17 @@ export const DETAILS: Record<string, TermDetails> = {
       "Ler o volume isoladamente. Esquecer que em dias de feriado, véspera ou meio pregão o volume é naturalmente baixo.",
     source: CH7,
   },
+  "interesse-aberto": {
+    market:
+      "Um contrato só nasce quando um comprador novo encontra um vendedor novo: o interesse aberto sobe um. Quando os dois encerram posições, cai um. Se um sai e outro entra no lugar, não muda. Por isso ele mede quanto dinheiro está comprometido no mercado: subindo, entra dinheiro novo; caindo, posições estão sendo fechadas.",
+    volume:
+      "Volume e interesse aberto se leem juntos: volume é quantos contratos trocaram de mãos no dia, interesse aberto é quantos continuam abertos. Subindo junto com o preço, os dois confirmam a tendência. Uma alta com volume forte e interesse aberto caindo é recompra de vendidos, não demanda nova; no fim de grandes altas (blowoff), essa queda costuma ser o aviso.",
+    trading:
+      "Confirme a tendência: numa alta, prefira entradas com interesse aberto crescente. Interesse aberto que cresce durante uma consolidação aumenta a força do rompimento, porque muitos ficam do lado errado e precisam zerar. Interesse aberto muito alto num topo é perigoso: se o preço cai de repente, os comprados recentes liquidam e aceleram a queda.",
+    pitfalls:
+      "Olhe a tendência de semanas, não a variação de um dia: logo após um rompimento, o interesse aberto costuma cair um pouco, porque quem estava errado está saindo. Há também quedas sazonais perto do vencimento dos contratos. O relatório da CFTC é semanal, com a posição de terça divulgada na sexta, então o dado sempre chega com alguns dias de atraso.",
+    source: `${CH7}; relatório Commitments of Traders (CFTC)`,
+  },
   obv: {
     market:
       "O OBV (Joseph Granville, 1963) soma o volume dos dias de alta e subtrai o dos dias de baixa. Mostra num único traço se o volume está entrando ou saindo do papel.",

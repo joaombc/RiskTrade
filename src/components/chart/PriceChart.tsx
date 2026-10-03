@@ -10,6 +10,7 @@ import {
   HistogramSeries,
   LineSeries,
   LineStyle,
+  LineType,
   TickMarkType,
   type AutoscaleInfo,
   type IChartApi,
@@ -27,11 +28,13 @@ import { resolveExample, type ResolvedExample } from "@/lib/glossary/examples";
 import type { TermExample } from "@/lib/glossary/types";
 import { computeOBV, findDivergences, type Divergence } from "@/lib/indicators";
 import { HISTORY_RANGES, INTERVAL_LABELS, isIntraday, type HistoryRange } from "@/lib/market";
+import type { OpenInterestSeries } from "@/lib/openInterest";
 import { useTheme } from "@/lib/theme";
 import type { PlanLevel } from "@/lib/risk";
 import { DivergencePanel } from "./DivergencePanel";
 import { DrawingsPrimitive } from "./DrawingsPrimitive";
 import { DrawingToolbar } from "./DrawingToolbar";
+import { OpenInterestNote } from "./OpenInterestNote";
 import { CHART_THEMES } from "./theme";
 
 /** Distância máxima (px) para o clique "grudar" na máxima/mínima/abertura/fechamento do candle. */
@@ -79,6 +82,8 @@ const NO_EXAMPLE: ResolvedExample = { drawings: [], markers: [] };
 const PRICE_PANE = 0;
 const VOLUME_PANE = 1;
 const OBV_PANE = 2;
+/** Só existe para futuros com dados da CFTC. */
+const OPEN_INTEREST_PANE = 3;
 
 interface ChartHandles {
   chart: IChartApi;
@@ -93,6 +98,7 @@ interface ChartHandles {
 interface History {
   key: string;
   bars: Bar[];
+  openInterest: OpenInterestSeries | null;
   error: string | null;
 }
 
@@ -163,6 +169,7 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
 
   const key = `${symbol}:${range}`;
   const bars = history?.bars;
+  const openInterest = history?.openInterest ?? null;
   const loading = history?.key !== key;
   const obvValues = useMemo(() => (bars ? computeOBV(bars) : []), [bars]);
   const divergences = useMemo(() => (bars ? findDivergences(bars, obvValues) : []), [bars, obvValues]);
@@ -371,12 +378,12 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.error ?? "Falha ao carregar o histórico.");
-        setHistory({ key, bars: data.bars, error: null });
+        setHistory({ key, bars: data.bars, openInterest: data.openInterest ?? null, error: null });
       } catch (err) {
         // Numa atualização em segundo plano, uma falha mantém os candles que já estão na tela.
         if (controller.signal.aborted || silent) return;
         const message = err instanceof Error ? err.message : String(err);
-        setHistory((prev) => ({ key, bars: prev?.bars ?? [], error: message }));
+        setHistory((prev) => ({ key, bars: prev?.bars ?? [], openInterest: prev?.openInterest ?? null, error: message }));
       }
     }
 
@@ -422,6 +429,39 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
       handles.chart.timeScale().fitContent();
     }
   }, [bars, history, theme, obvValues]);
+
+  // Interesse aberto (futuros): painel próprio, criado só quando há dados, em degraus porque o
+  // relatório da CFTC é semanal.
+  useEffect(() => {
+    const handles = handlesRef.current;
+    if (!handles || !bars || !openInterest || openInterest.values.length !== bars.length) return;
+    const series = handles.chart.addSeries(
+      LineSeries,
+      {
+        color: theme.drawings.primary,
+        lineWidth: 2,
+        lineType: LineType.WithSteps,
+        priceFormat: { type: "volume" },
+        priceLineVisible: false,
+        title: "Int. aberto",
+      },
+      OPEN_INTEREST_PANE,
+    );
+    handles.chart.panes()[OPEN_INTEREST_PANE]?.setStretchFactor(1.5);
+    series.setData(
+      bars.map((b, i) => {
+        const value = openInterest.values[i];
+        return value === null ? { time: b.time as UTCTimestamp } : { time: b.time as UTCTimestamp, value };
+      }),
+    );
+    return () => {
+      // O gráfico pode ter sido recriado (desmontagem ou Fast Refresh) e levado a série junto.
+      const pane = handlesRef.current?.chart.panes()[OPEN_INTEREST_PANE];
+      if (!pane?.getSeries().includes(series)) return;
+      handles.chart.removeSeries(series);
+      if (handles.chart.panes().length > OPEN_INTEREST_PANE) handles.chart.removePane(OPEN_INTEREST_PANE);
+    };
+  }, [bars, openInterest, theme]);
 
   // Exemplo do glossário: aproxima o gráfico da janela do padrão (uma vez por exemplo carregado).
   useEffect(() => {
@@ -628,7 +668,8 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
         }}
       />
 
-      <div className="relative mt-2 h-[560px] sm:h-[640px]">
+      {/* O painel de interesse aberto ganha altura própria, sem espremer o preço. */}
+      <div className={`relative mt-2 ${openInterest ? "h-[680px] sm:h-[780px]" : "h-[560px] sm:h-[640px]"}`}>
         <div ref={containerRef} className={`h-full w-full ${tool ? "cursor-crosshair" : ""}`} />
         {loading && (
           <div role="status" className="absolute inset-0 flex items-center justify-center bg-surface/60 text-sm text-muted">
@@ -649,6 +690,7 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
           onShowChange={setShowDivergences}
         />
       )}
+      <OpenInterestNote symbol={symbol} range={range} bars={bars ?? []} series={openInterest} loading={loading} />
     </section>
   );
 }
