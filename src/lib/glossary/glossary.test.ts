@@ -131,3 +131,31 @@ describe("exemplos cadastrados", () => {
     expect(GLOSSARY.filter((t) => t.example).length).toBe(Object.keys(EXAMPLES).length);
   });
 });
+
+describe("card ampliado", () => {
+  it("todo termo tem as quatro seções de detalhe e a fonte", () => {
+    for (const t of GLOSSARY) {
+      expect(t.details, t.slug).toBeDefined();
+      for (const key of ["market", "volume", "trading", "pitfalls", "source"] as const) {
+        expect(t.details![key].length, `${t.slug}.${key}`).toBeGreaterThan(key === "source" ? 10 : 40);
+      }
+    }
+  });
+});
+
+describe("aulas", () => {
+  it("têm slugs únicos, seções com conteúdo e termos relacionados existentes", async () => {
+    const { LESSONS } = await import("./lessons");
+    const slugs = LESSONS.map((l) => l.slug);
+    expect(new Set(slugs).size).toBe(slugs.length);
+    expect(slugs).toEqual(expect.arrayContaining(["teoria-de-dow", "ondas-de-elliott"]));
+    const termSlugs = new Set(GLOSSARY.map((t) => t.slug));
+    for (const lesson of LESSONS) {
+      expect(lesson.takeaways.length, lesson.slug).toBeGreaterThan(2);
+      for (const slug of lesson.relatedTerms) expect(termSlugs.has(slug), `${lesson.slug} → ${slug}`).toBe(true);
+      for (const section of lesson.sections) {
+        expect(section.paragraphs.length + (section.bullets?.length ?? 0) + (section.diagram ? 1 : 0), lesson.slug).toBeGreaterThan(0);
+      }
+    }
+  });
+});

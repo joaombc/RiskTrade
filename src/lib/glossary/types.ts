@@ -51,6 +51,8 @@ export interface Diagram {
   volume?: { h: number; up: boolean }[];
   /** Linha no painel inferior (ex.: OBV). */
   sub?: { path: Pt[]; label: string; lines?: DiagramLine[] };
+  /** Textos soltos, sem marcador (ex.: nomes de fases). */
+  notes?: { at: Pt; text: string; tone?: DiagramTone; anchor?: "start" | "middle" | "end" }[];
 }
 
 /** Ponto de um exemplo real: data do candle e qual preço dele usar (ou um preço fixo). */
@@ -83,6 +85,20 @@ export interface TermExample {
   view?: { from: string; to: string };
 }
 
+/** Conteúdo do card ampliado: o que explica o padrão além da definição e da regra. */
+export interface TermDetails {
+  /** O que está acontecendo no mercado: quem compra, quem vende e por quê. */
+  market: string;
+  /** Como o volume deve se comportar ao longo do movimento. */
+  volume: string;
+  /** Como operar: entrada, stop, alvo e confirmação. */
+  trading: string;
+  /** Erros comuns e sinais de que o padrão falhou. */
+  pitfalls: string;
+  /** Referência no livro-texto. */
+  source: string;
+}
+
 export interface GlossaryTerm {
   slug: string;
   name: string;
@@ -95,4 +111,26 @@ export interface GlossaryTerm {
   /** Ferramenta do gráfico que desenha o conceito, quando houver. */
   tool?: DrawingKind;
   example?: TermExample;
+  details?: TermDetails;
+}
+
+export interface LessonSection {
+  heading: string;
+  paragraphs: string[];
+  bullets?: string[];
+  diagram?: { diagram: Diagram; caption: string };
+}
+
+/** Aula longa sobre uma teoria (ex.: Dow, Elliott), com página própria. */
+export interface Lesson {
+  slug: string;
+  title: string;
+  subtitle: string;
+  summary: string;
+  readingMinutes: number;
+  sections: LessonSection[];
+  takeaways: string[];
+  /** Termos do glossário relacionados (slugs). */
+  relatedTerms: string[];
+  source: string;
 }

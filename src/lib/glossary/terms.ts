@@ -1,3 +1,4 @@
+import { DETAILS } from "./details-data";
 import { EXAMPLES } from "./examples-data";
 import type { Diagram, DiagramCandle, DiagramPoint, GlossaryTerm, Pt } from "./types";
 
@@ -17,6 +18,12 @@ function candleSeries(rows: [number, number, number, number][]) {
   const candles: DiagramCandle[] = rows.map(([o, h, l, c]) => ({ o: py(o), h: py(h), l: py(l), c: py(c) }));
   return { candles, py, n: rows.length };
 }
+
+/**
+ * Barras de volume a partir de [altura 0–1, candle de alta?]. As 12 barras ocupam a largura
+ * toda (x de 17,5 a 182,5, de 15 em 15), alinhadas ao caminho de preço do diagrama.
+ */
+const bars = (rows: [number, boolean][]) => rows.map(([h, up]) => ({ h, up }));
 
 /** Espelha verticalmente a área de preço: transforma um padrão de topo no de fundo. */
 function mirror(d: Diagram): Diagram {
@@ -51,6 +58,9 @@ const HEAD_SHOULDERS: Diagram = {
     { at: [115, 29], label: "OD", placement: "above" },
     { at: [143, 52.5], label: "Rompimento", placement: "left" },
   ],
+  // Ombro esquerdo forte, cabeça mais fraca, ombro direito bem mais fraco; volume no rompimento.
+  volume: bars([[0.85, true], [0.5, false], [0.65, true], [0.6, true], [0.55, false], [0.45, false],
+    [0.28, true], [0.45, false], [0.95, false], [0.3, true], [0.8, false], [0.7, false]]),
 };
 
 const DOUBLE_TOP: Diagram = {
@@ -67,6 +77,9 @@ const DOUBLE_TOP: Diagram = {
     { at: [90, 21], label: "Topo 2", placement: "above" },
     { at: [118, 55], label: "Rompimento", placement: "left" },
   ],
+  // Mais volume no primeiro topo que no segundo; aumento no rompimento.
+  volume: bars([[0.7, true], [0.85, true], [0.5, false], [0.45, false], [0.5, true], [0.42, true],
+    [0.6, false], [0.9, false], [0.35, true], [0.7, false], [0.6, false], [0.5, false]]),
 };
 
 const SYMMETRIC_TRIANGLE: Diagram = {
@@ -79,6 +92,9 @@ const SYMMETRIC_TRIANGLE: Diagram = {
     { from: [117, 21], to: [195, 21], tone: "target", dashed: true, label: "Alvo" },
   ],
   points: [{ at: [117, 61], label: "Rompimento", placement: "right" }],
+  // O volume seca conforme as oscilações se estreitam e volta forte no rompimento.
+  volume: bars([[0.8, true], [0.7, false], [0.6, true], [0.5, false], [0.42, true], [0.35, false],
+    [0.28, true], [0.95, true], [0.8, true], [0.65, true], [0.55, true], [0.5, true]]),
 };
 
 const ASCENDING_TRIANGLE: Diagram = {
@@ -91,6 +107,9 @@ const ASCENDING_TRIANGLE: Diagram = {
     { from: [120, 8], to: [195, 8], tone: "target", dashed: true, label: "Alvo" },
   ],
   points: [{ at: [120, 45], label: "Rompimento", placement: "right" }],
+  // Volume em queda, um pouco maior nas subidas internas; forte no rompimento.
+  volume: bars([[0.75, true], [0.55, false], [0.62, true], [0.45, false], [0.5, true], [0.35, false],
+    [0.4, true], [0.95, true], [0.8, true], [0.65, true], [0.55, true], [0.5, true]]),
 };
 
 const DESCENDING_TRIANGLE: Diagram = {
@@ -103,6 +122,9 @@ const DESCENDING_TRIANGLE: Diagram = {
     { from: [120, 90], to: [195, 90], tone: "target", dashed: true, label: "Alvo" },
   ],
   points: [{ at: [120, 55], label: "Rompimento", placement: "left" }],
+  // Volume em queda, um pouco maior nas descidas internas; aumenta no rompimento.
+  volume: bars([[0.75, false], [0.55, true], [0.62, false], [0.45, true], [0.5, false], [0.35, true],
+    [0.4, false], [0.85, false], [0.75, false], [0.6, false], [0.5, false], [0.45, false]]),
 };
 
 // Bandeira de alta: mastro vertical e consolidação num canal estreito inclinado contra a tendência.
@@ -372,7 +394,9 @@ const TERMS: GlossaryTerm[] = [
     tool: "headShoulders",
     diagram: {
       ...mirror(HEAD_SHOULDERS),
-      volume: [0.5, 0.6, 0.45, 0.7, 0.5, 0.4, 0.35, 0.3, 0.45, 1, 0.75, 0.6].map((h, i) => ({ h, up: i >= 8 })),
+      // Alta a partir da cabeça já com volume crescente, ombro direito seco e explosão no rompimento.
+      volume: bars([[0.75, false], [0.5, true], [0.6, false], [0.58, false], [0.7, true], [0.78, true],
+        [0.28, false], [0.5, true], [1, true], [0.3, false], [0.8, true], [0.75, true]]),
     },
   },
   {
@@ -398,6 +422,9 @@ const TERMS: GlossaryTerm[] = [
       ...mirror(DOUBLE_TOP),
       lines: mirror(DOUBLE_TOP).lines?.map((l) => (l.label === "Fundo intermediário" ? { ...l, label: "Topo intermediário" } : l)),
       points: mirror(DOUBLE_TOP).points?.map((p) => ({ ...p, label: p.label.replace("Topo", "Fundo") })),
+      // Segundo fundo com menos volume; o rompimento para cima precisa de volume.
+      volume: bars([[0.7, false], [0.8, false], [0.5, true], [0.45, true], [0.5, false], [0.38, false],
+        [0.65, true], [1, true], [0.32, false], [0.75, true], [0.65, true], [0.55, true]]),
     },
   },
 
@@ -641,5 +668,9 @@ const TERMS: GlossaryTerm[] = [
   },
 ];
 
-/** Termos com o exemplo histórico (quando houver) de "Ver no gráfico real". */
-export const GLOSSARY: GlossaryTerm[] = TERMS.map((term) => (EXAMPLES[term.slug] ? { ...term, example: EXAMPLES[term.slug] } : term));
+/** Termos com o exemplo histórico de "Ver no gráfico real" e o conteúdo do card ampliado. */
+export const GLOSSARY: GlossaryTerm[] = TERMS.map((term) => ({
+  ...term,
+  ...(EXAMPLES[term.slug] && { example: EXAMPLES[term.slug] }),
+  ...(DETAILS[term.slug] && { details: DETAILS[term.slug] }),
+}));

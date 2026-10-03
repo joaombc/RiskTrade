@@ -10,10 +10,11 @@ export function exampleHref(term: GlossaryTerm): string | null {
   return `/?${params}`;
 }
 
+/** Card compacto; o título, o diagrama e "Ver detalhes" abrem o card ampliado (via #slug). */
 export function TermCard({ term }: { term: GlossaryTerm }) {
   const href = exampleHref(term);
   return (
-    <article id={term.slug} className="flex scroll-mt-6 flex-col gap-3 rounded-2xl border border-border bg-surface p-5 shadow-sm">
+    <article className="flex flex-col gap-3 rounded-2xl border border-border bg-surface p-5 shadow-sm">
       <header className="flex flex-wrap items-start justify-between gap-2">
         <h2 className="text-lg font-semibold">
           <a href={`#${term.slug}`} className="hover:underline">
@@ -23,9 +24,13 @@ export function TermCard({ term }: { term: GlossaryTerm }) {
         <span className="rounded-full bg-border/60 px-2 py-0.5 text-[11px] font-medium text-muted">{term.category}</span>
       </header>
 
-      <div className="rounded-xl border border-border/70 bg-background/60 p-2">
+      <a
+        href={`#${term.slug}`}
+        aria-label={`Ver detalhes de ${term.name}`}
+        className="block rounded-xl border border-border/70 bg-background/60 p-2 transition-colors hover:border-accent/60"
+      >
         <GlossaryDiagram diagram={term.diagram} title={term.name} />
-      </div>
+      </a>
 
       <p className="text-sm leading-relaxed">{term.definition}</p>
 
@@ -34,20 +39,21 @@ export function TermCard({ term }: { term: GlossaryTerm }) {
         {term.validation}
       </div>
 
-      {(href || term.tool) && (
-        <footer className="mt-auto flex flex-wrap items-center gap-x-4 gap-y-2 pt-1 text-sm">
-          {href && (
-            <Link href={href} className="rounded-lg bg-accent px-3 py-1.5 font-medium text-white hover:opacity-90">
-              Ver no gráfico real
-            </Link>
-          )}
-          {term.tool && (
-            <span className="text-xs text-muted">
-              Ferramenta no gráfico: <strong className="text-foreground">{TOOLS[term.tool].label}</strong>
-            </span>
-          )}
-        </footer>
-      )}
+      <footer className="mt-auto flex flex-wrap items-center gap-x-4 gap-y-2 pt-1 text-sm">
+        <a href={`#${term.slug}`} className="rounded-lg border border-border px-3 py-1.5 font-medium hover:bg-border/60">
+          Ver detalhes
+        </a>
+        {href && (
+          <Link href={href} className="rounded-lg bg-accent px-3 py-1.5 font-medium text-white hover:opacity-90">
+            Ver no gráfico real
+          </Link>
+        )}
+        {term.tool && (
+          <span className="text-xs text-muted">
+            Ferramenta no gráfico: <strong className="text-foreground">{TOOLS[term.tool].label}</strong>
+          </span>
+        )}
+      </footer>
     </article>
   );
 }

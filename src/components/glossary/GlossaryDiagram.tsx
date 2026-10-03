@@ -62,6 +62,23 @@ function Point({ point }: { point: DiagramPoint }) {
   );
 }
 
+/** Rótulo do painel inferior, com contorno na cor de fundo para ficar legível sobre as barras. */
+function PanelLabel({ text }: { text: string }) {
+  return (
+    <text
+      x={4}
+      y={104}
+      fontSize={5.5}
+      className="fill-muted stroke-surface"
+      strokeWidth={2}
+      paintOrder="stroke"
+      strokeLinejoin="round"
+    >
+      {text}
+    </text>
+  );
+}
+
 const toPoints = (path: Pt[]) => path.map(([x, y]) => `${x},${y}`).join(" ");
 
 /** Diagrama vetorial de um termo do glossário (viewBox 200×120, ver tipos). */
@@ -118,11 +135,7 @@ export function GlossaryDiagram({ diagram, title }: { diagram: Diagram; title: s
           />
         );
       })}
-      {diagram.volume && (
-        <text x={4} y={104} fontSize={5.5} className="text-muted" fill="currentColor">
-          Volume
-        </text>
-      )}
+      {diagram.volume && <PanelLabel text="Volume" />}
 
       {diagram.sub && (
         <g>
@@ -134,13 +147,25 @@ export function GlossaryDiagram({ diagram, title }: { diagram: Diagram; title: s
             strokeWidth={1.2}
             vectorEffect="non-scaling-stroke"
           />
-          <text x={4} y={104} fontSize={5.5} className="text-muted" fill="currentColor">
-            {diagram.sub.label}
-          </text>
+          <PanelLabel text={diagram.sub.label} />
           {diagram.sub.lines?.map((l, i) => <Line key={i} line={l} />)}
         </g>
       )}
 
+      {diagram.notes?.map((n, i) => (
+        <text
+          key={i}
+          x={n.at[0]}
+          y={n.at[1]}
+          textAnchor={n.anchor ?? "middle"}
+          fontSize={6}
+          fontStyle="italic"
+          className={TONE_CLASS[n.tone ?? "muted"]}
+          fill="currentColor"
+        >
+          {n.text}
+        </text>
+      ))}
       {diagram.lines?.map((l, i) => <Line key={i} line={l} />)}
       {diagram.points?.map((p, i) => <Point key={i} point={p} />)}
     </svg>
