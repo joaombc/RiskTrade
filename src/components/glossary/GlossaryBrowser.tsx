@@ -5,6 +5,8 @@ import { searchTerms } from "@/lib/glossary/search";
 import { GLOSSARY } from "@/lib/glossary/terms";
 import { CATEGORIES, type Category } from "@/lib/glossary/types";
 import { TermCard } from "./TermCard";
+import { TermDialog } from "./TermDialog";
+import { useHashSlug } from "./useHashSlug";
 
 const COUNTS = Object.fromEntries(CATEGORIES.map((c) => [c, GLOSSARY.filter((t) => t.category === c).length]));
 
@@ -13,6 +15,9 @@ export function GlossaryBrowser() {
   const [category, setCategory] = useState<Category | null>(null);
   const inputId = useId();
   const results = searchTerms(GLOSSARY, query, category);
+  const [openSlug, closeTerm] = useHashSlug();
+  // O card ampliado independe do filtro: um link direto (#slug) sempre abre o termo.
+  const openTerm = GLOSSARY.find((t) => t.slug === openSlug) ?? null;
 
   return (
     <div className="flex flex-col gap-6">
@@ -62,6 +67,8 @@ export function GlossaryBrowser() {
           <TermCard key={term.slug} term={term} />
         ))}
       </div>
+
+      <TermDialog term={openTerm} onClose={closeTerm} />
     </div>
   );
 }
