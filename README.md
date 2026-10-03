@@ -7,7 +7,7 @@ Os dados vêm do Yahoo Finance pela biblioteca [`yahoo-finance2`](https://github
 ## Funcionalidades
 
 - **Busca de ativos**: autocomplete por ticker ou nome (`AAPL`, `PETR4.SA`, `BTC-USD`) e painel com preço, variação, range do dia, volume contra a média de 20 dias e status do mercado.
-- **Gráfico diário**: candles, volume e OBV em painéis separados, com períodos de 3 meses a 5 anos.
+- **Gráfico**: candles, volume e OBV em painéis separados. Períodos de 1 dia a 1 mês usam candles intradiários (5 min a 1 h) e se atualizam a cada minuto; de 3 meses a 5 anos, candles diários.
 - **Ferramentas de desenho**: linha de tendência, leque, suporte/resistência com inversão de papel, canal, Fibonacci, terços de Gann, linhas de velocidade, triângulos e OCO. Triângulos e OCO têm detecção de rompimento e projeção de alvo.
 - **Divergência de volume**: alerta quando o preço faz novo topo ou fundo sem confirmação do OBV.
 - **Watchlist**: favoritos com sparkline, ordenação e etiquetas de cenário.
@@ -85,7 +85,7 @@ As chamadas ao Yahoo passam pelas rotas em `src/app/api`, porque a API não pode
 O painel aceita parâmetros na URL, usados pelo glossário:
 
 ```
-/?ativo=PETR4.SA&periodo=5y            # abre o ativo no período (3m, 6m, 1y, 2y, 5y)
+/?ativo=PETR4.SA&periodo=5y            # abre o ativo no período (1d, 5d, 2w, 3w, 1mo, 3m, 6m, 1y, 2y, 5y)
 /?ativo=AAPL&periodo=5y&exemplo=oco    # e aplica um exemplo do glossário
 ```
 

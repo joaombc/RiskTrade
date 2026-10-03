@@ -1,12 +1,16 @@
 import "server-only";
 import YahooFinance from "yahoo-finance2";
+import type { ChartResultArrayQuote } from "yahoo-finance2/modules/chart";
 import type { Bar } from "./drawings/types";
 import {
   averageVolume,
   HISTORY_RANGES,
+  lastSessions,
   toMarketStatus,
   type AssetSummary,
+  type ChartInterval,
   type HistoryRange,
+  type HistoryRangeSpec,
   type SearchResult,
 } from "./market";
 import { SPARKLINE_SESSIONS, type WatchlistQuote } from "./watchlist";
@@ -30,10 +34,13 @@ function isNoDataError(error: unknown): boolean {
   return error instanceof Error && error.message.includes("No data found");
 }
 
-/** Histórico diário desde `period1`; ticker sem dados vira AssetNotFoundError. */
-async function fetchChart(symbol: string, period1: Date) {
+/**
+ * Histórico desde `period1` (diário por padrão); ticker sem dados vira AssetNotFoundError.
+ * Só o pregão regular: sem pré e pós-mercado, como nos candles diários.
+ */
+async function fetchChart(symbol: string, period1: Date, interval: ChartInterval = "1d") {
   try {
-    return await yahooFinance.chart(symbol, { period1, interval: "1d" });
+    return await yahooFinance.chart(symbol, { period1, interval, includePrePost: false });
   } catch (error) {
     if (isNoDataError(error)) throw new AssetNotFoundError(symbol);
     throw error;
@@ -60,25 +67,30 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 // ~45 dias corridos cobrem 20 pregões (média de volume) e os 30 do sparkline, mesmo com feriados.
 const VOLUME_LOOKBACK_MS = 45 * DAY_MS;
 
-/** Candles diários do período, descartando barras sem OHLC completo. */
+/**
+ * Candles do período (diários ou intradiários, conforme o período), descartando barras sem
+ * OHLC completo e mantendo só os últimos pregões quando o período pede (1D, 5D).
+ */
 export async function getHistory(symbol: string, range: HistoryRange): Promise<Bar[]> {
-  const chart = await fetchChart(symbol, new Date(Date.now() - HISTORY_RANGES[range].days * DAY_MS));
+  const spec: HistoryRangeSpec = HISTORY_RANGES[range];
+  const chart = await fetchChart(symbol, new Date(Date.now() - spec.days * DAY_MS), spec.interval);
   if (chart.quotes.length === 0) throw new AssetNotFoundError(symbol);
 
-  return chart.quotes.flatMap((q) =>
-    q.open == null || q.high == null || q.low == null || q.close == null
-      ? []
-      : [
-          {
-            time: Math.floor(q.date.getTime() / 1000),
-            open: q.open,
-            high: q.high,
-            low: q.low,
-            close: q.close,
-            volume: q.volume ?? 0,
-          },
-        ],
-  );
+  const bars = toBars(chart.quotes);
+  return spec.sessions ? lastSessions(bars, spec.sessions, chart.meta.gmtoffset) : bars;
+}
+
+
+/** Converte os candles do Yahoo, em ordem e sem horários repetidos (o gráfico exige isso). */
+function toBars(quotes: ChartResultArrayQuote[]): Bar[] {
+  const byTime = new Map<number, Bar>();
+  for (const q of quotes) {
+    if (q.open == null || q.high == null || q.low == null || q.close == null) continue;
+    const time = Math.floor(q.date.getTime() / 1000);
+    // O último candle do dia às vezes vem duplicado como "fechamento"; fica o mais recente.
+    byTime.set(time, { time, open: q.open, high: q.high, low: q.low, close: q.close, volume: q.volume ?? 0 });
+  }
+  return [...byTime.values()].sort((a, b) => a.time - b.time);
 }
 
 /** Fechamentos diários desde `period1`. Sem histórico, devolve lista vazia em vez de falhar. */

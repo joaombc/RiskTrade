@@ -49,7 +49,7 @@ export function DivergencePanel({ bars, divergences, show, onShowChange }: Props
         </div>
       ) : (
         <p className="text-sm text-muted">
-          Nenhuma divergência nas últimas {RECENT_DIVERGENCE_BARS} sessões: os topos e fundos recentes do preço não
+          Nenhuma divergência nos últimos {RECENT_DIVERGENCE_BARS} candles: os topos e fundos recentes do preço não
           contrariam o OBV.
         </p>
       )}
@@ -75,7 +75,7 @@ export function DivergencePanel({ bars, divergences, show, onShowChange }: Props
       )}
 
       <p className="text-[11px] text-muted">
-        Topos e fundos são confirmados {DIVERGENCE_SWING_WINDOW} sessões depois de formados, então o sinal chega com
+        Topos e fundos são confirmados {DIVERGENCE_SWING_WINDOW} candles depois de formados, então o sinal chega com
         esse atraso. Divergência é um alerta, não um sinal de entrada: aguarde a confirmação pelo preço.
       </p>
     </div>

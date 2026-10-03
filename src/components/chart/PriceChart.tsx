@@ -10,6 +10,7 @@ import {
   HistogramSeries,
   LineSeries,
   LineStyle,
+  TickMarkType,
   type AutoscaleInfo,
   type IChartApi,
   type ISeriesApi,
@@ -25,7 +26,7 @@ import { TOOLS, type Anchor, type Bar, type Drawing, type DrawingKind, type Draw
 import { resolveExample, type ResolvedExample } from "@/lib/glossary/examples";
 import type { TermExample } from "@/lib/glossary/types";
 import { computeOBV, findDivergences, type Divergence } from "@/lib/indicators";
-import { HISTORY_RANGES, type HistoryRange } from "@/lib/market";
+import { HISTORY_RANGES, INTERVAL_LABELS, isIntraday, type HistoryRange } from "@/lib/market";
 import type { PlanLevel } from "@/lib/risk";
 import { DivergencePanel } from "./DivergencePanel";
 import { DrawingsPrimitive } from "./DrawingsPrimitive";
@@ -39,6 +40,39 @@ const MAGNET_PX = 10;
 const CLICK_TOLERANCE_PX = 5;
 const RANGE_KEYS = Object.keys(HISTORY_RANGES) as HistoryRange[];
 const NO_LEVELS: PlanLevel[] = [];
+/** Intervalo de atualização dos períodos intradiários (os diários não mudam ao longo do dia). */
+const INTRADAY_REFRESH_MS = 60_000;
+
+/**
+ * Datas e horas em português. No intradiário, as horas saem no fuso do computador; nos
+ * candles diários, a data fica em UTC, que é como o Yahoo marca o dia de cada candle.
+ */
+function timeFormatting(intraday: boolean) {
+  const timeZone = intraday ? undefined : "UTC";
+  const format = (time: Time, options: Intl.DateTimeFormatOptions) =>
+    new Date((time as number) * 1000).toLocaleString("pt-BR", { timeZone, ...options });
+  return {
+    timeFormatter: (time: Time) =>
+      format(
+        time,
+        intraday
+          ? { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }
+          : { day: "2-digit", month: "short", year: "numeric" },
+      ),
+    tickMarkFormatter: (time: Time, type: TickMarkType) => {
+      switch (type) {
+        case TickMarkType.Year:
+          return format(time, { year: "numeric" });
+        case TickMarkType.Month:
+          return format(time, { month: "short" });
+        case TickMarkType.DayOfMonth:
+          return format(time, intraday ? { day: "2-digit", month: "short" } : { day: "numeric" });
+        default:
+          return format(time, { hour: "2-digit", minute: "2-digit" });
+      }
+    },
+  };
+}
 const NO_EXAMPLE: ResolvedExample = { drawings: [], markers: [] };
 
 /** Painéis do gráfico, de cima para baixo. */
@@ -329,7 +363,8 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
 
   useEffect(() => {
     const controller = new AbortController();
-    (async () => {
+
+    async function load(silent: boolean) {
       try {
         const res = await fetch(`/api/history?symbol=${encodeURIComponent(symbol)}&range=${range}`, {
           signal: controller.signal,
@@ -338,13 +373,35 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
         if (!res.ok) throw new Error(data.error ?? "Falha ao carregar o histórico.");
         setHistory({ key, bars: data.bars, error: null });
       } catch (err) {
-        if (controller.signal.aborted) return;
+        // Numa atualização em segundo plano, uma falha mantém os candles que já estão na tela.
+        if (controller.signal.aborted || silent) return;
         const message = err instanceof Error ? err.message : String(err);
         setHistory((prev) => ({ key, bars: prev?.bars ?? [], error: message }));
       }
-    })();
-    return () => controller.abort();
+    }
+
+    load(false);
+    // Os períodos intradiários ganham candles novos ao longo do pregão.
+    const id = isIntraday(range)
+      ? setInterval(() => {
+          if (document.visibilityState === "visible") load(true);
+        }, INTRADAY_REFRESH_MS)
+      : undefined;
+    return () => {
+      controller.abort();
+      clearInterval(id);
+    };
   }, [symbol, range, key]);
+
+  // Horas no eixo do tempo só nos períodos intradiários.
+  useEffect(() => {
+    const intraday = isIntraday(range);
+    const { timeFormatter, tickMarkFormatter } = timeFormatting(intraday);
+    handlesRef.current?.chart.applyOptions({
+      localization: { locale: "pt-BR", timeFormatter },
+      timeScale: { timeVisible: intraday, secondsVisible: false, tickMarkFormatter },
+    });
+  }, [range]);
 
   useEffect(() => {
     const handles = handlesRef.current;
@@ -507,8 +564,10 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
   return (
     <section aria-label={`Gráfico de ${symbol}`} className="rounded-2xl border border-border bg-surface p-4 shadow-sm sm:p-5">
       <header className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-sm font-semibold">Gráfico diário</h2>
-        <div role="group" aria-label="Período" className="flex gap-1">
+        <h2 className="text-sm font-semibold">
+          Gráfico <span className="font-normal text-muted">· {INTERVAL_LABELS[HISTORY_RANGES[range].interval]}</span>
+        </h2>
+        <div role="group" aria-label="Período" className="flex flex-wrap gap-1">
           {RANGE_KEYS.map((r) => (
             <button
               key={r}
