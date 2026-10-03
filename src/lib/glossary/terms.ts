@@ -666,6 +666,25 @@ const TERMS: GlossaryTerm[] = [
       },
     },
   },
+  {
+    slug: "interesse-aberto",
+    name: "Interesse Aberto (Open Interest)",
+    aliases: ["open interest", "OI", "contratos em aberto", "posições em aberto", "COT", "CFTC", "futuros"],
+    category: "Volume",
+    definition:
+      "Número de contratos de futuros (ou opções) ainda em aberto: posições abertas que não foram encerradas nem liquidadas. Cada contrato tem um comprado e um vendido. Só existe em derivativos: ações não têm interesse aberto, só volume.",
+    validation:
+      "Use o total de todos os vencimentos. Alta com interesse aberto subindo é saudável; alta com ele caindo é fraca (recompra de vendidos). Queda com interesse aberto subindo é forte; queda com ele caindo tende a perder força. No RiskTrade, o painel aparece nos futuros (ES=F, CL=F, GC=F…), com dados semanais da CFTC.",
+    diagram: {
+      path: [[10, 86], [35, 66], [50, 72], [80, 50], [95, 56], [125, 36], [140, 42], [175, 16], [190, 26]],
+      points: [{ at: [175, 16], label: "Alerta", placement: "left" }],
+      sub: {
+        path: [[10, 116], [35, 111], [50, 111], [80, 106], [95, 105], [125, 101], [140, 100], [175, 108], [190, 110]],
+        label: "Int. aberto",
+        lines: [{ from: [140, 100], to: [175, 108], tone: "resistance", dashed: true, label: "cai na alta final", labelAt: "start" }],
+      },
+    },
+  },
 ];
 
 /** Termos com o exemplo histórico de "Ver no gráfico real" e o conteúdo do card ampliado. */

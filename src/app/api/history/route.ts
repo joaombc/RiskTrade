@@ -1,5 +1,23 @@
-import { HISTORY_RANGES, SYMBOL_PATTERN, type HistoryRange } from "@/lib/market";
+import { getOpenInterest } from "@/lib/cftc";
+import { HISTORY_RANGES, isIntraday, SYMBOL_PATTERN, type HistoryRange } from "@/lib/market";
+import { alignToBars, type OpenInterestPoint } from "@/lib/openInterest";
 import { AssetNotFoundError, getHistory } from "@/lib/yahoo";
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Interesse aberto semanal (CFTC) para futuros, só nos períodos diários. Uma falha da CFTC não
+ * derruba o gráfico: o painel apenas não aparece.
+ */
+async function openInterestPoints(symbol: string, range: HistoryRange): Promise<OpenInterestPoint[] | null> {
+  if (isIntraday(range)) return null;
+  try {
+    return await getOpenInterest(symbol, new Date(Date.now() - HISTORY_RANGES[range].days * DAY_MS));
+  } catch (error) {
+    console.error("[api/history] interesse aberto", error);
+    return null;
+  }
+}
 
 export async function GET(request: Request) {
   const params = new URL(request.url).searchParams;
@@ -14,8 +32,9 @@ export async function GET(request: Request) {
   }
 
   try {
-    const bars = await getHistory(symbol.toUpperCase(), range);
-    return Response.json({ bars });
+    const upper = symbol.toUpperCase();
+    const [bars, points] = await Promise.all([getHistory(upper, range), openInterestPoints(upper, range)]);
+    return Response.json({ bars, openInterest: points ? alignToBars(bars, points) : null });
   } catch (error) {
     if (error instanceof AssetNotFoundError) {
       return Response.json({ error: `Sem histórico de preços para "${symbol.toUpperCase()}".` }, { status: 404 });

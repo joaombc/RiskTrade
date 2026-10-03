@@ -18,6 +18,8 @@ export interface AssetSummary {
   dayLow: number;
   volume: number;
   avgVolume20d: number | null;
+  /** Contratos em aberto do vencimento atual (só futuros e opções; null nos demais ativos). */
+  openInterest: number | null;
   marketStatus: MarketStatus;
   updatedAt: string;
 }

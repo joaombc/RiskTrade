@@ -83,6 +83,12 @@ export function AssetSummaryPanel({ summary }: { summary: AssetSummary }) {
           <p className="mt-1 text-sm text-muted tabular-nums">
             Média: {summary.avgVolume20d !== null ? compact.format(summary.avgVolume20d) : "histórico insuficiente"}
           </p>
+          {summary.openInterest !== null && (
+            <p className="mt-1 text-sm tabular-nums">
+              <span className="text-muted">Interesse aberto: </span>
+              {compact.format(summary.openInterest)} contratos <span className="text-muted">(vencimento atual)</span>
+            </p>
+          )}
         </div>
       </div>
 
