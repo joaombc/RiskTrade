@@ -1,3 +1,4 @@
+import { MA_DIAGRAMS } from "./ma-diagrams";
 import type { Diagram, Lesson } from "./types";
 
 /**
@@ -297,6 +298,167 @@ export const LESSONS: Lesson[] = [
       "Três fases: acumulação, participação pública e distribuição.",
       "Sinais importantes precisam de confirmação entre índices e de volume.",
       "Use fechamentos, não sombras, e presuma que a tendência continua até um sinal claro de reversão.",
+    ],
+  },
+  {
+    slug: "medias-moveis",
+    title: "Médias Móveis",
+    subtitle: "Os tipos, os sinais e quando não confiar neles",
+    summary:
+      "Média simples, ponderada e exponencial; sinais com uma, duas e três médias; envelopes e bandas de Bollinger; os períodos mais usados e por que as médias só funcionam quando há tendência.",
+    readingMinutes: 12,
+    source: "Murphy, Technical Analysis of the Financial Markets, cap. 9 (Médias móveis)",
+    relatedTerms: ["linha-de-tendencia", "suporte-e-resistencia", "rompimento", "canal", "retracoes", "obv"],
+    sections: [
+      {
+        heading: "O que é uma média móvel",
+        paragraphs: [
+          "Uma média móvel de 10 dias soma os 10 últimos fechamentos e divide por 10. No dia seguinte, entra o fechamento novo e sai o mais antigo: a janela de dados anda junto com o gráfico, daí o nome.",
+          "É um dos indicadores mais versáteis e usados, e a base de muitos sistemas automáticos de seguir tendência. A vantagem sobre a leitura de padrões é a objetividade: dois analistas podem discordar se uma figura é triângulo ou cunha, mas não sobre o preço ter fechado acima ou abaixo da média.",
+        ],
+      },
+      {
+        heading: "Um seguidor, não um líder",
+        paragraphs: [
+          "A média suaviza o preço e deixa a tendência mais fácil de ver. Mas, por ser feita de preços passados, ela sempre chega atrasada: não antecipa nada, só confirma que uma tendência começou ou terminou depois que isso aconteceu. Pense nela como uma linha de tendência curva.",
+          "Quanto mais curta, mais colada ao preço e menor o atraso; quanto mais longa, mais suave e mais atrasada. Uma média de 20 dias acompanha o preço de perto; a de 200 mostra só a direção de fundo. O atraso diminui nas médias curtas, mas nunca desaparece.",
+        ],
+      },
+      {
+        heading: "Que preço usar",
+        paragraphs: [
+          "O fechamento é o preço mais usado, e o que Murphy considera o mais importante do dia. Há variações: o ponto médio do dia, (máxima + mínima) ÷ 2; o preço típico, (máxima + mínima + fechamento) ÷ 3; e duas médias separadas, uma das máximas e outra das mínimas, que formam uma faixa neutra em volta do preço.",
+        ],
+      },
+      {
+        heading: "Os três tipos de média",
+        paragraphs: ["As médias diferem em quanto peso dão a cada preço da janela."],
+        bullets: [
+          "Simples (MMS): a média aritmética, em que cada dia pesa igual (numa de 10 dias, 10% cada). É a mais usada. Recebe duas críticas: só considera os dias da janela e dá ao dia mais antigo o mesmo peso do mais recente.",
+          "Ponderada linearmente: multiplica o dia mais recente pelo tamanho da janela (10), o anterior por 9, e assim por diante, e divide pela soma dos pesos (55 numa de 10 dias). Corrige o peso, mas ainda ignora o que ficou fora da janela.",
+          "Exponencial (MME): soma uma porcentagem do preço de hoje a uma porcentagem do valor anterior da própria média, e as duas somam 100%. Dá mais peso ao recente e, indiretamente, inclui todo o histórico, com peso cada vez menor. Dar 10% ao último dia equivale a uma média de cerca de 20 dias; 5%, a uma de cerca de 40. Na prática, você escolhe o período e o programa calcula o peso: 2 ÷ (período + 1).",
+        ],
+        diagram: {
+          diagram: MA_DIAGRAMS.types,
+          caption: "A mesma série com MMS 20 e MME 20: na virada, a exponencial reage antes e fica mais perto do preço.",
+        },
+      },
+      {
+        heading: "Sinais com uma média",
+        paragraphs: [
+          "O sinal mais simples: compra quando o preço fecha acima da média, venda quando fecha abaixo. Para mais confirmação, espere a própria média virar na direção do cruzamento.",
+          "Aqui aparece a principal troca da análise com médias. Uma média curta (5 ou 10 dias) dá sinais mais cedo, mas também muitos sinais falsos, as violinadas, porque o ruído do dia a dia a cruza o tempo todo. Uma longa erra menos enquanto a tendência dura, mas devolve muito mais lucro quando ela vira, porque segue o preço de longe. Murphy resume: médias longas funcionam melhor com a tendência em vigor; curtas, quando ela está virando.",
+        ],
+        diagram: {
+          diagram: MA_DIAGRAMS.single,
+          caption: "Com uma MMS 10: compra quando o preço passa para cima da média e venda quando volta para baixo dela.",
+        },
+      },
+      {
+        heading: "Duas médias: o cruzamento duplo",
+        paragraphs: [
+          "Por isso é mais comum usar duas médias. O sinal de compra vem quando a curta cruza a longa para cima; o de venda, quando cruza para baixo. As combinações mais populares são 5 e 20 dias, muito usada em futuros, e 10 e 50 dias, em ações. O método atrasa um pouco mais que o de uma média, mas gera menos violinadas.",
+          "Em ações, um cruzamento muito acompanhado é o da MMS 50 com a MMS 200, com a mesma lógica: para cima, costuma ser chamado de cruz dourada; para baixo, de cruz da morte.",
+        ],
+        diagram: {
+          diagram: MA_DIAGRAMS.double,
+          caption: "Cruzamento duplo com MMS 5 e MMS 20: os sinais vêm um pouco depois dos de uma média só, mas com menos ruído.",
+        },
+      },
+      {
+        heading: "Três médias: o sistema 4-9-18",
+        paragraphs: [
+          "O cruzamento triplo mais conhecido usa médias de 4, 9 e 18 dias, divulgadas por R. C. Allen nos anos 1970, uma variação das clássicas 5, 10 e 20. Numa alta, a ordem correta é a de 4 acima da de 9, acima da de 18; numa baixa, o contrário.",
+          "No fim de uma queda, a média de 4 cruzando para cima as outras duas é só um alerta de compra; a confirmação vem quando a de 9 também passa a de 18. Na virada para baixo, vale o inverso. Durante correções, as médias podem se entrelaçar sem que a tendência acabe: há quem realize lucro nesse momento e quem aproveite para comprar.",
+        ],
+      },
+      {
+        heading: "Envelopes",
+        paragraphs: [
+          "Envelopes são linhas a uma porcentagem fixa acima e abaixo da média. Mostram quando o preço se afastou demais dela, ou seja, quando o movimento esticou. No curto prazo, é comum usar 3% em volta de uma MMS 21; no longo, 5% em volta de uma média de 10 semanas, ou 10% em volta de uma de 40 semanas.",
+        ],
+        diagram: {
+          diagram: MA_DIAGRAMS.envelope,
+          caption: "Envelopes de 3% em volta de uma MMS 21: o preço encostando na linha de cima indica uma alta esticada no curto prazo.",
+        },
+      },
+      {
+        heading: "Bandas de Bollinger",
+        paragraphs: [
+          "Criadas por John Bollinger, ficam a dois desvios-padrão acima e abaixo de uma média de 20 períodos. Com dois desvios, cerca de 95% dos preços ficam dentro das bandas. Tocar a de cima indica sobrecompra; a de baixo, sobrevenda.",
+          "Elas também servem de alvo: se o preço sai da banda de baixo e cruza a média de 20, a banda de cima vira o alvo; se cruza a média para baixo, o alvo passa a ser a banda de baixo. Numa alta forte, o preço costuma oscilar entre a banda de cima e a média, e perder a média avisa que a tendência pode virar.",
+          "A diferença para os envelopes é que a distância entre as bandas muda com a volatilidade. Bandas muito abertas costumam aparecer no fim de uma tendência; bandas muito apertadas, antes do começo de uma nova. Funcionam melhor junto com osciladores de sobrecompra e sobrevenda.",
+        ],
+        diagram: {
+          diagram: MA_DIAGRAMS.bollinger,
+          caption: "Bandas de Bollinger (MMS 20 ± 2 desvios-padrão): apertadas na fase calma e abrindo quando o preço rompe.",
+        },
+      },
+      {
+        heading: "Por que 5, 10, 20, 40 e 21",
+        paragraphs: [
+          "O ciclo mensal, de cerca de 20 pregões, é um dos mais fortes nos mercados, e ciclos vizinhos costumam ser o dobro ou a metade uns dos outros. Isso explica a popularidade das médias de 5, 10, 20 e 40 dias, e das variações 4, 9 e 18.",
+          "Números de Fibonacci (13, 21, 34, 55) também funcionam bem como períodos: a média de 21 dias é um exemplo no diário, e a de 13 semanas, no semanal.",
+          "Estatisticamente, o certo seria centralizar a média, desenhando a de 10 dias cinco dias para trás. Como isso atrasa ainda mais os sinais, só quem estuda ciclos faz assim; no gráfico comum, a média fica no último dia da janela.",
+        ],
+      },
+      {
+        heading: "Médias no longo prazo",
+        paragraphs: [
+          "Em gráficos semanais, as médias de 10 ou 13 semanas, junto com as de 30 ou 40, acompanham a tendência primária. A MMS 200 diária equivale mais ou menos à de 40 semanas, e a MMS 100, à de 20 semanas. Em correções de mercados de alta, a média de 40 semanas costuma servir de suporte.",
+          "A média também pode ser aplicada a outros dados além do preço: volume, interesse aberto, OBV e até osciladores.",
+        ],
+      },
+      {
+        heading: "Quando as médias não funcionam",
+        paragraphs: [
+          "Por seguirem a tendência, as médias obrigam a cumprir velhas regras do mercado: operar a favor da tendência, deixar o lucro correr e cortar o prejuízo cedo.",
+          "O preço disso é que elas vão mal em mercados laterais, que podem ocupar de um terço à metade do tempo. Nessas fases, cada cruzamento é um sinal falso. Por isso não dá para confiar só nelas: na lateralidade, osciladores funcionam melhor, e o ADX ajuda a dizer se há tendência ou não. A diferença entre duas médias também vira um oscilador: o MACD compara duas exponenciais.",
+        ],
+        diagram: {
+          diagram: MA_DIAGRAMS.sideways,
+          caption: "Num mercado lateral, o preço cruza a MMS 10 o tempo todo: cada ponto marca um sinal que não deu em nada.",
+        },
+      },
+      {
+        heading: "Alternativas e ajustes",
+        paragraphs: [
+          "Regra das 4 semanas, de Richard Donchian: compre quando o preço passar a máxima das quatro semanas anteriores e venda quando perder a mínima delas. Em testes de sistemas de futuros, ficou entre os melhores, ao lado do cruzamento de médias. Para sair antes, use uma regra de 1 ou 2 semanas; para filtrar a lateralidade, aumente para 8.",
+          "Otimizar ou não: dá para pedir ao computador o melhor período de média para cada mercado, mas o resultado só vale se for testado em dados que não foram usados na escolha. Murphy sugere otimizar quem acompanha poucos mercados, e usar os mesmos parâmetros em todos quem acompanha muitos, como quem segue milhares de ações.",
+          "Média adaptativa, de Perry Kaufman: ajusta a própria velocidade comparando direção com volatilidade. Fica lenta quando o mercado anda de lado e rápida quando ele tem tendência.",
+        ],
+      },
+      {
+        heading: "Na prática, segundo Murphy",
+        paragraphs: [
+          "A maioria dos analistas usa duas médias simples. As exponenciais ficaram populares, mas não há prova real de que funcionem melhor. As combinações mais usadas:",
+        ],
+        bullets: [
+          "Futuros, no diário: 4 e 9, 9 e 18, 5 e 20, 10 e 40.",
+          "Ações: MMS 50 (ou 10 semanas) no médio prazo; 30 e 40 semanas, ou a MMS 200, no longo.",
+          "Bandas de Bollinger: média de 20 dias ou de 20 semanas (que corresponde a uma MMS 100 no diário).",
+        ],
+      },
+      {
+        heading: "No RiskTrade",
+        paragraphs: [
+          "A barra Médias móveis, acima das ferramentas de desenho do gráfico, tem atalhos para MME 9, MME 21, MMS 50 e MMS 200, e o botão + Personalizada para qualquer média simples ou exponencial de 2 a 400 candles. Cabem até quatro ao mesmo tempo. Ainda não há média ponderada, envelopes nem bandas de Bollinger no gráfico.",
+        ],
+        bullets: [
+          "Cruzamento duplo de ações: MMS 10 (em + Personalizada) e o atalho MMS 50.",
+          "Cruzamento de futuros: MMS 5 e MMS 20, ou o trio MMS 4, 9 e 18.",
+          "Tendência de longo prazo: MMS 50 e MMS 200, no período 1A ou mais.",
+          "O período conta candles do gráfico: no 1D, uma MME 21 cobre 21 candles de 5 minutos, não 21 dias.",
+        ],
+      },
+    ],
+    takeaways: [
+      "A média móvel segue a tendência: confirma, nunca antecipa.",
+      "Média curta dá sinais mais cedo e mais violinadas; a longa erra menos, mas atrasa na virada.",
+      "A exponencial reage antes da simples, mas não há prova de que seja melhor.",
+      "Duas médias (cruzamento duplo) erram menos que uma só.",
+      "Envelopes e bandas de Bollinger mostram quando o preço esticou; bandas apertadas antecedem movimentos fortes.",
+      "No mercado lateral, as médias falham: aí entram os osciladores.",
     ],
   },
   {
