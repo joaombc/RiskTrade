@@ -124,3 +124,13 @@ describe("armazenamento", () => {
     expect(store.size).toBe(0);
   });
 });
+
+describe("atalhos", () => {
+  it("montam as combinações do Murphy (5/20, 10/50, 50/200) e não se repetem", async () => {
+    const { MA_PRESETS, maId } = await import("./movingAverages");
+    const ids = MA_PRESETS.map((p) => maId(p.kind, p.period));
+    expect(new Set(ids).size).toBe(ids.length);
+    for (const period of [5, 10, 20, 50, 200]) expect(ids, `MMS ${period}`).toContain(`sma-${period}`);
+    expect(MA_PRESETS.every((p) => isValidPeriod(p.period))).toBe(true);
+  });
+});

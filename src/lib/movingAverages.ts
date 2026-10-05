@@ -18,12 +18,20 @@ export interface MovingAverage {
 export const MA_LABELS: Record<MovingAverageKind, string> = { sma: "MMS", ema: "MME" };
 export const MA_NAMES: Record<MovingAverageKind, string> = { sma: "Simples", ema: "Exponencial" };
 
-/** Atalhos com as médias mais usadas: curtas exponenciais e as clássicas de 50 e 200. */
+/**
+ * Atalhos. Primeiro as simples que montam as combinações do Murphy (cap. 9): 5/20 em futuros,
+ * 10/50 em ações e 50/200 no longo prazo; ele lembra que a maioria usa médias simples e que
+ * não há prova de que a exponencial seja melhor. Depois, MME 9 e MME 21, populares no mercado
+ * brasileiro.
+ */
 export const MA_PRESETS: { kind: MovingAverageKind; period: number }[] = [
-  { kind: "ema", period: 9 },
-  { kind: "ema", period: 21 },
+  { kind: "sma", period: 5 },
+  { kind: "sma", period: 10 },
+  { kind: "sma", period: 20 },
   { kind: "sma", period: 50 },
   { kind: "sma", period: 200 },
+  { kind: "ema", period: 9 },
+  { kind: "ema", period: 21 },
 ];
 
 /** Mais que isso deixa o gráfico ilegível; também é o tamanho da paleta de cores. */
