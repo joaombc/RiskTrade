@@ -1,17 +1,40 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { GLOSSARY } from "@/lib/glossary/terms";
 import { HISTORY_RANGES, SYMBOL_PATTERN, type AssetSummary, type HistoryRange } from "@/lib/market";
 import type { PlanLevel } from "@/lib/risk";
+import { pickStartSymbol } from "@/lib/watchlist";
 import { AssetSearch } from "./AssetSearch";
 import { AssetSummaryPanel } from "./AssetSummaryPanel";
 import { PriceChart, type ChartExample } from "./chart/PriceChart";
 import { RiskCalculator } from "./risk/RiskCalculator";
+import { useWatchlist } from "./watchlist/useWatchlist";
 import { WatchlistPanel } from "./watchlist/WatchlistPanel";
 
 const REFRESH_MS = 30_000;
+const LAST_SYMBOL_KEY = "risktrade:last-symbol";
+
+function readLastSymbol(): string | null {
+  try {
+    return localStorage.getItem(LAST_SYMBOL_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function saveLastSymbol(symbol: string) {
+  try {
+    localStorage.setItem(LAST_SYMBOL_KEY, symbol);
+  } catch {
+    // Storage bloqueado: o painel só não lembra o último ativo.
+  }
+}
+
+const noSubscription = () => () => {};
+/** false no HTML do servidor e na hidratação; true depois, quando o localStorage já pode ser lido. */
+const useHydrated = () => useSyncExternalStore(noSubscription, () => true, () => false);
 
 type State =
   | { kind: "idle" }
@@ -52,6 +75,16 @@ export function MarketDashboard() {
   const [searchKey, setSearchKey] = useState(link.symbol ? 1 : 0);
   const [planLevels, setPlanLevels] = useState<PlanLevel[]>([]);
   const [example, setExample] = useState<ChartExample | null>(link.example);
+  const favorites = useWatchlist();
+  const hydrated = useHydrated();
+
+  // Sem ativo na URL, abre o último favorito aberto, o primeiro favorito ou a AAPL. A escolha
+  // espera a hidratação (antes dela os favoritos ainda não foram lidos) e acontece uma vez só:
+  // depois, desfavoritar o ativo aberto não troca a tela.
+  if (symbol === null && hydrated) {
+    setSymbol(pickStartSymbol(favorites, readLastSymbol()));
+    setSearchKey((k) => k + 1);
+  }
 
   const selectSymbol = (target: string) => {
     setSymbol(target);
@@ -68,6 +101,10 @@ export function MarketDashboard() {
     // Tira o exemplo da URL para que recarregar a página não o reabra.
     if (symbol) router.replace(`/?ativo=${encodeURIComponent(symbol)}`, { scroll: false });
   };
+
+  useEffect(() => {
+    if (symbol) saveLastSymbol(symbol);
+  }, [symbol]);
 
   useEffect(() => {
     if (!symbol) return;
@@ -100,11 +137,13 @@ export function MarketDashboard() {
       <div className="flex min-w-0 flex-col gap-6">
         <AssetSearch key={searchKey} initialQuery={searchKey > 0 ? (symbol ?? "") : ""} onSelect={selectSymbol} />
 
-        {state.kind === "idle" && (
-          <p className="text-center text-sm text-muted">Busque um ativo para ver cotação, variação, range do dia e volume.</p>
-        )}
-        {state.kind === "loading" && (
-          <div role="status" className="h-64 animate-pulse rounded-2xl border border-border bg-surface" aria-label={`Carregando ${state.symbol}`} />
+        {/* "idle" só existe até o painel escolher o ativo inicial, logo após a hidratação. */}
+        {(state.kind === "idle" || state.kind === "loading") && (
+          <div
+            role="status"
+            className="h-64 animate-pulse rounded-2xl border border-border bg-surface"
+            aria-label={state.kind === "loading" ? `Carregando ${state.symbol}` : "Carregando o painel"}
+          />
         )}
         {state.kind === "error" && (
           <div role="alert" className="rounded-2xl border border-negative/40 bg-negative/10 p-4 text-sm text-negative">

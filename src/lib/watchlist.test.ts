@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { isWatchlistEntry, normalizeTag, sortEntries, type WatchlistEntry, type WatchlistQuote } from "./watchlist";
+import {
+  DEFAULT_SYMBOL,
+  isWatchlistEntry,
+  normalizeTag,
+  pickStartSymbol,
+  sortEntries,
+  type WatchlistEntry,
+  type WatchlistQuote,
+} from "./watchlist";
 
 const entry = (symbol: string): WatchlistEntry => ({ symbol, name: symbol, tags: [], addedAt: 0 });
 const quote = (symbol: string, changePercent: number, volume: number): WatchlistQuote => ({
@@ -50,5 +58,24 @@ describe("isWatchlistEntry", () => {
     expect(isWatchlistEntry(entry("AAPL"))).toBe(true);
     expect(isWatchlistEntry({ symbol: "AAPL", name: "Apple", tags: [1], addedAt: 0 })).toBe(false);
     expect(isWatchlistEntry(null)).toBe(false);
+  });
+});
+
+describe("pickStartSymbol", () => {
+  const entry = (symbol: string, addedAt: number): WatchlistEntry => ({ symbol, name: symbol, tags: [], addedAt });
+  const favorites = [entry("PETR4.SA", 2), entry("VALE3.SA", 1), entry("BTC-USD", 3)];
+
+  it("abre o último ativo aberto quando ele é favorito", () => {
+    expect(pickStartSymbol(favorites, "BTC-USD")).toBe("BTC-USD");
+  });
+
+  it("abre o primeiro favorito adicionado quando o último aberto não é favorito", () => {
+    expect(pickStartSymbol(favorites, "MSFT")).toBe("VALE3.SA");
+    expect(pickStartSymbol(favorites, null)).toBe("VALE3.SA");
+  });
+
+  it("abre a AAPL sem favoritos, mesmo com outro ativo aberto antes", () => {
+    expect(pickStartSymbol([], "MSFT")).toBe(DEFAULT_SYMBOL);
+    expect(DEFAULT_SYMBOL).toBe("AAPL");
   });
 });
