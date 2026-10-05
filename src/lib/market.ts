@@ -62,6 +62,22 @@ export const HISTORY_RANGES = {
 } as const satisfies Record<string, HistoryRangeSpec>;
 export type HistoryRange = keyof typeof HISTORY_RANGES;
 
+/** Máximo de fechamentos anteriores ao período enviados para aquecer as médias móveis. */
+export const MAX_WARMUP_BARS = 400;
+
+/**
+ * Dias corridos buscados antes do período para ter até MAX_WARMUP_BARS candles de aquecimento.
+ * Nos intradiários o limite é o histórico do Yahoo (cerca de 60 dias para 5 a 30 min): o 30m
+ * fica em 40 dias para o total (2S + aquecimento) não passar disso.
+ */
+export const WARMUP_DAYS: Record<ChartInterval, number> = {
+  "5m": 10,
+  "15m": 25,
+  "30m": 40,
+  "60m": 90,
+  "1d": 600,
+};
+
 export const INTERVAL_LABELS: Record<ChartInterval, string> = {
   "5m": "candles de 5 min",
   "15m": "candles de 15 min",

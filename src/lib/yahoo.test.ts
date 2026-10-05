@@ -28,6 +28,21 @@ describe("getHistory", () => {
     await expect(getHistory("ELET3.SA", "1y")).rejects.toBeInstanceOf(AssetNotFoundError);
   });
 
+  it("separa os candles do período dos fechamentos de aquecimento", async () => {
+    const daysAgo = (d: number) => new Date(Date.now() - d * 24 * 60 * 60 * 1000);
+    const quote = (d: number, close: number) => ({ date: daysAgo(d), open: close, high: close, low: close, close, volume: 1 });
+    chart.mockResolvedValue({
+      meta: { gmtoffset: 0 },
+      quotes: [quote(300, 1), quote(120, 2), quote(60, 3), quote(1, 4)],
+    });
+    const { bars, warmup } = await getHistory("AAPL", "3m");
+    expect(bars.map((b) => b.close)).toEqual([3, 4]);
+    expect(warmup).toEqual([1, 2]);
+    // O Yahoo é chamado desde antes do período (3M = 92 dias), para buscar o aquecimento.
+    const period1: Date = chart.mock.calls[0][1].period1;
+    expect(Date.now() - period1.getTime()).toBeGreaterThan(400 * 24 * 60 * 60 * 1000);
+  });
+
   it("mantém outras falhas como erro do serviço", async () => {
     chart.mockRejectedValue(new Error("fetch failed"));
     await expect(getHistory("AAPL", "1y")).rejects.not.toBeInstanceOf(AssetNotFoundError);

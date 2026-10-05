@@ -6,6 +6,8 @@ export interface ChartTheme {
   grid: string;
   up: string;
   down: string;
+  /** Cores das médias móveis, uma por posição (slot). Fogem do verde/vermelho dos candles, do azul dos desenhos e do roxo do OBV. */
+  movingAverages: string[];
   drawings: Palette;
 }
 
@@ -16,6 +18,7 @@ export const CHART_THEMES: Record<"light" | "dark", ChartTheme> = {
     grid: "#eef0f3",
     up: "#059669",
     down: "#dc2626",
+    movingAverages: ["#d97706", "#0891b2", "#db2777", "#475569"],
     drawings: {
       primary: "#2563eb",
       support: "#059669",
@@ -32,6 +35,7 @@ export const CHART_THEMES: Record<"light" | "dark", ChartTheme> = {
     grid: "#1f242b",
     up: "#34d399",
     down: "#f87171",
+    movingAverages: ["#fbbf24", "#22d3ee", "#f472b6", "#cbd5e1"],
     drawings: {
       primary: "#60a5fa",
       support: "#34d399",

@@ -85,3 +85,33 @@ export function findDivergences(bars: Bar[], obv: number[], window = DIVERGENCE_
 export function isRecent(divergence: Divergence, barCount: number, recentBars = RECENT_DIVERGENCE_BARS): boolean {
   return divergence.to >= barCount - 1 - recentBars;
 }
+
+/** Média móvel simples: média dos últimos `period` valores; null enquanto não há valores suficientes. */
+export function sma(values: number[], period: number): (number | null)[] {
+  let sum = 0;
+  return values.map((value, i) => {
+    sum += value;
+    if (i >= period) sum -= values[i - period];
+    return i >= period - 1 ? sum / period : null;
+  });
+}
+
+/**
+ * Média móvel exponencial: dá mais peso aos valores recentes (fator 2 / (período + 1)).
+ * Começa pela média simples do primeiro período, como é o padrão.
+ */
+export function ema(values: number[], period: number): (number | null)[] {
+  const k = 2 / (period + 1);
+  let previous: number | null = null;
+  let seed = 0;
+  return values.map((value, i) => {
+    if (previous === null) {
+      seed += value;
+      if (i < period - 1) return null;
+      previous = seed / period;
+      return previous;
+    }
+    previous = value * k + previous * (1 - k);
+    return previous;
+  });
+}
