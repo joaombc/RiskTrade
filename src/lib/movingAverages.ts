@@ -34,6 +34,34 @@ export const MA_PRESETS: { kind: MovingAverageKind; period: number }[] = [
   { kind: "ema", period: 21 },
 ];
 
+/** Formação de médias simples aplicada de uma vez (métodos de cruzamento do Murphy, cap. 9). */
+export interface MovingAverageCombo {
+  id: string;
+  label: string;
+  description: string;
+  /** Períodos das médias simples, da mais curta para a mais longa. */
+  periods: number[];
+}
+
+export const MA_COMBOS: MovingAverageCombo[] = [
+  { id: "4-9-18", label: "4-9-18", description: "Cruzamento triplo (MMS 4, 9 e 18), usado em futuros", periods: [4, 9, 18] },
+  { id: "5-20", label: "5-20", description: "Cruzamento duplo de futuros (MMS 5 e 20)", periods: [5, 20] },
+  { id: "10-50", label: "10-50", description: "Cruzamento duplo de ações (MMS 10 e 50)", periods: [10, 50] },
+];
+
+/** Médias da combinação, com as cores na ordem: a mais curta na primeira cor. */
+export function applyCombo(combo: MovingAverageCombo): MovingAverage[] {
+  return combo.periods.reduce<MovingAverage[]>((list, period) => addMovingAverage(list, "sma", period), []);
+}
+
+/** A combinação está no gráfico exatamente como aplicada: as mesmas médias, todas visíveis e nada além. */
+export function isComboActive(list: MovingAverage[], combo: MovingAverageCombo): boolean {
+  return (
+    list.length === combo.periods.length &&
+    combo.periods.every((period) => list.some((ma) => ma.id === maId("sma", period) && ma.visible))
+  );
+}
+
 /** Mais que isso deixa o gráfico ilegível; também é o tamanho da paleta de cores. */
 export const MAX_MOVING_AVERAGES = 4;
 export const MIN_MA_PERIOD = 2;

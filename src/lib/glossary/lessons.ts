@@ -442,13 +442,13 @@ export const LESSONS: Lesson[] = [
       {
         heading: "No RiskTrade",
         paragraphs: [
-          "A barra Médias móveis, acima das ferramentas de desenho do gráfico, tem atalhos para as médias simples de 5, 10, 20, 50 e 200 períodos, que montam as combinações recomendadas por Murphy, e para as exponenciais de 9 e 21, populares no mercado brasileiro. O botão + Personalizada cria qualquer média simples ou exponencial de 2 a 400 candles. Cabem até quatro ao mesmo tempo. Ainda não há média ponderada, envelopes nem bandas de Bollinger no gráfico.",
+          "A barra Médias móveis, acima das ferramentas de desenho do gráfico, tem atalhos para as médias simples de 5, 10, 20, 50 e 200 períodos, que montam as combinações recomendadas por Murphy, e para as exponenciais de 9 e 21, populares no mercado brasileiro. O botão + Personalizada cria qualquer média simples ou exponencial de 2 a 400 candles. Cabem até quatro ao mesmo tempo. A linha Combinações aplica de uma vez as formações de cruzamento, substituindo as médias do gráfico; clicar de novo na combinação ativa a remove. Ainda não há média ponderada, envelopes nem bandas de Bollinger no gráfico.",
         ],
         bullets: [
-          "Cruzamento duplo de futuros: atalhos MMS 5 e MMS 20.",
-          "Cruzamento duplo de ações: atalhos MMS 10 e MMS 50.",
+          "Cruzamento duplo de futuros: a combinação 5-20 (MMS 5 e MMS 20).",
+          "Cruzamento duplo de ações: a combinação 10-50 (MMS 10 e MMS 50).",
           "Tendência de longo prazo: atalhos MMS 50 e MMS 200, no período 1A ou mais.",
-          "Sistema 4-9-18: MMS 4, 9 e 18 em + Personalizada.",
+          "Sistema 4-9-18: a combinação 4-9-18 coloca as três médias de uma vez, com a de 4 na primeira cor.",
           "O período conta candles do gráfico: no 1D, uma MME 21 cobre 21 candles de 5 minutos, não 21 dias.",
         ],
       },
