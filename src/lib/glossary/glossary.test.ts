@@ -178,3 +178,27 @@ describe("aulas", () => {
     }
   });
 });
+
+describe("diagramas da aula de médias móveis", () => {
+  it("têm curvas dentro do desenho", async () => {
+    const { MA_DIAGRAMS } = await import("./ma-diagrams");
+    for (const [name, d] of Object.entries(MA_DIAGRAMS)) {
+      expect(d.curves?.length, name).toBeGreaterThan(0);
+      for (const curve of d.curves!) {
+        expect(curve.path.length, name).toBeGreaterThan(10);
+        for (const [x, y] of curve.path) {
+          expect(x >= 10 && x <= 190 && y >= 10 && y <= 92, `${name}: (${x}, ${y})`).toBe(true);
+        }
+      }
+    }
+  });
+
+  it("marcam compra e depois venda nos diagramas de sinais", async () => {
+    const { MA_DIAGRAMS } = await import("./ma-diagrams");
+    for (const name of ["single", "double"] as const) {
+      const points = MA_DIAGRAMS[name].points ?? [];
+      expect(points.map((p) => p.label), name).toEqual(["compra", "venda"]);
+      expect(points[0].at[0], name).toBeLessThan(points[1].at[0]);
+    }
+  });
+});

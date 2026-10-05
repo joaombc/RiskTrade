@@ -40,9 +40,20 @@ export interface DiagramCandle {
   c: number;
 }
 
+/** Curva extra sobre o preço (ex.: uma média móvel), com rótulo no fim. */
+export interface DiagramCurve {
+  path: Pt[];
+  tone: DiagramTone;
+  label?: string;
+  /** Rótulo acima (padrão) ou abaixo do fim da curva, para não colidir com outra. */
+  labelPlacement?: "above" | "below";
+  dashed?: boolean;
+}
+
 export interface Diagram {
   /** Caminho do preço (linha). */
   path?: Pt[];
+  curves?: DiagramCurve[];
   /** Velas, distribuídas igualmente na largura. */
   candles?: DiagramCandle[];
   lines?: DiagramLine[];

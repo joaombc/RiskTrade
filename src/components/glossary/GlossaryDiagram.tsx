@@ -1,4 +1,4 @@
-import type { Diagram, DiagramLine, DiagramPoint, DiagramTone, Pt } from "@/lib/glossary/types";
+import type { Diagram, DiagramCurve, DiagramLine, DiagramPoint, DiagramTone, Pt } from "@/lib/glossary/types";
 
 const TONE_CLASS: Record<DiagramTone, string> = {
   primary: "text-accent",
@@ -42,6 +42,38 @@ function Line({ line }: { line: DiagramLine }) {
   );
 }
 
+function Curve({ curve }: { curve: DiagramCurve }) {
+  const last = curve.path[curve.path.length - 1];
+  return (
+    <g className={TONE_CLASS[curve.tone]}>
+      <polyline
+        points={toPoints(curve.path)}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={1.2}
+        strokeDasharray={curve.dashed ? "3 2" : undefined}
+        strokeLinejoin="round"
+        vectorEffect="non-scaling-stroke"
+      />
+      {curve.label && last && (
+        <text
+          x={last[0]}
+          y={curve.labelPlacement === "below" ? last[1] + 7 : last[1] - 3}
+          textAnchor="end"
+          fontSize={6}
+          fontWeight={600}
+          fill="currentColor"
+          className="stroke-surface"
+          strokeWidth={2}
+          paintOrder="stroke"
+        >
+          {curve.label}
+        </text>
+      )}
+    </g>
+  );
+}
+
 function Point({ point }: { point: DiagramPoint }) {
   const [x, y] = point.at;
   const placement = point.placement ?? "above";
@@ -55,7 +87,18 @@ function Point({ point }: { point: DiagramPoint }) {
   return (
     <g className="text-foreground">
       <circle cx={x} cy={y} r={1.8} className="fill-surface" stroke="currentColor" strokeWidth={0.9} />
-      <text x={x + dx} y={y + dy} textAnchor={anchor} fontSize={6.5} fontWeight={600} fill="currentColor">
+      <text
+        x={x + dx}
+        y={y + dy}
+        textAnchor={anchor}
+        fontSize={6.5}
+        fontWeight={600}
+        fill="currentColor"
+        // Contorno na cor do fundo: o rótulo continua legível quando cai sobre uma linha.
+        className="stroke-surface"
+        strokeWidth={2}
+        paintOrder="stroke"
+      >
         {point.label}
       </text>
     </g>
@@ -104,6 +147,8 @@ export function GlossaryDiagram({ diagram, title }: { diagram: Diagram; title: s
           vectorEffect="non-scaling-stroke"
         />
       )}
+
+      {diagram.curves?.map((c, i) => <Curve key={i} curve={c} />)}
 
       {diagram.candles?.map((c, i) => {
         const x = 10 + slot * (i + 0.5);
