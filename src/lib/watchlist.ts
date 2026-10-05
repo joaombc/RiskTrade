@@ -82,3 +82,16 @@ export function isWatchlistEntry(value: unknown): value is WatchlistEntry {
     typeof e.addedAt === "number"
   );
 }
+
+/** Ativo aberto quando não há favoritos. */
+export const DEFAULT_SYMBOL = "AAPL";
+
+/**
+ * Ativo que o painel abre quando a URL não indica nenhum: o último aberto, se ainda for
+ * favorito; senão, o primeiro favorito adicionado; sem favoritos, DEFAULT_SYMBOL.
+ */
+export function pickStartSymbol(entries: WatchlistEntry[], lastSymbol: string | null): string {
+  if (lastSymbol && entries.some((e) => e.symbol === lastSymbol)) return lastSymbol;
+  const oldest = entries.reduce<WatchlistEntry | null>((first, e) => (!first || e.addedAt < first.addedAt ? e : first), null);
+  return oldest?.symbol ?? DEFAULT_SYMBOL;
+}
