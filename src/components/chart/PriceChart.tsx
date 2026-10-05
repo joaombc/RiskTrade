@@ -28,12 +28,20 @@ import { resolveExample, type ResolvedExample } from "@/lib/glossary/examples";
 import type { TermExample } from "@/lib/glossary/types";
 import { computeOBV, findDivergences, type Divergence } from "@/lib/indicators";
 import { HISTORY_RANGES, INTERVAL_LABELS, isIntraday, type HistoryRange } from "@/lib/market";
+import {
+  computeMovingAverage,
+  loadMovingAverages,
+  maLabel,
+  saveMovingAverages,
+  type MovingAverage,
+} from "@/lib/movingAverages";
 import type { OpenInterestSeries } from "@/lib/openInterest";
 import { useTheme } from "@/lib/theme";
 import type { PlanLevel } from "@/lib/risk";
 import { DivergencePanel } from "./DivergencePanel";
 import { DrawingsPrimitive } from "./DrawingsPrimitive";
 import { DrawingToolbar } from "./DrawingToolbar";
+import { MovingAverageBar } from "./MovingAverageBar";
 import { OpenInterestNote } from "./OpenInterestNote";
 import { CHART_THEMES } from "./theme";
 
@@ -98,6 +106,8 @@ interface ChartHandles {
 interface History {
   key: string;
   bars: Bar[];
+  /** Fechamentos anteriores ao período, para as médias móveis começarem na borda esquerda. */
+  warmup: number[];
   openInterest: OpenInterestSeries | null;
   error: string | null;
 }
@@ -174,6 +184,16 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
   const obvValues = useMemo(() => (bars ? computeOBV(bars) : []), [bars]);
   const divergences = useMemo(() => (bars ? findDivergences(bars, obvValues) : []), [bars, obvValues]);
   const [showDivergences, setShowDivergences] = useState(true);
+  // Valem para todos os ativos; o componente só monta no cliente, então o localStorage está disponível.
+  const [averages, setAverages] = useState<MovingAverage[]>(loadMovingAverages);
+  const warmup = history?.warmup;
+  const averageLines = useMemo(
+    () =>
+      bars
+        ? averages.filter((ma) => ma.visible).map((ma) => ({ ma, values: computeMovingAverage(bars, ma, warmup) }))
+        : [],
+    [bars, warmup, averages],
+  );
   const resolvedExample = useMemo(
     () => (example && bars ? resolveExample(example.slug, example.example, bars) : NO_EXAMPLE),
     [example, bars],
@@ -378,12 +398,18 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.error ?? "Falha ao carregar o histórico.");
-        setHistory({ key, bars: data.bars, openInterest: data.openInterest ?? null, error: null });
+        setHistory({ key, bars: data.bars, warmup: data.warmup ?? [], openInterest: data.openInterest ?? null, error: null });
       } catch (err) {
         // Numa atualização em segundo plano, uma falha mantém os candles que já estão na tela.
         if (controller.signal.aborted || silent) return;
         const message = err instanceof Error ? err.message : String(err);
-        setHistory((prev) => ({ key, bars: prev?.bars ?? [], openInterest: prev?.openInterest ?? null, error: message }));
+        setHistory((prev) => ({
+          key,
+          bars: prev?.bars ?? [],
+          warmup: prev?.warmup ?? [],
+          openInterest: prev?.openInterest ?? null,
+          error: message,
+        }));
       }
     }
 
@@ -429,6 +455,43 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
       handles.chart.timeScale().fitContent();
     }
   }, [bars, history, theme, obvValues]);
+
+  useEffect(() => {
+    saveMovingAverages(averages);
+  }, [averages]);
+
+  // Médias móveis: uma linha por média visível, sobre os candles.
+  useEffect(() => {
+    const handles = handlesRef.current;
+    if (!handles || !bars) return;
+    const series = averageLines.map(({ ma, values }) => {
+      const line = handles.chart.addSeries(
+        LineSeries,
+        {
+          color: theme.movingAverages[ma.slot],
+          lineWidth: 2,
+          priceLineVisible: false,
+          crosshairMarkerVisible: false,
+          title: maLabel(ma),
+        },
+        PRICE_PANE,
+      );
+      line.setData(
+        bars.map((b, i) => {
+          const value = values[i];
+          return value === null ? { time: b.time as UTCTimestamp } : { time: b.time as UTCTimestamp, value };
+        }),
+      );
+      return line;
+    });
+    return () => {
+      // O gráfico pode ter sido recriado (desmontagem ou Fast Refresh) e levado as séries junto.
+      const alive = handlesRef.current?.chart.panes()[PRICE_PANE]?.getSeries() ?? [];
+      series.forEach((line) => {
+        if (alive.includes(line)) handles.chart.removeSeries(line);
+      });
+    };
+  }, [bars, averageLines, theme]);
 
   // Interesse aberto (futuros): painel próprio, criado só quando há dados, em degraus porque o
   // relatório da CFTC é semanal.
@@ -649,6 +712,13 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
           </button>
         </div>
       )}
+
+      <MovingAverageBar
+        averages={averages}
+        onChange={setAverages}
+        barCount={bars && !loading ? bars.length + (warmup?.length ?? 0) : null}
+        colors={theme.movingAverages}
+      />
 
       <DrawingToolbar
         activeTool={tool}

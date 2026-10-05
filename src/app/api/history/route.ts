@@ -33,8 +33,8 @@ export async function GET(request: Request) {
 
   try {
     const upper = symbol.toUpperCase();
-    const [bars, points] = await Promise.all([getHistory(upper, range), openInterestPoints(upper, range)]);
-    return Response.json({ bars, openInterest: points ? alignToBars(bars, points) : null });
+    const [{ bars, warmup }, points] = await Promise.all([getHistory(upper, range), openInterestPoints(upper, range)]);
+    return Response.json({ bars, warmup, openInterest: points ? alignToBars(bars, points) : null });
   } catch (error) {
     if (error instanceof AssetNotFoundError) {
       return Response.json({ error: `Sem histórico de preços para "${symbol.toUpperCase()}".` }, { status: 404 });

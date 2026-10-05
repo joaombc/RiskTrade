@@ -6,6 +6,8 @@ import {
   averageVolume,
   HISTORY_RANGES,
   lastSessions,
+  MAX_WARMUP_BARS,
+  WARMUP_DAYS,
   toMarketStatus,
   type AssetSummary,
   type ChartInterval,
@@ -67,17 +69,31 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 // ~45 dias corridos cobrem 20 pregões (média de volume) e os 30 do sparkline, mesmo com feriados.
 const VOLUME_LOOKBACK_MS = 45 * DAY_MS;
 
+export interface History {
+  bars: Bar[];
+  /** Fechamentos anteriores ao período (até MAX_WARMUP_BARS), só para aquecer as médias móveis. */
+  warmup: number[];
+}
+
 /**
  * Candles do período (diários ou intradiários, conforme o período), descartando barras sem
- * OHLC completo e mantendo só os últimos pregões quando o período pede (1D, 5D).
+ * OHLC completo e mantendo só os últimos pregões quando o período pede (1D, 5D). Busca também
+ * um trecho anterior, para que uma MMS 200 já comece na borda esquerda do gráfico.
  */
-export async function getHistory(symbol: string, range: HistoryRange): Promise<Bar[]> {
+export async function getHistory(symbol: string, range: HistoryRange): Promise<History> {
   const spec: HistoryRangeSpec = HISTORY_RANGES[range];
-  const chart = await fetchChart(symbol, new Date(Date.now() - spec.days * DAY_MS), spec.interval);
-  if (chart.quotes.length === 0) throw new AssetNotFoundError(symbol);
+  const start = Date.now() - spec.days * DAY_MS;
+  const chart = await fetchChart(symbol, new Date(start - WARMUP_DAYS[spec.interval] * DAY_MS), spec.interval);
 
-  const bars = toBars(chart.quotes);
-  return spec.sessions ? lastSessions(bars, spec.sessions, chart.meta.gmtoffset) : bars;
+  const all = toBars(chart.quotes);
+  const bars = spec.sessions
+    ? lastSessions(all, spec.sessions, chart.meta.gmtoffset)
+    : all.filter((b) => b.time * 1000 >= start);
+  if (bars.length === 0) throw new AssetNotFoundError(symbol);
+
+  const first = bars[0].time;
+  const warmup = all.filter((b) => b.time < first).slice(-MAX_WARMUP_BARS).map((b) => b.close);
+  return { bars, warmup };
 }
 
 
