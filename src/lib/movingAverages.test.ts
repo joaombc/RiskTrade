@@ -134,3 +134,34 @@ describe("atalhos", () => {
     expect(MA_PRESETS.every((p) => isValidPeriod(p.period))).toBe(true);
   });
 });
+
+describe("combinações", () => {
+  it("aplicam só as médias simples da formação, da mais curta para a mais longa", async () => {
+    const { MA_COMBOS, applyCombo } = await import("./movingAverages");
+    const triple = MA_COMBOS.find((c) => c.id === "4-9-18")!;
+    expect(applyCombo(triple).map((ma) => [maLabel(ma), ma.slot, ma.visible])).toEqual([
+      ["MMS 4", 0, true],
+      ["MMS 9", 1, true],
+      ["MMS 18", 2, true],
+    ]);
+  });
+
+  it("cobrem 4-9-18, 5-20 e 10-50 dentro do limite de médias", async () => {
+    const { MA_COMBOS } = await import("./movingAverages");
+    expect(MA_COMBOS.map((c) => c.periods)).toEqual([[4, 9, 18], [5, 20], [10, 50]]);
+    for (const c of MA_COMBOS) expect(c.periods.length).toBeLessThanOrEqual(MAX_MOVING_AVERAGES);
+  });
+
+  it("só contam como ativas quando o gráfico tem exatamente a formação visível", async () => {
+    const { MA_COMBOS, applyCombo, isComboActive } = await import("./movingAverages");
+    const [triple, futures] = MA_COMBOS;
+    const applied = applyCombo(triple);
+    expect(isComboActive(applied, triple)).toBe(true);
+    expect(isComboActive(applied, futures)).toBe(false);
+    expect(isComboActive(addMovingAverage(applied, "sma", 200), triple)).toBe(false);
+    expect(isComboActive(applied.map((ma, i) => (i === 1 ? { ...ma, visible: false } : ma)), triple)).toBe(false);
+    // Mesmos períodos, mas exponenciais: não é a formação do livro.
+    const exponential = [4, 9, 18].reduce<MovingAverage[]>((l, p) => addMovingAverage(l, "ema", p), []);
+    expect(isComboActive(exponential, triple)).toBe(false);
+  });
+});

@@ -3,7 +3,10 @@
 import { useState } from "react";
 import {
   addMovingAverage,
+  applyCombo,
+  isComboActive,
   isValidPeriod,
+  MA_COMBOS,
   MA_NAMES,
   MA_PRESETS,
   maId,
@@ -105,6 +108,27 @@ export function MovingAverageBar({ averages, onChange, barCount, colors }: Props
           </button>
         )}
         {full && <span className="text-xs text-muted">Limite de {MAX_MOVING_AVERAGES} médias: remova uma para adicionar outra.</span>}
+      </div>
+
+      <div role="group" aria-label="Combinações de médias" className="flex flex-wrap items-center gap-1.5">
+        <span className="mr-1 text-xs font-semibold">Combinações</span>
+        {MA_COMBOS.map((combo) => {
+          const active = isComboActive(averages, combo);
+          return (
+            <button
+              key={combo.id}
+              type="button"
+              aria-pressed={active}
+              onClick={() => onChange(active ? [] : applyCombo(combo))}
+              title={`${combo.description}. ${active ? "Clique para remover." : "Substitui as médias do gráfico."}`}
+              className={`${chip} px-2.5 py-1 tabular-nums ${
+                active ? "border-foreground bg-foreground text-background" : "border-border text-muted hover:bg-border/60 hover:text-foreground"
+              }`}
+            >
+              {combo.label}
+            </button>
+          );
+        })}
       </div>
 
       {custom && !full && (
