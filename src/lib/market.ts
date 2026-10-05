@@ -143,3 +143,20 @@ export function toMarketStatus(state: string | undefined): MarketStatus {
       return "closed";
   }
 }
+
+type Candle = { time: number; open: number; high: number; low: number; close: number; volume: number };
+
+/** Mesmos candles nas duas listas (horário, OHLC e volume): uma atualização que não mudou nada. */
+export function sameBars(a: Candle[], b: Candle[]): boolean {
+  if (a === b) return true;
+  if (a.length !== b.length) return false;
+  return a.every(
+    (x, i) =>
+      x.time === b[i].time &&
+      x.open === b[i].open &&
+      x.high === b[i].high &&
+      x.low === b[i].low &&
+      x.close === b[i].close &&
+      x.volume === b[i].volume,
+  );
+}

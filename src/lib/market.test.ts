@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { averageVolume, lastSessions, toMarketStatus, type DailyBar } from "./market";
+import { averageVolume, lastSessions, sameBars, toMarketStatus, type DailyBar } from "./market";
 
 function bars(volumes: (number | null)[]): DailyBar[] {
   return volumes.map((volume, i) => ({ date: new Date(2026, 0, i + 1), volume }));
@@ -55,5 +55,23 @@ describe("lastSessions", () => {
     const last = lastSessions(crypto, 1, 0);
     expect(last).toHaveLength(24);
     expect(last[0].time).toBe(crypto[48].time);
+  });
+});
+
+describe("sameBars", () => {
+  const bar = (time: number, close: number, volume = 100) => ({ time, open: 1, high: 2, low: 0.5, close, volume });
+
+  it("reconhece a mesma lista, mesmo em outro objeto", () => {
+    expect(sameBars([bar(1, 1.5), bar(2, 1.6)], [bar(1, 1.5), bar(2, 1.6)])).toBe(true);
+  });
+
+  it("detecta o candle de hoje mudando de preço ou de volume", () => {
+    const before = [bar(1, 1.5), bar(2, 1.6)];
+    expect(sameBars(before, [bar(1, 1.5), bar(2, 1.7)])).toBe(false);
+    expect(sameBars(before, [bar(1, 1.5), bar(2, 1.6, 150)])).toBe(false);
+  });
+
+  it("detecta um candle novo", () => {
+    expect(sameBars([bar(1, 1.5)], [bar(1, 1.5), bar(2, 1.6)])).toBe(false);
   });
 });

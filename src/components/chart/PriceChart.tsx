@@ -27,7 +27,7 @@ import { TOOLS, type Anchor, type Bar, type Drawing, type DrawingKind, type Draw
 import { resolveExample, type ResolvedExample } from "@/lib/glossary/examples";
 import type { TermExample } from "@/lib/glossary/types";
 import { computeOBV, findDivergences, type Divergence } from "@/lib/indicators";
-import { HISTORY_RANGES, INTERVAL_LABELS, isIntraday, type HistoryRange } from "@/lib/market";
+import { HISTORY_RANGES, INTERVAL_LABELS, isIntraday, sameBars, type HistoryRange } from "@/lib/market";
 import {
   computeMovingAverage,
   findCrossSignals,
@@ -54,8 +54,11 @@ const MAGNET_PX = 10;
 const CLICK_TOLERANCE_PX = 5;
 const RANGE_KEYS = Object.keys(HISTORY_RANGES) as HistoryRange[];
 const NO_LEVELS: PlanLevel[] = [];
-/** Intervalo de atualização dos períodos intradiários (os diários não mudam ao longo do dia). */
-const INTRADAY_REFRESH_MS = 60_000;
+/**
+ * Intervalo de atualização do gráfico, em todos os períodos: no intradiário entram candles
+ * novos; no diário, o candle de hoje acompanha o pregão (e com ele médias, sinais e OBV).
+ */
+const REFRESH_MS = 60_000;
 
 /**
  * Datas e horas em português. No intradiário, as horas saem no fuso do computador; nos
@@ -174,6 +177,8 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
 
   const [range, setRange] = useState<HistoryRange>(initialRange);
   const [history, setHistory] = useState<History | null>(null);
+  /** Hora da última resposta do servidor, mesmo quando ela não trouxe nada novo. */
+  const [updatedAt, setUpdatedAt] = useState<number | null>(null);
   // O componente só é montado no cliente (após a cotação carregar), então o localStorage está disponível.
   const [drawings, setDrawings] = useState<Drawing[]>(() => loadDrawings(symbol));
   const [tool, setTool] = useState<DrawingKind | null>(null);
@@ -408,7 +413,25 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.error ?? "Falha ao carregar o histórico.");
-        setHistory({ key, bars: data.bars, warmup: data.warmup ?? [], openInterest: data.openInterest ?? null, error: null });
+        const next: History = {
+          key,
+          bars: data.bars,
+          warmup: data.warmup ?? [],
+          openInterest: data.openInterest ?? null,
+          error: null,
+        };
+        // Atualização sem novidade (ex.: mercado fechado): mantém o histórico atual, sem redesenhar.
+        setHistory((prev) =>
+          prev &&
+          prev.key === key &&
+          !prev.error &&
+          sameBars(prev.bars, next.bars) &&
+          prev.warmup.length === next.warmup.length &&
+          prev.openInterest?.lastReport === next.openInterest?.lastReport
+            ? prev
+            : next,
+        );
+        setUpdatedAt(Date.now());
       } catch (err) {
         // Numa atualização em segundo plano, uma falha mantém os candles que já estão na tela.
         if (controller.signal.aborted || silent) return;
@@ -424,12 +447,10 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
     }
 
     load(false);
-    // Os períodos intradiários ganham candles novos ao longo do pregão.
-    const id = isIntraday(range)
-      ? setInterval(() => {
-          if (document.visibilityState === "visible") load(true);
-        }, INTRADAY_REFRESH_MS)
-      : undefined;
+    // Só com a aba visível: em segundo plano, ninguém está olhando o gráfico.
+    const id = setInterval(() => {
+      if (document.visibilityState === "visible") load(true);
+    }, REFRESH_MS);
     return () => {
       controller.abort();
       clearInterval(id);
@@ -691,6 +712,12 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
       <header className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-sm font-semibold">
           Gráfico <span className="font-normal text-muted">· {INTERVAL_LABELS[HISTORY_RANGES[range].interval]}</span>
+          {updatedAt !== null && !loading && (
+            <span className="font-normal text-muted" title="O gráfico se atualiza a cada minuto com a aba visível.">
+              {" "}
+              · atualizado às {new Date(updatedAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+            </span>
+          )}
         </h2>
         <div role="group" aria-label="Período" className="flex flex-wrap gap-1">
           {RANGE_KEYS.map((r) => (
