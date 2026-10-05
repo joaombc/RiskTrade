@@ -142,3 +142,71 @@ export function saveMovingAverages(list: MovingAverage[]): void {
     // Storage cheio ou bloqueado: as médias valem só nesta sessão.
   }
 }
+
+// ─── Sinais de cruzamento (Murphy, cap. 9) ─────────────────────────────────────
+
+type Values = (number | null)[];
+
+/** Índices em que `fast` cruza `slow` para cima (up) ou para baixo (down), comparando candles vizinhos. */
+export function crossings(fast: Values, slow: Values): { index: number; dir: "up" | "down" }[] {
+  const result: { index: number; dir: "up" | "down" }[] = [];
+  for (let i = 1; i < Math.min(fast.length, slow.length); i++) {
+    const [a0, b0, a1, b1] = [fast[i - 1], slow[i - 1], fast[i], slow[i]];
+    if (a0 === null || b0 === null || a1 === null || b1 === null) continue;
+    if (a0 <= b0 && a1 > b1) result.push({ index: i, dir: "up" });
+    else if (a0 >= b0 && a1 < b1) result.push({ index: i, dir: "down" });
+  }
+  return result;
+}
+
+export type CrossSignalKind = "buy" | "sell" | "buy-alert" | "sell-alert";
+
+export interface CrossSignal {
+  index: number;
+  kind: CrossSignalKind;
+}
+
+export const CROSS_SIGNAL_LABELS: Record<CrossSignalKind, string> = {
+  buy: "Compra",
+  sell: "Venda",
+  "buy-alert": "Alerta de compra",
+  "sell-alert": "Alerta de venda",
+};
+
+/** Sinais nos últimos candles contam como recentes e ganham destaque no painel. */
+export const RECENT_CROSS_BARS = 5;
+
+/**
+ * Sinais de cruzamento segundo Murphy (cap. 9), com as médias ordenadas pelo período:
+ * - duas médias: a curta cruza a longa para cima = compra; para baixo = venda;
+ * - três médias: a curta passa para cima (ou para baixo) das outras duas = alerta; a do meio
+ *   cruzando a longa na mesma direção = compra (ou venda) confirmada.
+ * Com outra quantidade de médias não há regra, e a lista fica vazia. Quando o alerta e a
+ * confirmação caem no mesmo candle, fica só a confirmação.
+ */
+export function findCrossSignals(lines: { period: number; values: Values }[]): CrossSignal[] {
+  const sorted = [...lines].sort((a, b) => a.period - b.period);
+  if (sorted.length === 2) {
+    const [short, long] = sorted;
+    return crossings(short.values, long.values).map((c) => ({ index: c.index, kind: c.dir === "up" ? "buy" : "sell" }));
+  }
+  if (sorted.length !== 3) return [];
+
+  const [short, mid, long] = sorted.map((l) => l.values);
+  const confirmed: CrossSignal[] = crossings(mid, long).map((c) => ({ index: c.index, kind: c.dir === "up" ? "buy" : "sell" }));
+  // A curta acima (1) ou abaixo (-1) das duas outras; 0 quando está entre elas.
+  const side = (i: number) => {
+    const [s, m, l] = [short[i], mid[i], long[i]];
+    if (s === null || m === null || l === null) return null;
+    return s > m && s > l ? 1 : s < m && s < l ? -1 : 0;
+  };
+  const alerts: CrossSignal[] = [];
+  for (let i = 1; i < short.length; i++) {
+    const [before, now] = [side(i - 1), side(i)];
+    if (before === null || now === null || now === before || now === 0) continue;
+    const kind: CrossSignalKind = now === 1 ? "buy-alert" : "sell-alert";
+    const sameBar = confirmed.some((c) => c.index === i && c.kind === (now === 1 ? "buy" : "sell"));
+    if (!sameBar) alerts.push({ index: i, kind });
+  }
+  return [...confirmed, ...alerts].sort((a, b) => a.index - b.index);
+}

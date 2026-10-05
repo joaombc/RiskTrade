@@ -30,14 +30,17 @@ import { computeOBV, findDivergences, type Divergence } from "@/lib/indicators";
 import { HISTORY_RANGES, INTERVAL_LABELS, isIntraday, type HistoryRange } from "@/lib/market";
 import {
   computeMovingAverage,
+  findCrossSignals,
   loadMovingAverages,
   maLabel,
   saveMovingAverages,
+  type CrossSignal,
   type MovingAverage,
 } from "@/lib/movingAverages";
 import type { OpenInterestSeries } from "@/lib/openInterest";
 import { useTheme } from "@/lib/theme";
 import type { PlanLevel } from "@/lib/risk";
+import { CrossSignalPanel } from "./CrossSignalPanel";
 import { DivergencePanel } from "./DivergencePanel";
 import { DrawingsPrimitive } from "./DrawingsPrimitive";
 import { DrawingToolbar } from "./DrawingToolbar";
@@ -194,6 +197,13 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
         : [],
     [bars, warmup, averages],
   );
+  // Sinais de cruzamento (Murphy, cap. 9) entre as médias visíveis, da curta para a longa.
+  const crossLines = useMemo(() => [...averageLines].sort((a, b) => a.ma.period - b.ma.period), [averageLines]);
+  const crossSignals = useMemo(
+    () => findCrossSignals(crossLines.map(({ ma, values }) => ({ period: ma.period, values }))),
+    [crossLines],
+  );
+  const [showCrossSignals, setShowCrossSignals] = useState(true);
   const resolvedExample = useMemo(
     () => (example && bars ? resolveExample(example.slug, example.example, bars) : NO_EXAMPLE),
     [example, bars],
@@ -571,6 +581,18 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
         text: "Div.",
       }),
     );
+    const crossStyle: Record<
+      CrossSignal["kind"],
+      { position: "aboveBar" | "belowBar"; shape: "arrowUp" | "arrowDown" | "circle"; color: string; text: string }
+    > = {
+      buy: { position: "belowBar", shape: "arrowUp", color: theme.up, text: "Compra" },
+      sell: { position: "aboveBar", shape: "arrowDown", color: theme.down, text: "Venda" },
+      "buy-alert": { position: "belowBar", shape: "circle", color: theme.up, text: "Alerta" },
+      "sell-alert": { position: "aboveBar", shape: "circle", color: theme.down, text: "Alerta" },
+    };
+    const crossMarkers = (showCrossSignals ? crossSignals : []).map(
+      (signal): SeriesMarker<Time> => ({ time: time(signal.index), ...crossStyle[signal.kind] }),
+    );
     const exampleMarkers = resolvedExample.markers.map(
       (m): SeriesMarker<Time> => ({
         time: m.time as UTCTimestamp,
@@ -582,7 +604,7 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
     );
     // A API exige marcadores em ordem cronológica.
     handles.priceMarkers.setMarkers(
-      [...divergenceMarkers, ...exampleMarkers].sort((a, b) => (a.time as number) - (b.time as number)),
+      [...divergenceMarkers, ...crossMarkers, ...exampleMarkers].sort((a, b) => (a.time as number) - (b.time as number)),
     );
     handles.obvMarkers.setMarkers(
       visible.map(
@@ -623,7 +645,7 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
       // Se o gráfico já foi desmontado, as séries foram junto.
       if (handlesRef.current) segments.forEach((s) => handles.chart.removeSeries(s));
     };
-  }, [bars, divergences, showDivergences, theme, resolvedExample]);
+  }, [bars, divergences, showDivergences, theme, resolvedExample, crossSignals, showCrossSignals]);
 
   useEffect(() => {
     liveRef.current = { bars: bars ?? [], drawings, tool, pending, selectedId, fixed: resolvedExample.drawings };
@@ -752,6 +774,17 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
           </div>
         )}
       </div>
+      {bars && bars.length > 0 && !loading && (
+        <CrossSignalPanel
+          bars={bars}
+          averages={crossLines.map((l) => l.ma)}
+          lastValues={crossLines.map((l) => l.values[l.values.length - 1] ?? null)}
+          signals={crossSignals}
+          intraday={isIntraday(range)}
+          show={showCrossSignals}
+          onShowChange={setShowCrossSignals}
+        />
+      )}
       {bars && bars.length > 0 && (
         <DivergencePanel
           bars={bars}

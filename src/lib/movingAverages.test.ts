@@ -165,3 +165,52 @@ describe("combinações", () => {
     expect(isComboActive(exponential, triple)).toBe(false);
   });
 });
+
+describe("findCrossSignals", () => {
+  const line = (period: number, values: (number | null)[]) => ({ period, values });
+
+  it("duas médias: curta cruzando a longa para cima é compra, para baixo é venda", async () => {
+    const { findCrossSignals } = await import("./movingAverages");
+    const short = [1, 2, 4, 5, 3, 1];
+    const long = [3, 3, 3, 3, 3.5, 3];
+    // A ordem das linhas não importa: vale o período.
+    expect(findCrossSignals([line(20, long), line(5, short)])).toEqual([
+      { index: 2, kind: "buy" },
+      { index: 4, kind: "sell" },
+    ]);
+  });
+
+  it("ignora candles sem valor (média ainda sem período completo)", async () => {
+    const { findCrossSignals } = await import("./movingAverages");
+    expect(findCrossSignals([line(5, [1, null, 4]), line(20, [3, 3, 3])])).toEqual([]);
+  });
+
+  it("três médias: alerta quando a curta passa as outras duas, confirmação quando a do meio cruza a longa", async () => {
+    const { findCrossSignals } = await import("./movingAverages");
+    //        0   1   2   3   4   5   6   7
+    const s = [1, 1, 5, 5, 5, 1, 1, 1];
+    const m = [2, 2, 2, 4, 4, 4, 1.5, 1.5];
+    const l = [3, 3, 3, 3, 3, 3, 3, 3];
+    expect(findCrossSignals([line(4, s), line(9, m), line(18, l)])).toEqual([
+      { index: 2, kind: "buy-alert" }, // a de 4 passa a 9 e a 18
+      { index: 3, kind: "buy" }, // a de 9 passa a 18
+      { index: 5, kind: "sell-alert" }, // a de 4 volta para baixo das duas
+      { index: 6, kind: "sell" }, // a de 9 perde a 18
+    ]);
+  });
+
+  it("no mesmo candle, a confirmação substitui o alerta", async () => {
+    const { findCrossSignals } = await import("./movingAverages");
+    const s = [1, 5];
+    const m = [2, 4];
+    const l = [3, 3];
+    expect(findCrossSignals([line(4, s), line(9, m), line(18, l)])).toEqual([{ index: 1, kind: "buy" }]);
+  });
+
+  it("sem regra para uma ou quatro médias", async () => {
+    const { findCrossSignals } = await import("./movingAverages");
+    const v = [1, 2, 3];
+    expect(findCrossSignals([line(5, v)])).toEqual([]);
+    expect(findCrossSignals([line(5, v), line(10, v), line(20, v), line(50, v)])).toEqual([]);
+  });
+});

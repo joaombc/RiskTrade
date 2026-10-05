@@ -1,4 +1,5 @@
 import { ema, sma } from "../indicators";
+import { crossings } from "../movingAverages";
 import type { Diagram, DiagramPoint, Pt } from "./types";
 
 /**
@@ -28,23 +29,11 @@ function plotter(series: Series[], top = 14, bottom = 88) {
   };
 }
 
-/** Índices em que `fast` cruza `slow` para cima (up) ou para baixo (down). */
-function crossings(fast: Series, slow: Series) {
-  const result: { i: number; dir: "up" | "down" }[] = [];
-  for (let i = 1; i < fast.length; i++) {
-    const [a0, b0, a1, b1] = [fast[i - 1], slow[i - 1], fast[i], slow[i]];
-    if (a0 === null || b0 === null || a1 === null || b1 === null) continue;
-    if (a0 <= b0 && a1 > b1) result.push({ i, dir: "up" });
-    if (a0 >= b0 && a1 < b1) result.push({ i, dir: "down" });
-  }
-  return result;
-}
-
 /** Primeiro cruzamento para cima e o primeiro para baixo depois dele. */
 function firstSignals(fast: Series, slow: Series) {
   const all = crossings(fast, slow);
   const buy = all.find((c) => c.dir === "up");
-  const sell = buy && all.find((c) => c.dir === "down" && c.i > buy.i);
+  const sell = buy && all.find((c) => c.dir === "down" && c.index > buy.index);
   return { buy, sell };
 }
 
@@ -88,8 +77,8 @@ function singleDiagram(): Diagram {
   const p = plotter([swingPrices, average]);
   const { buy, sell } = firstSignals(swingPrices, average);
   const points: DiagramPoint[] = [];
-  if (buy) points.push({ at: p.at(swingPrices, buy.i), label: "compra", placement: "below" });
-  if (sell) points.push({ at: p.at(swingPrices, sell.i), label: "venda", placement: "above" });
+  if (buy) points.push({ at: p.at(swingPrices, buy.index), label: "compra", placement: "below" });
+  if (sell) points.push({ at: p.at(swingPrices, sell.index), label: "venda", placement: "above" });
   return {
     path: p.path(swingPrices),
     curves: [{ path: p.path(average), tone: "primary", label: "MMS 10" }],
@@ -105,8 +94,8 @@ function doubleDiagram(): Diagram {
   const p = plotter([swingPrices, fast, slow]);
   const { buy, sell } = firstSignals(fast, slow);
   const points: DiagramPoint[] = [];
-  if (buy) points.push({ at: p.at(fast, buy.i), label: "compra", placement: "below" });
-  if (sell) points.push({ at: p.at(fast, sell.i), label: "venda", placement: "above" });
+  if (buy) points.push({ at: p.at(fast, buy.index), label: "compra", placement: "below" });
+  if (sell) points.push({ at: p.at(fast, sell.index), label: "venda", placement: "above" });
   return {
     path: p.path(swingPrices),
     curves: [
@@ -125,7 +114,7 @@ function sidewaysDiagram(): Diagram {
   const average = sma(sidewaysPrices, 10);
   const p = plotter([sidewaysPrices, average], 24, 80);
   const points: DiagramPoint[] = crossings(sidewaysPrices, average).map((c) => ({
-    at: p.at(sidewaysPrices, c.i),
+    at: p.at(sidewaysPrices, c.index),
     label: "",
   }));
   return {
