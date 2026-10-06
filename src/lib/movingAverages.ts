@@ -13,6 +13,31 @@ export interface MovingAverage {
   visible: boolean;
   /** Posição na paleta de cores do tema; fica fixa enquanto a média existir. */
   slot: number;
+  /** Envelopes marcados, em % acima e abaixo da média (só médias simples). */
+  envelopes?: EnvelopePercent[];
+}
+
+/**
+ * Envelopes de Murphy (cap. 9): 3% em volta da MMS 21 no curto prazo, 5% em volta da média de
+ * 10 semanas (≈ MMS 50) e 10% em volta da de 40 semanas (≈ MMS 200).
+ */
+export const ENVELOPE_PERCENTS = [3, 5, 10] as const;
+export type EnvelopePercent = (typeof ENVELOPE_PERCENTS)[number];
+
+/** Linha do envelope: a média deslocada `percent`% para cima (upper) ou para baixo (lower). */
+export function envelopeLine(values: (number | null)[], percent: number, side: "upper" | "lower"): (number | null)[] {
+  const factor = side === "upper" ? 1 + percent / 100 : 1 - percent / 100;
+  return values.map((v) => (v === null ? null : v * factor));
+}
+
+/** Liga ou desliga um envelope de uma média simples; exponenciais não têm envelope. */
+export function toggleEnvelope(list: MovingAverage[], id: string, percent: EnvelopePercent): MovingAverage[] {
+  return list.map((ma) => {
+    if (ma.id !== id || ma.kind !== "sma") return ma;
+    const current = ma.envelopes ?? [];
+    const next = current.includes(percent) ? current.filter((p) => p !== percent) : [...current, percent];
+    return { ...ma, envelopes: ENVELOPE_PERCENTS.filter((p) => next.includes(p)) };
+  });
 }
 
 export const MA_LABELS: Record<MovingAverageKind, string> = { sma: "MMS", ema: "MME" };
@@ -28,6 +53,8 @@ export const MA_PRESETS: { kind: MovingAverageKind; period: number }[] = [
   { kind: "sma", period: 5 },
   { kind: "sma", period: 10 },
   { kind: "sma", period: 20 },
+  // Número de Fibonacci citado por Murphy e base dos envelopes de 3% de curto prazo.
+  { kind: "sma", period: 21 },
   { kind: "sma", period: 50 },
   { kind: "sma", period: 200 },
   { kind: "ema", period: 9 },
@@ -128,7 +155,12 @@ export function loadMovingAverages(): MovingAverage[] {
     // Descarta repetidas (mesma média ou mesma cor), mantendo a primeira.
     return valid
       .filter((ma, i) => valid.findIndex((o) => o.id === ma.id || o.slot === ma.slot) === i)
-      .slice(0, MAX_MOVING_AVERAGES);
+      .slice(0, MAX_MOVING_AVERAGES)
+      .map(({ envelopes, ...ma }) => {
+        // Envelopes só valem em médias simples e só nas porcentagens conhecidas.
+        const kept = ma.kind === "sma" && Array.isArray(envelopes) ? ENVELOPE_PERCENTS.filter((p) => envelopes.includes(p)) : [];
+        return kept.length > 0 ? { ...ma, envelopes: kept } : ma;
+      });
   } catch {
     return [];
   }

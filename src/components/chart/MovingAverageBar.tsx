@@ -4,6 +4,7 @@ import { useState } from "react";
 import {
   addMovingAverage,
   applyCombo,
+  ENVELOPE_PERCENTS,
   isComboActive,
   isValidPeriod,
   MA_COMBOS,
@@ -14,6 +15,7 @@ import {
   MAX_MA_PERIOD,
   MAX_MOVING_AVERAGES,
   MIN_MA_PERIOD,
+  toggleEnvelope,
   type MovingAverage,
   type MovingAverageKind,
 } from "@/lib/movingAverages";
@@ -109,6 +111,38 @@ export function MovingAverageBar({ averages, onChange, barCount, colors }: Props
         )}
         {full && <span className="text-xs text-muted">Limite de {MAX_MOVING_AVERAGES} médias: remova uma para adicionar outra.</span>}
       </div>
+
+      {averages.some((ma) => ma.kind === "sma" && ma.visible) && (
+        <div role="group" aria-label="Envelopes" className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
+          <span
+            className="text-xs font-semibold"
+            title="Linhas a uma porcentagem fixa acima e abaixo da média: mostram quando o preço esticou (Murphy, cap. 9)."
+          >
+            Envelopes
+          </span>
+          {averages
+            .filter((ma) => ma.kind === "sma" && ma.visible)
+            .map((ma) => (
+              <span key={ma.id} className="flex items-center gap-2 text-xs">
+                <span className="flex items-center gap-1 font-medium">
+                  <span aria-hidden className="h-2 w-2 rounded-full" style={{ backgroundColor: colors[ma.slot] }} />
+                  {maLabel(ma)}
+                </span>
+                {ENVELOPE_PERCENTS.map((percent) => (
+                  <label key={percent} className="flex items-center gap-1 text-muted">
+                    <input
+                      type="checkbox"
+                      checked={ma.envelopes?.includes(percent) ?? false}
+                      onChange={() => onChange(toggleEnvelope(averages, ma.id, percent))}
+                      aria-label={`Envelope de ${percent}% na ${maLabel(ma)}`}
+                    />
+                    {percent}%
+                  </label>
+                ))}
+              </span>
+            ))}
+        </div>
+      )}
 
       <div role="group" aria-label="Combinações de médias" className="flex flex-wrap items-center gap-1.5">
         <span className="mr-1 text-xs font-semibold">Combinações</span>

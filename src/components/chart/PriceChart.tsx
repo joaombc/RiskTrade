@@ -30,11 +30,13 @@ import { computeOBV, findDivergences, type Divergence } from "@/lib/indicators";
 import { HISTORY_RANGES, INTERVAL_LABELS, isIntraday, sameBars, type HistoryRange } from "@/lib/market";
 import {
   computeMovingAverage,
+  envelopeLine,
   findCrossSignals,
   loadMovingAverages,
   maLabel,
   saveMovingAverages,
   type CrossSignal,
+  type EnvelopePercent,
   type MovingAverage,
 } from "@/lib/movingAverages";
 import type { OpenInterestSeries } from "@/lib/openInterest";
@@ -90,6 +92,12 @@ function timeFormatting(intraday: boolean) {
     },
   };
 }
+/** Tracejado de cada envelope, para distinguir as porcentagens na mesma cor da média. */
+const ENVELOPE_STYLE: Record<EnvelopePercent, LineStyle> = {
+  3: LineStyle.Dotted,
+  5: LineStyle.Dashed,
+  10: LineStyle.LargeDashed,
+};
 const NO_EXAMPLE: ResolvedExample = { drawings: [], markers: [] };
 
 /** Painéis do gráfico, de cima para baixo. */
@@ -491,7 +499,7 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
     saveMovingAverages(averages);
   }, [averages]);
 
-  // Médias móveis: uma linha por média visível, sobre os candles.
+  // Médias móveis: uma linha por média visível, sobre os candles, mais os envelopes marcados.
   useEffect(() => {
     const handles = handlesRef.current;
     if (!handles || !bars) return;
@@ -507,18 +515,37 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
         },
         PRICE_PANE,
       );
-      line.setData(
+      const toData = (points: (number | null)[]) =>
         bars.map((b, i) => {
-          const value = values[i];
+          const value = points[i];
           return value === null ? { time: b.time as UTCTimestamp } : { time: b.time as UTCTimestamp, value };
+        });
+      line.setData(toData(values));
+      // Envelopes: duas linhas finas na cor da média, com o tracejado indicando a porcentagem.
+      const envelopes = (ma.kind === "sma" ? (ma.envelopes ?? []) : []).flatMap((percent) =>
+        (["upper", "lower"] as const).map((side) => {
+          const envelope = handles.chart.addSeries(
+            LineSeries,
+            {
+              color: theme.movingAverages[ma.slot],
+              lineWidth: 1,
+              lineStyle: ENVELOPE_STYLE[percent],
+              priceLineVisible: false,
+              lastValueVisible: false,
+              crosshairMarkerVisible: false,
+            },
+            PRICE_PANE,
+          );
+          envelope.setData(toData(envelopeLine(values, percent, side)));
+          return envelope;
         }),
       );
-      return line;
+      return [line, ...envelopes];
     });
     return () => {
       // O gráfico pode ter sido recriado (desmontagem ou Fast Refresh) e levado as séries junto.
       const alive = handlesRef.current?.chart.panes()[PRICE_PANE]?.getSeries() ?? [];
-      series.forEach((line) => {
+      series.flat().forEach((line) => {
         if (alive.includes(line)) handles.chart.removeSeries(line);
       });
     };
