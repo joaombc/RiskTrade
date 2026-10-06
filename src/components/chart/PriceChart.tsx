@@ -22,6 +22,14 @@ import {
   type UTCTimestamp,
 } from "lightweight-charts";
 import { bollinger, loadBollingerEnabled, readBollinger, saveBollingerEnabled } from "@/lib/bollinger";
+import {
+  channelSystemState,
+  loadFourWeekSettings,
+  priceChannel,
+  saveFourWeekSettings,
+  WEEK_BARS,
+  type FourWeekSettings,
+} from "@/lib/priceChannel";
 import { loadDrawings, saveDrawings } from "@/lib/drawings/storage";
 import { createTimeAxis } from "@/lib/drawings/timeAxis";
 import { TOOLS, type Anchor, type Bar, type Drawing, type DrawingKind, type DrawingOptions } from "@/lib/drawings/types";
@@ -59,6 +67,7 @@ import { BollingerPanel } from "./BollingerPanel";
 import { CustomRangeInput } from "./CustomRangeInput";
 import { DivergencePanel } from "./DivergencePanel";
 import { EnvelopeSignalPanel } from "./EnvelopeSignalPanel";
+import { FourWeekPanel } from "./FourWeekPanel";
 import { DrawingsPrimitive } from "./DrawingsPrimitive";
 import { DrawingToolbar } from "./DrawingToolbar";
 import { MovingAverageBar } from "./MovingAverageBar";
@@ -248,6 +257,27 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
   const [bollingerOn, setBollingerOn] = useState(loadBollingerEnabled);
   const bands = useMemo(() => (bars && bollingerOn ? bollinger(bars, warmup) : null), [bars, warmup, bollingerOn]);
   const bollingerReading = useMemo(() => (bars && bands ? readBollinger(bars, bands) : null), [bars, bands]);
+  // Regra das 4 semanas: só em candles diários (uma semana = 5 pregões).
+  const [fourWeek, setFourWeek] = useState<FourWeekSettings>(loadFourWeekSettings);
+  const [showFourWeekSignals, setShowFourWeekSignals] = useState(true);
+  const fourWeekSystem = useMemo(() => {
+    if (!bars || !fourWeek.enabled || isIntraday(range)) return null;
+    const entryBars = fourWeek.entryWeeks * WEEK_BARS;
+    const exitBars = (fourWeek.exitWeeks ?? fourWeek.entryWeeks) * WEEK_BARS;
+    const entry = priceChannel(bars, entryBars);
+    const exit = fourWeek.exitWeeks === null ? null : priceChannel(bars, exitBars);
+    const last = bars.length - 1;
+    return {
+      entry,
+      exit,
+      state: channelSystemState(bars, entryBars, exitBars),
+      // Níveis com que o fechamento do último candle é comparado.
+      upper: entry.upper[last] ?? null,
+      lower: entry.lower[last] ?? null,
+      exitUpper: exit?.upper[last] ?? null,
+      exitLower: exit?.lower[last] ?? null,
+    };
+  }, [bars, fourWeek, range]);
   const resolvedExample = useMemo(
     () => (example && bars ? resolveExample(example.slug, example.example, bars) : NO_EXAMPLE),
     [example, bars],
@@ -586,6 +616,54 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
     saveBollingerEnabled(bollingerOn);
   }, [bollingerOn]);
 
+  useEffect(() => {
+    saveFourWeekSettings(fourWeek);
+  }, [fourWeek]);
+
+  // Regra das 4 semanas: canal de entrada em degraus (máxima e mínima) e, na versão não
+  // contínua, o canal de saída pontilhado.
+  useEffect(() => {
+    const handles = handlesRef.current;
+    if (!handles || !bars || !fourWeekSystem) return;
+    const { entry, exit } = fourWeekSystem;
+    const specs: [(number | null)[], string, LineStyle, string][] = [
+      [entry.upper, theme.down, LineStyle.Solid, `Máx. ${fourWeek.entryWeeks}S`],
+      [entry.lower, theme.up, LineStyle.Solid, `Mín. ${fourWeek.entryWeeks}S`],
+    ];
+    if (exit && fourWeek.exitWeeks !== null) {
+      specs.push([exit.upper, theme.drawings.muted, LineStyle.Dotted, ""], [exit.lower, theme.drawings.muted, LineStyle.Dotted, ""]);
+    }
+    const lines = specs.map(([values, color, lineStyle, title]) => {
+      const line = handles.chart.addSeries(
+        LineSeries,
+        {
+          color,
+          lineWidth: 1,
+          lineStyle,
+          lineType: LineType.WithSteps,
+          priceLineVisible: false,
+          lastValueVisible: title !== "",
+          crosshairMarkerVisible: false,
+          title,
+        },
+        PRICE_PANE,
+      );
+      line.setData(
+        bars.map((b, i) => {
+          const value = values[i];
+          return value === null ? { time: b.time as UTCTimestamp } : { time: b.time as UTCTimestamp, value };
+        }),
+      );
+      return line;
+    });
+    return () => {
+      const alive = handlesRef.current?.chart.panes()[PRICE_PANE]?.getSeries() ?? [];
+      lines.forEach((line) => {
+        if (alive.includes(line)) handles.chart.removeSeries(line);
+      });
+    };
+  }, [bars, fourWeekSystem, fourWeek.entryWeeks, fourWeek.exitWeeks, theme]);
+
   // Bandas de Bollinger: bandas de cima e de baixo e a média central tracejada, numa cor neutra.
   useEffect(() => {
     const handles = handlesRef.current;
@@ -727,6 +805,15 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
         text: "Realizar",
       };
     });
+    const weekTag = `${fourWeek.entryWeeks}S`;
+    const fourWeekMarkers = (showFourWeekSignals && fourWeekSystem ? fourWeekSystem.state.signals : []).map(
+      (signal): SeriesMarker<Time> =>
+        signal.kind === "buy"
+          ? { time: time(signal.index), position: "belowBar", shape: "arrowUp", color: theme.up, text: `Compra ${weekTag}` }
+          : signal.kind === "sell"
+            ? { time: time(signal.index), position: "aboveBar", shape: "arrowDown", color: theme.down, text: `Venda ${weekTag}` }
+            : { time: time(signal.index), position: "aboveBar", shape: "circle", color: theme.drawings.target, text: "Saída" },
+    );
     const exampleMarkers = resolvedExample.markers.map(
       (m): SeriesMarker<Time> => ({
         time: m.time as UTCTimestamp,
@@ -738,7 +825,7 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
     );
     // A API exige marcadores em ordem cronológica.
     handles.priceMarkers.setMarkers(
-      [...divergenceMarkers, ...crossMarkers, ...envelopeMarkers, ...exampleMarkers].sort(
+      [...divergenceMarkers, ...crossMarkers, ...envelopeMarkers, ...fourWeekMarkers, ...exampleMarkers].sort(
         (a, b) => (a.time as number) - (b.time as number),
       ),
     );
@@ -791,6 +878,9 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
     showCrossSignals,
     envelopeSignals,
     showEnvelopeSignals,
+    fourWeekSystem,
+    showFourWeekSignals,
+    fourWeek.entryWeeks,
   ]);
 
   useEffect(() => {
@@ -895,6 +985,8 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
         colors={theme.movingAverages}
         bollinger={bollingerOn}
         onBollingerChange={setBollingerOn}
+        fourWeek={fourWeek}
+        onFourWeekChange={setFourWeek}
       />
 
       <DrawingToolbar
@@ -950,6 +1042,15 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
           intraday={isIntraday(range)}
           show={showEnvelopeSignals}
           onShowChange={setShowEnvelopeSignals}
+        />
+      )}
+      {bars && bars.length > 0 && !loading && fourWeek.enabled && (
+        <FourWeekPanel
+          bars={bars}
+          settings={fourWeek}
+          system={fourWeekSystem}
+          show={showFourWeekSignals}
+          onShowChange={setShowFourWeekSignals}
         />
       )}
       {bars && bars.length > 0 && !loading && bollingerOn && (
