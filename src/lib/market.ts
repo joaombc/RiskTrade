@@ -1,5 +1,8 @@
 export type MarketStatus = "open" | "closed" | "pre" | "post";
 
+/** Ação ou ETF negociado nos EUA: os ativos com relatório pré-market. */
+export type USListing = "stock" | "etf";
+
 export interface SearchResult {
   symbol: string;
   name: string;
@@ -18,8 +21,8 @@ export interface AssetSummary {
   dayLow: number;
   volume: number;
   avgVolume20d: number | null;
-  /** Ação do mercado americano: o card mostra o botão do relatório pré-market. */
-  isUSStock: boolean;
+  /** Ação ou ETF do mercado americano (o card mostra o botão do relatório pré-market); null nos demais. */
+  usListing: USListing | null;
   /** Contratos em aberto do vencimento atual (só futuros e opções; null nos demais ativos). */
   openInterest: number | null;
   marketStatus: MarketStatus;

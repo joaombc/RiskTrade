@@ -1,7 +1,7 @@
 import { isSwing } from "./drawings/geometry";
 import type { Bar } from "./drawings/types";
 import { computeOBV, findDivergences } from "./indicators";
-import type { MarketStatus } from "./market";
+import type { MarketStatus, USListing } from "./market";
 import { computeMovingAverage, findCrossSignals, type CrossSignalKind } from "./movingAverages";
 
 /**
@@ -250,6 +250,8 @@ export interface MarketContextItem {
 
 export interface PremarketReport {
   symbol: string;
+  /** ETF não tem balanço nem cobertura de analistas. */
+  kind: USListing;
   name: string;
   currency: string;
   generatedAt: string;

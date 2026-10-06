@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { PremarketDialog } from "./PremarketDialog";
 
-/** Abre o relatório pré-market do ativo (só aparece para ações americanas). */
+/** Abre o relatório pré-market do ativo (só aparece para ações e ETFs americanos). */
 export function PremarketButton({ symbol }: { symbol: string }) {
   const [open, setOpen] = useState(false);
   return (

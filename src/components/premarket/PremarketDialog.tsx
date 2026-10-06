@@ -17,10 +17,10 @@ const PHASE_NOTE: Record<OpeningPhase, string> = {
 };
 
 const GAP_TEXT: Record<GapSize, string> = {
-  small: "dentro do ruído normal do ativo; sozinho, não muda a leitura do gráfico.",
-  moderate: "relevante; observe se o preço sustenta o nível depois da abertura.",
+  small: "Dentro do ruído normal do ativo; sozinho, não muda a leitura do gráfico.",
+  moderate: "Relevante; observe se o preço sustenta o nível depois da abertura.",
   large:
-    "maior que a oscilação de um dia inteiro. Gaps assim costumam vir de notícia; veja no gráfico se é de rompimento, de continuação ou de exaustão.",
+    "Maior que a oscilação de um dia inteiro. Gaps assim costumam vir de notícia; veja no gráfico se é de rompimento, de continuação ou de exaustão.",
 };
 
 const GAP_LABEL: Record<GapSize, string> = { small: "Gap pequeno", moderate: "Gap moderado", large: "Gap grande" };
@@ -89,6 +89,12 @@ function Opening({ report }: { report: PremarketReport }) {
         <p className="rounded-lg bg-background/60 p-3 text-sm">
           <strong>{GAP_LABEL[gap.size]}:</strong> {num(gap.atrs)} ATR (a oscilação média diária dos últimos 14 pregões é{" "}
           {usd(atr)}). {GAP_TEXT[gap.size]}
+        </p>
+      )}
+      {report.kind === "etf" && opening.phase !== "open" && (
+        <p className="text-xs text-muted">
+          ETF fora do pregão: nos mais negociados (SPY, QQQ) o preço é confiável, mas em ETFs menores pode haver poucos negócios e
+          spread largo, e o preço pode se afastar do valor da carteira até a abertura.
         </p>
       )}
       {crossed && (
@@ -188,50 +194,57 @@ function Events({ report }: { report: PremarketReport }) {
   const { earnings, analysts, news } = report;
   return (
     <div className="flex flex-col gap-4">
-      <dl>
-        <Row label="Próximo balanço">
-          {earnings ? (
-            <span className={earnings.daysAway <= 7 ? "font-semibold text-warning" : ""}>
-              {date(earnings.date)}
-              {earnings.estimate && " (data estimada)"} · em {earnings.daysAway} {earnings.daysAway === 1 ? "dia" : "dias"}
-              {earnings.daysAway <= 7 && " · atenção: balanço costuma abrir gaps"}
-            </span>
-          ) : (
-            <span className="text-muted">sem data divulgada</span>
-          )}
-        </Row>
-        <Row label="Analistas (30 dias)">
-          {analysts.length === 0 ? (
-            <span className="text-muted">nenhuma mudança recente</span>
-          ) : (
-            <ul className="flex flex-col gap-1">
-              {analysts.map((a) => (
-                <li key={`${a.firm}-${a.date}`}>
-                  <span className="text-muted">{date(a.date)} · </span>
-                  {a.firm} {ANALYST_ACTION[a.action] ?? a.action} <strong>{a.toGrade}</strong>
-                  {a.priceTarget !== null && (
-                    <span className="text-muted">
-                      {" "}
-                      ·{" "}
-                      {a.priorPriceTarget === null || a.priorPriceTarget === a.priceTarget ? (
-                        <>alvo {usd(a.priceTarget)}</>
-                      ) : (
-                        <>
-                          alvo{" "}
-                          <span className={a.priceTarget > a.priorPriceTarget ? "text-positive" : "text-negative"}>
-                            {a.priceTarget > a.priorPriceTarget ? "elevado" : "cortado"} para {usd(a.priceTarget)}
-                          </span>{" "}
-                          (antes {usd(a.priorPriceTarget)})
-                        </>
-                      )}
-                    </span>
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
-        </Row>
-      </dl>
+      {report.kind === "etf" ? (
+        <p className="text-sm text-muted">
+          ETF não divulga balanço trimestral nem tem cobertura de analistas como as ações. Os eventos que movem um ETF são os das
+          empresas da carteira e os indicadores econômicos.
+        </p>
+      ) : (
+        <dl>
+          <Row label="Próximo balanço">
+            {earnings ? (
+              <span className={earnings.daysAway <= 7 ? "font-semibold text-warning" : ""}>
+                {date(earnings.date)}
+                {earnings.estimate && " (data estimada)"} · em {earnings.daysAway} {earnings.daysAway === 1 ? "dia" : "dias"}
+                {earnings.daysAway <= 7 && " · atenção: balanço costuma abrir gaps"}
+              </span>
+            ) : (
+              <span className="text-muted">sem data divulgada</span>
+            )}
+          </Row>
+          <Row label="Analistas (30 dias)">
+            {analysts.length === 0 ? (
+              <span className="text-muted">nenhuma mudança recente</span>
+            ) : (
+              <ul className="flex flex-col gap-1">
+                {analysts.map((a) => (
+                  <li key={`${a.firm}-${a.date}`}>
+                    <span className="text-muted">{date(a.date)} · </span>
+                    {a.firm} {ANALYST_ACTION[a.action] ?? a.action} <strong>{a.toGrade}</strong>
+                    {a.priceTarget !== null && (
+                      <span className="text-muted">
+                        {" "}
+                        ·{" "}
+                        {a.priorPriceTarget === null || a.priorPriceTarget === a.priceTarget ? (
+                          <>alvo {usd(a.priceTarget)}</>
+                        ) : (
+                          <>
+                            alvo{" "}
+                            <span className={a.priceTarget > a.priorPriceTarget ? "text-positive" : "text-negative"}>
+                              {a.priceTarget > a.priorPriceTarget ? "elevado" : "cortado"} para {usd(a.priceTarget)}
+                            </span>{" "}
+                            (antes {usd(a.priorPriceTarget)})
+                          </>
+                        )}
+                      </span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Row>
+        </dl>
+      )}
       <div>
         <p className="mb-2 text-sm font-medium text-muted">Notícias que citam {report.symbol}</p>
         {news.length === 0 ? (
@@ -323,7 +336,9 @@ export function PremarketDialog({ symbol, onClose }: { symbol: string; onClose: 
               Relatório pré-market · <span className="font-mono">{symbol}</span>
             </h2>
             <p className="text-sm text-muted">
-              {state.kind === "ready" ? `${state.report.name} · gerado às ${time(state.report.generatedAt)}` : "Ações do mercado americano"}
+              {state.kind === "ready"
+                ? `${state.report.kind === "etf" ? "ETF · " : ""}${state.report.name} · gerado às ${time(state.report.generatedAt)}`
+                : "Ações e ETFs do mercado americano"}
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-1">
