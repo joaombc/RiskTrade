@@ -12,8 +12,9 @@ vi.mock("yahoo-finance2", () => ({
   },
 }));
 
-const { AssetNotFoundError, getAssetSummary, getHistory } = await import("./yahoo");
+const { AssetNotFoundError, getAssetSummary, getHistory, getPremarketReport, NotUSStockError } = await import("./yahoo");
 const { GET: historyRoute } = await import("../app/api/history/route");
+const { GET: premarketRoute } = await import("../app/api/premarket/route");
 
 const NO_DATA = new Error("No data found, symbol may be delisted");
 
@@ -82,3 +83,28 @@ describe("getAssetSummary", () => {
     expect(summary.avgVolume20d).toBeNull();
   });
 });
+
+describe("relatório pré-market", () => {
+  it("recusa ativos que não são ações americanas", async () => {
+    quote.mockResolvedValue({ symbol: "PETR4.SA", market: "br_market", quoteType: "EQUITY", regularMarketPrice: 50 });
+    await expect(getPremarketReport("PETR4.SA")).rejects.toBeInstanceOf(NotUSStockError);
+    quote.mockResolvedValue({ symbol: "SPY", market: "us_market", quoteType: "ETF", regularMarketPrice: 700 });
+    await expect(getPremarketReport("SPY")).rejects.toBeInstanceOf(NotUSStockError);
+  });
+
+  it("a rota responde 400 com mensagem clara para ativos fora do escopo", async () => {
+    quote.mockResolvedValue({ symbol: "BTC-USD", market: "ccc_market", quoteType: "CRYPTOCURRENCY", regularMarketPrice: 80000 });
+    const res = await premarketRoute(new Request("http://localhost/api/premarket?symbol=BTC-USD"));
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe("O relatório pré-market é só para ações do mercado americano.");
+  });
+
+  it("o card marca só ações americanas", async () => {
+    quote.mockResolvedValue({ symbol: "MDB", market: "us_market", quoteType: "EQUITY", regularMarketPrice: 360, marketState: "PRE" });
+    chart.mockRejectedValue(NO_DATA);
+    expect((await getAssetSummary("MDB")).isUSStock).toBe(true);
+    quote.mockResolvedValue({ symbol: "PETR4.SA", market: "br_market", quoteType: "EQUITY", regularMarketPrice: 50 });
+    expect((await getAssetSummary("PETR4.SA")).isUSStock).toBe(false);
+  });
+});
+
