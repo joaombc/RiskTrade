@@ -242,3 +242,87 @@ export function findCrossSignals(lines: { period: number; values: Values }[]): C
   }
   return [...confirmed, ...alerts].sort((a, b) => a.index - b.index);
 }
+
+// ─── Sinais dos envelopes (aula de médias móveis: táticas de curto prazo) ───────
+
+/** Contexto do mercado em cada candle, pela inclinação da média. */
+export type EnvelopeRegime = "lateral" | "up" | "down";
+
+/** buy/sell abrem posição; exit é o alvo de realização da posição a favor da tendência. */
+export type EnvelopeSignalKind = "buy" | "sell" | "exit";
+
+export interface EnvelopeSignal {
+  index: number;
+  kind: EnvelopeSignalKind;
+  regime: EnvelopeRegime;
+  /** Linha tocada: banda de cima, banda de baixo ou a média central. */
+  line: "upper" | "lower" | "mean";
+}
+
+export const ENVELOPE_SIGNAL_LABELS: Record<EnvelopeSignalKind, string> = {
+  buy: "Compra",
+  sell: "Venda",
+  exit: "Realizar",
+};
+
+export const ENVELOPE_REGIME_LABELS: Record<EnvelopeRegime, string> = {
+  lateral: "lateral",
+  up: "tendência de alta",
+  down: "tendência de baixa",
+};
+
+/**
+ * Contexto no candle `i`: há tendência quando a média andou mais que metade da largura do
+ * envelope em meio período (ex.: MMS 21 ± 3% → mais de 1,5% em 10 candles); senão, lateral.
+ * Null enquanto a média não tem valores suficientes.
+ */
+export function envelopeRegime(mean: Values, i: number, period: number, percent: number): EnvelopeRegime | null {
+  const lookback = Math.max(2, Math.round(period / 2));
+  const [now, before] = [mean[i], mean[i - lookback]];
+  if (now == null || before == null) return null;
+  const change = ((now - before) / before) * 100;
+  return change > percent / 2 ? "up" : change < -percent / 2 ? "down" : "lateral";
+}
+
+/**
+ * Sinais dos envelopes, com as táticas da aula:
+ * - lateral (reversão à média): máxima na banda de cima = venda; mínima na de baixo = compra;
+ * - alta (a favor): mínima tocando a média = compra; máxima na banda de cima = realizar;
+ * - baixa (a favor): máxima tocando a média = venda; mínima na banda de baixo = realizar.
+ * Cada sinal vale só no primeiro candle do toque.
+ */
+export function findEnvelopeSignals(
+  bars: { high: number; low: number }[],
+  mean: Values,
+  period: number,
+  percent: number,
+): EnvelopeSignal[] {
+  const upper = envelopeLine(mean, percent, "upper");
+  const lower = envelopeLine(mean, percent, "lower");
+  const reaches = (i: number, line: "upper" | "lower" | "mean", from: "above" | "below") => {
+    const level = line === "upper" ? upper[i] : line === "lower" ? lower[i] : mean[i];
+    if (level == null || i < 0) return false;
+    // "below" = o preço chega por baixo (a máxima alcança a linha); "above" = chega por cima.
+    return from === "below" ? bars[i].high >= level : bars[i].low <= level;
+  };
+  const fresh = (i: number, line: "upper" | "lower" | "mean", from: "above" | "below") =>
+    reaches(i, line, from) && !reaches(i - 1, line, from);
+
+  const signals: EnvelopeSignal[] = [];
+  for (let i = 1; i < bars.length; i++) {
+    const regime = envelopeRegime(mean, i, period, percent);
+    if (!regime) continue;
+    const add = (kind: EnvelopeSignalKind, line: EnvelopeSignal["line"]) => signals.push({ index: i, kind, regime, line });
+    if (regime === "lateral") {
+      if (fresh(i, "upper", "below")) add("sell", "upper");
+      if (fresh(i, "lower", "above")) add("buy", "lower");
+    } else if (regime === "up") {
+      if (fresh(i, "mean", "above")) add("buy", "mean");
+      if (fresh(i, "upper", "below")) add("exit", "upper");
+    } else {
+      if (fresh(i, "mean", "below")) add("sell", "mean");
+      if (fresh(i, "lower", "above")) add("exit", "lower");
+    }
+  }
+  return signals;
+}
