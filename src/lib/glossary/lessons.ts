@@ -1,3 +1,4 @@
+import { CHANNEL_DIAGRAMS } from "./channel-diagrams";
 import { MA_DIAGRAMS } from "./ma-diagrams";
 import type { Diagram, Lesson } from "./types";
 
@@ -445,7 +446,7 @@ export const LESSONS: Lesson[] = [
       {
         heading: "Alternativas e ajustes",
         paragraphs: [
-          "Regra das 4 semanas, de Richard Donchian: compre quando o preço passar a máxima das quatro semanas anteriores e venda quando perder a mínima delas. Em testes de sistemas de futuros, ficou entre os melhores, ao lado do cruzamento de médias. Para sair antes, use uma regra de 1 ou 2 semanas; para filtrar a lateralidade, aumente para 8.",
+          "Regra das 4 semanas, de Richard Donchian (com aula própria nesta seção): compre quando o preço passar a máxima das quatro semanas anteriores e venda quando perder a mínima delas. Em testes de sistemas de futuros, ficou entre os melhores, ao lado do cruzamento de médias. Para sair antes, use uma regra de 1 ou 2 semanas; para filtrar a lateralidade, aumente para 8.",
           "Otimizar ou não: dá para pedir ao computador o melhor período de média para cada mercado, mas o resultado só vale se for testado em dados que não foram usados na escolha. Murphy sugere otimizar quem acompanha poucos mercados, e usar os mesmos parâmetros em todos quem acompanha muitos, como quem segue milhares de ações.",
           "Média adaptativa, de Perry Kaufman: ajusta a própria velocidade comparando direção com volatilidade. Fica lenta quando o mercado anda de lado e rápida quando ele tem tendência.",
         ],
@@ -482,6 +483,106 @@ export const LESSONS: Lesson[] = [
       "Duas médias (cruzamento duplo) erram menos que uma só.",
       "Envelopes e bandas de Bollinger mostram quando o preço esticou; bandas apertadas antecedem movimentos fortes.",
       "No mercado lateral, as médias falham: aí entram os osciladores.",
+    ],
+  },
+  {
+    slug: "regra-das-4-semanas",
+    title: "Regra das 4 Semanas",
+    subtitle: "O sistema de rompimento de Donchian: simples e testado",
+    summary:
+      "Comprar quando o preço passa a máxima das quatro semanas anteriores e vender quando perde a mínima. Como usar a regra, a versão que sai antes, os ajustes de sensibilidade e por que 1, 2, 4 e 8 semanas têm a ver com ciclos.",
+    readingMinutes: 8,
+    source: "Murphy, Technical Analysis of the Financial Markets, cap. 9 (A regra semanal, pp. 215–219)",
+    relatedTerms: ["rompimento", "suporte-e-resistencia", "canal", "pullback", "linha-de-tendencia"],
+    sections: [
+      {
+        heading: "Origem",
+        paragraphs: [
+          "A regra das 4 semanas foi criada por Richard Donchian, um dos pioneiros dos sistemas mecânicos de seguir tendência em futuros. Em 1970, o Trader's Notebook, da Dunn & Hargitt, testou em computador os sistemas mais conhecidos da época e concluiu que o mais lucrativo de todos era justamente essa regra.",
+          "Estudos posteriores de Louis Lukac confirmaram o resultado. Entre 12 sistemas testados de 1975 a 1984, só 4 deram lucro significativo, e 2 deles eram de rompimento de canal (o terceiro, um cruzamento duplo de médias). Num estudo maior, com 23 sistemas de 1976 a 1986, os rompimentos de canal e as médias móveis voltaram a ficar no topo, e Lukac passou a usar o rompimento de canal como ponto de partida para desenvolver qualquer sistema.",
+        ],
+      },
+      {
+        heading: "A regra",
+        paragraphs: [
+          "A versão original, pensada para futuros, tem só duas linhas:",
+        ],
+        bullets: [
+          "Zere as vendas e compre quando o preço passar a máxima das quatro semanas completas anteriores.",
+          "Zere as compras e venda quando o preço perder a mínima das quatro semanas completas anteriores.",
+        ],
+        diagram: {
+          diagram: CHANNEL_DIAGRAMS.breakout,
+          caption: "O canal de 4 semanas (cerca de 20 pregões) acompanha a máxima e a mínima recentes; a compra vem quando o preço sai da lateralidade e passa a máxima.",
+        },
+      },
+      {
+        heading: "Contínua ou não contínua",
+        paragraphs: [
+          "Do jeito original, a regra é contínua: o sistema está sempre posicionado, comprado ou vendido, porque cada sinal zera a posição anterior e abre a oposta. O ponto fraco de todo sistema contínuo é ficar no mercado durante as fases sem tendência, levando violinadas, e os sistemas de seguir tendência vão mal justamente nessas fases.",
+          "A correção é torná-la não contínua: um rompimento de 4 semanas abre a posição, mas um sinal contrário mais curto, de 1 ou 2 semanas, já a encerra. Depois disso, o trader fica de fora até aparecer um novo rompimento de 4 semanas.",
+        ],
+        diagram: {
+          diagram: CHANNEL_DIAGRAMS.nonContinuous,
+          caption: "Versão não contínua: a compra entra no rompimento de 4 semanas e sai quando o preço perde a mínima de 2 semanas, bem antes da mínima de 4 semanas.",
+        },
+      },
+      {
+        heading: "Por que funciona",
+        paragraphs: [
+          "A regra segue princípios técnicos sólidos e dá sinais mecânicos e claros. Por seguir a tendência, garante participação do lado certo de toda tendência importante e cumpre a velha máxima de deixar o lucro correr e cortar o prejuízo cedo. Ela também opera pouco, o que reduz custos, e pode ser aplicada com ou sem computador.",
+          "A crítica é a mesma de qualquer sistema de seguir tendência: não pega topos nem fundos. Mas nenhum sistema desse tipo pega, e Murphy observa que a regra das 4 semanas vai pelo menos tão bem quanto a maioria deles, com a vantagem da simplicidade.",
+        ],
+      },
+      {
+        heading: "Ajustes",
+        paragraphs: [
+          "A regra não precisa ser usada como sistema completo. Os sinais semanais também servem como indicador para identificar rompimentos e viradas, ou como filtro para outras técnicas. Por exemplo, um cruzamento de médias só é operado se um rompimento de 2 semanas na mesma direção o confirmar.",
+          "O período também pode ser encurtado ou alongado, de acordo com o risco e a sensibilidade desejados:",
+        ],
+        bullets: [
+          "Mais curto, para ficar mais sensível: num mercado que subiu forte, quem comprou no rompimento de 4 semanas com stop abaixo da mínima de 2 semanas pode passar a usar a mínima de 1 semana, protegendo mais o lucro.",
+          "Mais longo, para filtrar a lateralidade: num mercado de lado, ampliar para 8 semanas evita entrar em sinais curtos e prematuros, à espera de um rompimento importante.",
+          "Para entradas mais sensíveis, dá para usar 2 semanas também na entrada.",
+        ],
+        diagram: {
+          diagram: CHANNEL_DIAGRAMS.filter,
+          caption: "Num mercado lateral, a regra de 4 semanas dá vários sinais falsos (pontos), enquanto o canal de 8 semanas não é rompido nenhuma vez.",
+        },
+      },
+      {
+        heading: "Ciclos: por que 1, 2, 4 e 8 semanas",
+        paragraphs: [
+          "O ciclo mensal, de 4 semanas ou cerca de 20 pregões, é um dos mais fortes nos mercados, o que ajuda a explicar o sucesso das 4 semanas. Pelo princípio dos harmônicos, cada ciclo se relaciona com os vizinhos pelo fator 2: o próximo mais longo tem o dobro do tamanho, e o mais curto, a metade.",
+          "É a mesma lógica das médias de 5, 10, 20 e 40 dias, que em semanas viram 1, 2, 4 e 8. Por isso os ajustes funcionam melhor dividindo ou multiplicando por 2: para encurtar, de 4 para 2 semanas, e daí para 1; para alongar, de 4 para 8.",
+        ],
+      },
+      {
+        heading: "Canais de preço nos gráficos",
+        paragraphs: [
+          "Os programas de gráfico mostram a regra como um canal de preço: uma linha na máxima e outra na mínima dos últimos 20 pregões, acompanhando o preço. O sinal de compra vem quando o preço fecha acima do canal de cima, e só um fechamento abaixo do canal de baixo inverte o sinal. O canal funciona no diário, no semanal e no mensal.",
+        ],
+      },
+      {
+        heading: "No RiskTrade",
+        paragraphs: [
+          "O gráfico ainda não desenha o canal de preço, mas dá para aplicar a regra com as ferramentas atuais:",
+        ],
+        bullets: [
+          "Digite 20 no campo Dias do gráfico para ver as últimas 4 semanas de pregões (ou 40 para 8 semanas).",
+          "Marque a máxima e a mínima desse período com a ferramenta Suporte/Resistência: são o teto e o chão do canal.",
+          "Um fechamento acima do teto é o sinal de compra; abaixo do chão, de venda. Para a versão não contínua, marque também a mínima (ou a máxima) das últimas 2 semanas como saída.",
+          "Combine com o painel de cruzamento de médias para usar o rompimento de 2 semanas como filtro, como Murphy sugere.",
+        ],
+      },
+    ],
+    takeaways: [
+      "Compre quando o preço passar a máxima das 4 semanas anteriores; venda quando perder a mínima.",
+      "A regra foi o sistema mais lucrativo nos testes de 1970, e os rompimentos de canal seguiram no topo em estudos posteriores.",
+      "A versão contínua sofre na lateralidade; sair com um sinal de 1 ou 2 semanas a torna não contínua.",
+      "Encurte (2 ou 1 semana) para mais sensibilidade e alongue (8 semanas) para filtrar a lateralidade.",
+      "Os ajustes funcionam melhor multiplicando ou dividindo por 2, seguindo os ciclos: 1, 2, 4 e 8 semanas.",
+      "Como todo sistema de seguir tendência, não pega topos nem fundos, e não precisa pegar.",
     ],
   },
   {

@@ -183,3 +183,24 @@ describe("diagramas da aula de médias móveis", () => {
     }
   });
 });
+
+describe("diagramas da aula da regra das 4 semanas", () => {
+  it("mostram o rompimento, a saída antecipada e o filtro de 8 semanas como o texto descreve", async () => {
+    const { CHANNEL_DIAGRAMS } = await import("./channel-diagrams");
+    expect(CHANNEL_DIAGRAMS.breakout.points?.map((p) => p.label)).toEqual(["compra"]);
+    expect(CHANNEL_DIAGRAMS.nonContinuous.points?.map((p) => p.label)).toEqual(["compra", "saída"]);
+    expect(CHANNEL_DIAGRAMS.filter.points?.length).toBeGreaterThan(2);
+    for (const d of Object.values(CHANNEL_DIAGRAMS)) {
+      for (const curve of d.curves ?? []) {
+        for (const [x, y] of curve.path) expect(x >= 10 && x <= 190 && y >= 10 && y <= 92).toBe(true);
+      }
+    }
+  });
+
+  it("no diagrama do filtro, o canal de 8 semanas de fato não é rompido", async () => {
+    const { channelSystem, FOUR_WEEKS } = await import("../priceChannel");
+    const { FILTER_BARS } = await import("./channel-diagrams");
+    expect(channelSystem(FILTER_BARS, FOUR_WEEKS)).not.toEqual([]);
+    expect(channelSystem(FILTER_BARS, FOUR_WEEKS * 2)).toEqual([]);
+  });
+});
