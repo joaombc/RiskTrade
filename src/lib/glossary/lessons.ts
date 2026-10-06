@@ -383,6 +383,28 @@ export const LESSONS: Lesson[] = [
         },
       },
       {
+        heading: "Envelopes no mercado lateral: reversão à média",
+        paragraphs: [
+          "Murphy usa os envelopes para medir quando o preço esticou. Na prática, os traders de curto prazo transformam isso em duas táticas, e a escolha depende do contexto. A primeira vale quando o mercado está andando de lado, numa consolidação sem tendência definida: o preço tende a voltar para a média depois de se afastar dela.",
+        ],
+        bullets: [
+          "Venda curta: o preço sobe até a banda de cima (por exemplo, +3%) ou a ultrapassa, sinal de sobrecompra. O primeiro alvo é a volta do preço até a média central.",
+          "Compra curta: o preço cai até a banda de baixo (−3%) ou a ultrapassa, sinal de sobrevenda. O alvo é a volta do preço até a média central.",
+          "O stop fica além da banda tocada: se o preço continuar se afastando, a lateralidade pode estar virando tendência, e aí a tática certa é a próxima.",
+        ],
+      },
+      {
+        heading: "Envelopes em tendência: operar a favor",
+        paragraphs: [
+          "Com uma tendência de alta ou de baixa bem estabelecida, a leitura muda: tocar a banda deixa de ser excesso e passa a ser sinal de força. O preço pode andar colado na banda, arrastando-a junto, e quem opera contra perde a tendência inteira.",
+        ],
+        bullets: [
+          "Em tendência de alta: não venda na banda de cima. Os recuos até a média central ou até a banda de baixo são os pontos de compra a favor da tendência, e a banda de cima passa a ser o alvo para realizar o lucro.",
+          "Em tendência de baixa: o inverso. Os repiques até a média central ou até a banda de cima são usados para abrir posições vendidas a favor da tendência principal, com a banda de baixo como alvo.",
+          "Para saber em qual caso você está, olhe a inclinação da média e a sequência de topos e fundos: média de lado e preço oscilando entre as bandas indicam lateralidade; média inclinada e topos e fundos subindo (ou caindo) indicam tendência.",
+        ],
+      },
+      {
         heading: "Bandas de Bollinger",
         paragraphs: [
           "Criadas por John Bollinger, ficam a dois desvios-padrão acima e abaixo de uma média de 20 períodos. Com dois desvios, cerca de 95% dos preços ficam dentro das bandas. Tocar a de cima indica sobrecompra; a de baixo, sobrevenda.",
