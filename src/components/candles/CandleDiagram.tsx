@@ -1,3 +1,7 @@
+"use client";
+
+import { fmt } from "@/i18n/format";
+import { useI18n } from "@/i18n/I18nProvider";
 import type { CandleVariant, Ohlc } from "@/lib/candles/types";
 
 const CONTEXT_CANDLES = 4;
@@ -25,6 +29,7 @@ export function contextCandles(variant: CandleVariant): Ohlc[] {
 
 /** Desenho das velas de uma versão do padrão, com a tendência anterior apagada. */
 export function CandleDiagram({ variant, large = false }: { variant: CandleVariant; large?: boolean }) {
+  const { candleUi: c } = useI18n().t;
   const context = contextCandles(variant);
   const all = [...context, ...variant.candles];
   // Velas básicas (sem contexto) usam a escala fixa dos dados (0–100), para que um dia curto
@@ -39,7 +44,7 @@ export function CandleDiagram({ variant, large = false }: { variant: CandleVaria
   return (
     <svg
       role="img"
-      aria-label={`${variant.name}: ${variant.candles.length} ${variant.candles.length === 1 ? "vela" : "velas"}`}
+      aria-label={fmt(variant.candles.length === 1 ? c.diagramOne : c.diagramMany, { name: variant.name, n: variant.candles.length })}
       viewBox={`0 0 ${width} ${HEIGHT}`}
       className={large ? "h-48 w-auto max-w-full" : "h-28 w-auto max-w-full"}
     >

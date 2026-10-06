@@ -1,14 +1,16 @@
 "use client";
 
 import { useLayoutEffect } from "react";
+import { useI18n } from "@/i18n/I18nProvider";
 import { restoreSavedTheme, setTheme, useTheme } from "@/lib/theme";
 
 /** Alterna entre tema claro e escuro. Sem escolha salva, o site segue o tema do sistema. */
 export function ThemeToggle() {
   const theme = useTheme();
+  const { t } = useI18n();
   useLayoutEffect(restoreSavedTheme, []);
   const next = theme === "dark" ? "light" : "dark";
-  const label = next === "dark" ? "Ativar tema escuro" : "Ativar tema claro";
+  const label = next === "dark" ? t.header.themeToDark : t.header.themeToLight;
 
   return (
     <button

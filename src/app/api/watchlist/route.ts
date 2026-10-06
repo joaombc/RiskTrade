@@ -8,7 +8,7 @@ export async function GET(request: Request) {
 
   if (symbols.length === 0) return Response.json({ quotes: [] });
   if (symbols.length > MAX_WATCHLIST_SIZE || !symbols.every((s) => SYMBOL_PATTERN.test(s))) {
-    return Response.json({ error: "Lista de tickers inválida." }, { status: 400 });
+    return Response.json({ error: "Lista de tickers inválida.", code: "invalid_list" }, { status: 400 });
   }
 
   try {
@@ -17,7 +17,7 @@ export async function GET(request: Request) {
   } catch (error) {
     console.error("[api/watchlist]", error);
     return Response.json(
-      { error: "Serviço do Yahoo Finance indisponível no momento. Tente novamente em instantes." },
+      { error: "Serviço do Yahoo Finance indisponível no momento. Tente novamente em instantes.", code: "unavailable" },
       { status: 502 },
     );
   }

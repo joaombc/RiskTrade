@@ -1,4 +1,8 @@
-import { BIAS_LABELS, KIND_LABELS, type CandlePattern } from "@/lib/candles/types";
+"use client";
+
+import { fmt } from "@/i18n/format";
+import { useI18n } from "@/i18n/I18nProvider";
+import type { CandlePattern } from "@/lib/candles/types";
 import { CandleDiagram } from "./CandleDiagram";
 
 const BIAS_CLASS = {
@@ -8,18 +12,19 @@ const BIAS_CLASS = {
 } as const;
 
 export function PatternBadges({ pattern }: { pattern: CandlePattern }) {
+  const { candleUi: c } = useI18n().t;
   const biases = [...new Set(pattern.variants.map((v) => v.bias))];
   return (
     <div className="flex flex-wrap gap-1">
-      <span className="rounded-full bg-border/60 px-2 py-0.5 text-[11px] font-medium text-muted">{KIND_LABELS[pattern.kind]}</span>
+      <span className="rounded-full bg-border/60 px-2 py-0.5 text-[11px] font-medium text-muted">{c.kinds[pattern.kind]}</span>
       {pattern.kind !== "basic" &&
         biases.map((b) => (
           <span key={b} className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${BIAS_CLASS[b]}`}>
-            {BIAS_LABELS[b]}
+            {c.bias[b]}
           </span>
         ))}
       <span className="rounded-full bg-border/60 px-2 py-0.5 text-[11px] font-medium text-muted">
-        {pattern.candleCount} {pattern.candleCount === 1 ? "vela" : "velas"}
+        {fmt(pattern.candleCount === 1 ? c.candleOne : c.candleMany, { n: pattern.candleCount })}
       </span>
     </div>
   );
@@ -27,6 +32,7 @@ export function PatternBadges({ pattern }: { pattern: CandlePattern }) {
 
 /** Card compacto; o título, o diagrama e "Ver detalhes" abrem o card ampliado (#slug). */
 export function CandleCard({ pattern }: { pattern: CandlePattern }) {
+  const { candleUi: c } = useI18n().t;
   return (
     <article className="flex flex-col gap-3 rounded-2xl border border-border bg-surface p-5 shadow-sm">
       <header className="flex flex-col gap-1.5">
@@ -41,7 +47,7 @@ export function CandleCard({ pattern }: { pattern: CandlePattern }) {
 
       <a
         href={`#${pattern.slug}`}
-        aria-label={`Ver detalhes de ${pattern.name}`}
+        aria-label={fmt(c.detailsOf, { name: pattern.name })}
         className="flex flex-wrap items-end justify-center gap-4 rounded-xl border border-border/70 bg-background/60 p-3 transition-colors hover:border-accent/60"
       >
         {pattern.variants.map((v) => (
@@ -56,7 +62,7 @@ export function CandleCard({ pattern }: { pattern: CandlePattern }) {
 
       <footer className="mt-auto pt-1">
         <a href={`#${pattern.slug}`} className="inline-block rounded-lg border border-border px-3 py-1.5 text-sm font-medium hover:bg-border/60">
-          Ver detalhes
+          {c.details}
         </a>
       </footer>
     </article>

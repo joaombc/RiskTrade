@@ -21,6 +21,9 @@ import {
   type Time,
   type UTCTimestamp,
 } from "lightweight-charts";
+import { apiErrorMessage } from "@/i18n/apiError";
+import { fmt } from "@/i18n/format";
+import { useI18n } from "@/i18n/I18nProvider";
 import { bollinger, loadBollingerEnabled, readBollinger, saveBollingerEnabled } from "@/lib/bollinger";
 import {
   channelSystemState,
@@ -38,7 +41,6 @@ import type { TermExample } from "@/lib/glossary/types";
 import { computeOBV, findDivergences, type Divergence } from "@/lib/indicators";
 import {
   HISTORY_RANGES,
-  INTERVAL_LABELS,
   isIntraday,
   rangeSpec,
   sameBars,
@@ -90,10 +92,10 @@ const REFRESH_MS = 60_000;
  * Datas e horas em português. No intradiário, as horas saem no fuso do computador; nos
  * candles diários, a data fica em UTC, que é como o Yahoo marca o dia de cada candle.
  */
-function timeFormatting(intraday: boolean) {
+function timeFormatting(intraday: boolean, locale: string) {
   const timeZone = intraday ? undefined : "UTC";
   const format = (time: Time, options: Intl.DateTimeFormatOptions) =>
-    new Date((time as number) * 1000).toLocaleString("pt-BR", { timeZone, ...options });
+    new Date((time as number) * 1000).toLocaleString(locale, { timeZone, ...options });
   return {
     timeFormatter: (time: Time) =>
       format(
@@ -201,6 +203,8 @@ interface PriceChartProps {
 
 export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", example = null, onCloseExample }: PriceChartProps) {
   const theme = CHART_THEMES[useTheme()];
+  const { t, locale } = useI18n();
+  const canvasLabels = useMemo(() => ({ locale, ...t.drawings.canvas }), [locale, t]);
   const containerRef = useRef<HTMLDivElement>(null);
   const handlesRef = useRef<ChartHandles | null>(null);
   const cursorRef = useRef<Anchor | null>(null);
@@ -433,6 +437,15 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
     handles.drawings.setPalette(theme.drawings);
   }, [theme]);
 
+  // Textos do idioma: títulos das séries e rótulos escritos pelos desenhos.
+  useEffect(() => {
+    const handles = handlesRef.current;
+    if (!handles) return;
+    handles.volume.applyOptions({ title: t.chart.series.volume });
+    handles.obv.applyOptions({ title: t.chart.series.obv });
+    handles.drawings.setLabels(canvasLabels);
+  }, [t, canvasLabels]);
+
   useEffect(() => {
     const handles = handlesRef.current;
     if (!handles) return;
@@ -481,7 +494,7 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
           signal: controller.signal,
         });
         const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(data.error ?? "Falha ao carregar o histórico.");
+        if (!res.ok) throw new Error(apiErrorMessage(t.errors, data, t.errors.historyFailed));
         const next: History = {
           key,
           bars: data.bars,
@@ -524,17 +537,17 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
       controller.abort();
       clearInterval(id);
     };
-  }, [symbol, range, key]);
+  }, [symbol, range, key, t.errors]);
 
   // Horas no eixo do tempo só nos períodos intradiários.
   useEffect(() => {
     const intraday = isIntraday(range);
-    const { timeFormatter, tickMarkFormatter } = timeFormatting(intraday);
+    const { timeFormatter, tickMarkFormatter } = timeFormatting(intraday, locale);
     handlesRef.current?.chart.applyOptions({
-      localization: { locale: "pt-BR", timeFormatter },
+      localization: { locale, timeFormatter },
       timeScale: { timeVisible: intraday, secondsVisible: false, tickMarkFormatter },
     });
-  }, [range]);
+  }, [range, locale]);
 
   useEffect(() => {
     const handles = handlesRef.current;
@@ -627,8 +640,8 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
     if (!handles || !bars || !fourWeekSystem) return;
     const { entry, exit } = fourWeekSystem;
     const specs: [(number | null)[], string, LineStyle, string][] = [
-      [entry.upper, theme.down, LineStyle.Solid, `Máx. ${fourWeek.entryWeeks}S`],
-      [entry.lower, theme.up, LineStyle.Solid, `Mín. ${fourWeek.entryWeeks}S`],
+      [entry.upper, theme.down, LineStyle.Solid, fmt(t.chart.markers.channelHigh, { n: fourWeek.entryWeeks })],
+      [entry.lower, theme.up, LineStyle.Solid, fmt(t.chart.markers.channelLow, { n: fourWeek.entryWeeks })],
     ];
     if (exit && fourWeek.exitWeeks !== null) {
       specs.push([exit.upper, theme.drawings.muted, LineStyle.Dotted, ""], [exit.lower, theme.drawings.muted, LineStyle.Dotted, ""]);
@@ -662,7 +675,7 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
         if (alive.includes(line)) handles.chart.removeSeries(line);
       });
     };
-  }, [bars, fourWeekSystem, fourWeek.entryWeeks, fourWeek.exitWeeks, theme]);
+  }, [bars, fourWeekSystem, fourWeek.entryWeeks, fourWeek.exitWeeks, theme, t]);
 
   // Bandas de Bollinger: bandas de cima e de baixo e a média central tracejada, numa cor neutra.
   useEffect(() => {
@@ -717,7 +730,7 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
         lineType: LineType.WithSteps,
         priceFormat: { type: "volume" },
         priceLineVisible: false,
-        title: "Int. aberto",
+        title: t.chart.series.openInterest,
       },
       OPEN_INTEREST_PANE,
     );
@@ -735,7 +748,7 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
       handles.chart.removeSeries(series);
       if (handles.chart.panes().length > OPEN_INTEREST_PANE) handles.chart.removePane(OPEN_INTEREST_PANE);
     };
-  }, [bars, openInterest, theme]);
+  }, [bars, openInterest, theme, t.chart.series.openInterest]);
 
   // Exemplo do glossário: aproxima o gráfico da janela do padrão (uma vez por exemplo carregado).
   useEffect(() => {
@@ -779,40 +792,41 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
         shape: d.kind === "bearish" ? "arrowDown" : "arrowUp",
         color: colorOf(d),
         // Texto curto: divergências encadeadas ficam próximas; cor e seta já indicam o tipo.
-        text: "Div.",
+        text: t.chart.series.divergence,
       }),
     );
+    const mk = t.chart.markers;
     const crossStyle: Record<
       CrossSignal["kind"],
       { position: "aboveBar" | "belowBar"; shape: "arrowUp" | "arrowDown" | "circle"; color: string; text: string }
     > = {
-      buy: { position: "belowBar", shape: "arrowUp", color: theme.up, text: "Compra" },
-      sell: { position: "aboveBar", shape: "arrowDown", color: theme.down, text: "Venda" },
-      "buy-alert": { position: "belowBar", shape: "circle", color: theme.up, text: "Alerta" },
-      "sell-alert": { position: "aboveBar", shape: "circle", color: theme.down, text: "Alerta" },
+      buy: { position: "belowBar", shape: "arrowUp", color: theme.up, text: mk.buy },
+      sell: { position: "aboveBar", shape: "arrowDown", color: theme.down, text: mk.sell },
+      "buy-alert": { position: "belowBar", shape: "circle", color: theme.up, text: mk.alert },
+      "sell-alert": { position: "aboveBar", shape: "circle", color: theme.down, text: mk.alert },
     };
     const crossMarkers = (showCrossSignals ? crossSignals : []).map(
       (signal): SeriesMarker<Time> => ({ time: time(signal.index), ...crossStyle[signal.kind] }),
     );
     const envelopeMarkers = (showEnvelopeSignals ? envelopeSignals : []).map((signal: EnvelopeSignal): SeriesMarker<Time> => {
-      if (signal.kind === "buy") return { time: time(signal.index), position: "belowBar", shape: "arrowUp", color: theme.up, text: "Compra" };
-      if (signal.kind === "sell") return { time: time(signal.index), position: "aboveBar", shape: "arrowDown", color: theme.down, text: "Venda" };
+      if (signal.kind === "buy") return { time: time(signal.index), position: "belowBar", shape: "arrowUp", color: theme.up, text: mk.buy };
+      if (signal.kind === "sell") return { time: time(signal.index), position: "aboveBar", shape: "arrowDown", color: theme.down, text: mk.sell };
       return {
         time: time(signal.index),
         position: signal.line === "upper" ? "aboveBar" : "belowBar",
         shape: "circle",
         color: theme.drawings.target,
-        text: "Realizar",
+        text: mk.takeProfit,
       };
     });
-    const weekTag = `${fourWeek.entryWeeks}S`;
+    const weekTag = fmt(mk.weeks, { n: fourWeek.entryWeeks });
     const fourWeekMarkers = (showFourWeekSignals && fourWeekSystem ? fourWeekSystem.state.signals : []).map(
       (signal): SeriesMarker<Time> =>
         signal.kind === "buy"
-          ? { time: time(signal.index), position: "belowBar", shape: "arrowUp", color: theme.up, text: `Compra ${weekTag}` }
+          ? { time: time(signal.index), position: "belowBar", shape: "arrowUp", color: theme.up, text: `${mk.buy} ${weekTag}` }
           : signal.kind === "sell"
-            ? { time: time(signal.index), position: "aboveBar", shape: "arrowDown", color: theme.down, text: `Venda ${weekTag}` }
-            : { time: time(signal.index), position: "aboveBar", shape: "circle", color: theme.drawings.target, text: "Saída" },
+            ? { time: time(signal.index), position: "aboveBar", shape: "arrowDown", color: theme.down, text: `${mk.sell} ${weekTag}` }
+            : { time: time(signal.index), position: "aboveBar", shape: "circle", color: theme.drawings.target, text: mk.exit },
     );
     const exampleMarkers = resolvedExample.markers.map(
       (m): SeriesMarker<Time> => ({
@@ -881,6 +895,7 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
     fourWeekSystem,
     showFourWeekSignals,
     fourWeek.entryWeeks,
+    t,
   ]);
 
   useEffect(() => {
@@ -923,18 +938,18 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
   const selected = drawings.find((d) => d.id === selectedId) ?? null;
 
   return (
-    <section aria-label={`Gráfico de ${symbol}`} className="rounded-2xl border border-border bg-surface p-4 shadow-sm sm:p-5">
+    <section aria-label={fmt(t.chart.label, { symbol })} className="rounded-2xl border border-border bg-surface p-4 shadow-sm sm:p-5">
       <header className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-sm font-semibold">
-          Gráfico <span className="font-normal text-muted">· {INTERVAL_LABELS[rangeSpec(range).interval]}</span>
+          {t.chart.title} <span className="font-normal text-muted">· {t.chart.intervals[rangeSpec(range).interval]}</span>
           {updatedAt !== null && !loading && (
-            <span className="font-normal text-muted" title="O gráfico se atualiza a cada minuto com a aba visível.">
+            <span className="font-normal text-muted" title={t.chart.updatedHint}>
               {" "}
-              · atualizado às {new Date(updatedAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+              {fmt(t.chart.updated, { time: new Date(updatedAt).toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" }) })}
             </span>
           )}
         </h2>
-        <div role="group" aria-label="Período" className="flex flex-wrap items-center gap-1">
+        <div role="group" aria-label={t.chart.period} className="flex flex-wrap items-center gap-1">
           {RANGE_KEYS.map((r) => (
             <button
               key={r}
@@ -943,7 +958,7 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
               onClick={() => setRange(r)}
               className={`rounded-md px-2 py-1 text-xs font-medium ${range === r ? "bg-foreground text-background" : "text-muted hover:bg-border/60"}`}
             >
-              {HISTORY_RANGES[r].label}
+              {t.chart.ranges[r]}
             </button>
           ))}
           <CustomRangeInput key={range} range={range} onChange={setRange} />
@@ -953,9 +968,9 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
       {example && (
         <div role="status" className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border border-target/40 bg-target/10 p-3 text-sm">
           <span className="min-w-0 flex-1">
-            <strong className="text-target">Exemplo do glossário: {example.name}.</strong> {example.example.description}
+            <strong className="text-target">{fmt(t.chart.example, { name: example.name })}</strong> {example.example.description}
             {bars && resolvedExample.drawings.length < (example.example.drawings?.length ?? 0) && (
-              <span className="text-muted"> Parte do exemplo está fora do período carregado.</span>
+              <span className="text-muted">{t.chart.exampleOutside}</span>
             )}
           </span>
           {resolvedExample.drawings.length > 0 && (
@@ -969,11 +984,11 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
               }
               className="rounded-md bg-target px-2.5 py-1 text-xs font-medium text-white hover:opacity-90"
             >
-              Copiar para meus desenhos
+              {t.chart.copyDrawings}
             </button>
           )}
           <button type="button" onClick={onCloseExample} className="text-xs font-medium text-muted hover:text-foreground">
-            Fechar exemplo
+            {t.chart.closeExample}
           </button>
         </div>
       )}
@@ -1000,7 +1015,7 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
         }
         onDeleteSelected={deleteSelected}
         onClearAll={() => {
-          if (window.confirm(`Apagar todos os ${drawings.length} desenhos de ${symbol}?`)) {
+          if (window.confirm(fmt(t.chart.confirmClear, { count: drawings.length, symbol }))) {
             setDrawings([]);
             setSelectedId(null);
           }
@@ -1012,7 +1027,7 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
         <div ref={containerRef} className={`h-full w-full ${tool ? "cursor-crosshair" : ""}`} />
         {loading && (
           <div role="status" className="absolute inset-0 flex items-center justify-center bg-surface/60 text-sm text-muted">
-            Carregando histórico…
+            {t.chart.loading}
           </div>
         )}
         {history?.error && history.key === key && (

@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { fmt } from "@/i18n/format";
+import { useI18n } from "@/i18n/I18nProvider";
 import {
   addMovingAverage,
   applyCombo,
@@ -8,7 +10,6 @@ import {
   isComboActive,
   isValidPeriod,
   MA_COMBOS,
-  MA_NAMES,
   MA_PRESETS,
   maId,
   maLabel,
@@ -46,6 +47,9 @@ export function MovingAverageBar({
   fourWeek,
   onFourWeekChange,
 }: Props) {
+  const { t } = useI18n();
+  const m = t.ma;
+  const label = (ma: Pick<MovingAverage, "kind" | "period">) => maLabel(ma, m.short);
   const [custom, setCustom] = useState<{ kind: MovingAverageKind; period: string } | null>(null);
   const full = averages.length >= MAX_MOVING_AVERAGES;
   const presets = MA_PRESETS.filter((p) => !averages.some((ma) => ma.id === maId(p.kind, p.period)));
@@ -54,15 +58,15 @@ export function MovingAverageBar({
   const customError = !custom
     ? null
     : !isValidPeriod(customPeriod)
-      ? `Use um período inteiro de ${MIN_MA_PERIOD} a ${MAX_MA_PERIOD}.`
+      ? fmt(m.invalidPeriod, { min: MIN_MA_PERIOD, max: MAX_MA_PERIOD })
       : averages.some((ma) => ma.id === maId(custom.kind, customPeriod))
-        ? "Essa média já está no gráfico."
+        ? m.duplicate
         : null;
 
   return (
     <div className="mt-3 flex flex-col gap-2">
-      <div role="group" aria-label="Médias móveis" className="flex flex-wrap items-center gap-1.5">
-        <span className="mr-1 text-xs font-semibold">Médias móveis</span>
+      <div role="group" aria-label={m.title} className="flex flex-wrap items-center gap-1.5">
+        <span className="mr-1 text-xs font-semibold">{m.title}</span>
 
         {averages.map((ma) => {
           const short = barCount !== null && barCount < ma.period;
@@ -77,8 +81,8 @@ export function MovingAverageBar({
                 onClick={() => onChange(averages.map((m) => (m.id === ma.id ? { ...m, visible: !m.visible } : m)))}
                 title={
                   short
-                    ? `Precisa de ${ma.period} candles; o Yahoo só tem ${barCount} neste intervalo. A linha começa no meio do gráfico.`
-                    : `${MA_NAMES[ma.kind]} de ${ma.period} candles. Clique para ${ma.visible ? "ocultar" : "mostrar"}.`
+                    ? fmt(m.fewCandlesHint, { period: ma.period, count: barCount })
+                    : fmt(m.chipHint, { name: m.names[ma.kind], period: ma.period, action: ma.visible ? m.hide : m.show })
                 }
                 className="flex items-center gap-1.5 py-1 pl-2.5 pr-1.5"
               >
@@ -87,13 +91,13 @@ export function MovingAverageBar({
                   className="h-2.5 w-2.5 rounded-full"
                   style={{ backgroundColor: ma.visible ? colors[ma.slot] : "transparent", border: `2px solid ${colors[ma.slot]}` }}
                 />
-                {maLabel(ma)}
-                {short && ma.visible && <span className="text-warning">· poucos candles</span>}
+                {label(ma)}
+                {short && ma.visible && <span className="text-warning">{m.fewCandles}</span>}
               </button>
               <button
                 type="button"
                 onClick={() => onChange(averages.filter((m) => m.id !== ma.id))}
-                aria-label={`Remover ${maLabel(ma)}`}
+                aria-label={fmt(m.remove, { label: label(ma) })}
                 className="rounded-full py-1 pl-1 pr-2.5 text-muted hover:text-foreground"
               >
                 ×
@@ -110,7 +114,7 @@ export function MovingAverageBar({
               onClick={() => onChange(addMovingAverage(averages, p.kind, p.period))}
               className={`${chip} border-dashed border-border px-2.5 py-1 text-muted hover:bg-border/60 hover:text-foreground`}
             >
-              + {maLabel(p)}
+              + {label(p)}
             </button>
           ))}
 
@@ -120,19 +124,16 @@ export function MovingAverageBar({
             onClick={() => setCustom({ kind: "ema", period: "" })}
             className={`${chip} border-dashed border-border px-2.5 py-1 text-muted hover:bg-border/60 hover:text-foreground`}
           >
-            + Personalizada
+            {m.custom}
           </button>
         )}
-        {full && <span className="text-xs text-muted">Limite de {MAX_MOVING_AVERAGES} médias: remova uma para adicionar outra.</span>}
+        {full && <span className="text-xs text-muted">{fmt(m.limit, { max: MAX_MOVING_AVERAGES })}</span>}
       </div>
 
       {averages.some((ma) => ma.kind === "sma" && ma.visible) && (
-        <div role="group" aria-label="Envelopes" className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
-          <span
-            className="text-xs font-semibold"
-            title="Linhas a uma porcentagem fixa acima e abaixo da média: mostram quando o preço esticou (Murphy, cap. 9)."
-          >
-            Envelopes
+        <div role="group" aria-label={m.envelopes} className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
+          <span className="text-xs font-semibold" title={m.envelopesHint}>
+            {m.envelopes}
           </span>
           {averages
             .filter((ma) => ma.kind === "sma" && ma.visible)
@@ -140,7 +141,7 @@ export function MovingAverageBar({
               <span key={ma.id} className="flex items-center gap-2 text-xs">
                 <span className="flex items-center gap-1 font-medium">
                   <span aria-hidden className="h-2 w-2 rounded-full" style={{ backgroundColor: colors[ma.slot] }} />
-                  {maLabel(ma)}
+                  {label(ma)}
                 </span>
                 {ENVELOPE_PERCENTS.map((percent) => (
                   <label key={percent} className="flex items-center gap-1 text-muted">
@@ -148,7 +149,7 @@ export function MovingAverageBar({
                       type="checkbox"
                       checked={ma.envelopes?.includes(percent) ?? false}
                       onChange={() => onChange(toggleEnvelope(averages, ma.id, percent))}
-                      aria-label={`Envelope de ${percent}% na ${maLabel(ma)}`}
+                      aria-label={fmt(m.envelopeOf, { percent, label: label(ma) })}
                     />
                     {percent}%
                   </label>
@@ -158,31 +159,25 @@ export function MovingAverageBar({
         </div>
       )}
 
-      <label
-        className="flex w-fit items-center gap-1.5 text-xs"
-        title="Média de 20 períodos com bandas a 2 desvios-padrão acima e abaixo (Murphy, cap. 9)."
-      >
+      <label className="flex w-fit items-center gap-1.5 text-xs" title={m.bollingerHint}>
         <input type="checkbox" checked={bollinger} onChange={(e) => onBollingerChange(e.target.checked)} />
-        <span className="font-semibold">Bandas de Bollinger</span>
-        <span className="text-muted">(MMS 20 ± 2 desvios)</span>
+        <span className="font-semibold">{m.bollinger}</span>
+        <span className="text-muted">{m.bollingerParams}</span>
       </label>
 
-      <div role="group" aria-label="Regra das 4 semanas" className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs">
-        <label
-          className="flex items-center gap-1.5"
-          title="Canal de preço de Donchian: compra no fechamento acima da máxima das semanas anteriores, venda abaixo da mínima (Murphy, cap. 9)."
-        >
+      <div role="group" aria-label={m.fourWeek} className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs">
+        <label className="flex items-center gap-1.5" title={m.fourWeekHint}>
           <input
             type="checkbox"
             checked={fourWeek.enabled}
             onChange={(e) => onFourWeekChange({ ...fourWeek, enabled: e.target.checked })}
           />
-          <span className="font-semibold">Regra das 4 semanas</span>
+          <span className="font-semibold">{m.fourWeek}</span>
         </label>
         {fourWeek.enabled && (
           <>
             <label className="flex items-center gap-1 text-muted">
-              Entrada
+              {m.entry}
               <select
                 value={fourWeek.entryWeeks}
                 onChange={(e) => {
@@ -195,13 +190,13 @@ export function MovingAverageBar({
               >
                 {ENTRY_WEEKS.map((w) => (
                   <option key={w} value={w}>
-                    {w} semanas{w === 4 ? " (original)" : w === 8 ? " (filtra lateral)" : " (sensível)"}
+                    {m.entryOption[String(w) as keyof typeof m.entryOption]}
                   </option>
                 ))}
               </select>
             </label>
             <label className="flex items-center gap-1 text-muted">
-              Saída
+              {m.exit}
               <select
                 value={fourWeek.exitWeeks ?? "continua"}
                 onChange={(e) =>
@@ -212,10 +207,10 @@ export function MovingAverageBar({
                 }
                 className="rounded-md border border-border bg-surface px-1.5 py-0.5"
               >
-                <option value="continua">Contínua (inverte no canal de entrada)</option>
+                <option value="continua">{m.continuous}</option>
                 {EXIT_WEEKS.filter((w) => w < fourWeek.entryWeeks).map((w) => (
                   <option key={w} value={w}>
-                    Não contínua: {w} {w === 1 ? "semana" : "semanas"}
+                    {m.exitOption[String(w) as keyof typeof m.exitOption]}
                   </option>
                 ))}
               </select>
@@ -224,8 +219,8 @@ export function MovingAverageBar({
         )}
       </div>
 
-      <div role="group" aria-label="Combinações de médias" className="flex flex-wrap items-center gap-1.5">
-        <span className="mr-1 text-xs font-semibold">Combinações</span>
+      <div role="group" aria-label={m.combosLabel} className="flex flex-wrap items-center gap-1.5">
+        <span className="mr-1 text-xs font-semibold">{m.combos}</span>
         {MA_COMBOS.map((combo) => {
           const active = isComboActive(averages, combo);
           return (
@@ -234,7 +229,7 @@ export function MovingAverageBar({
               type="button"
               aria-pressed={active}
               onClick={() => onChange(active ? [] : applyCombo(combo))}
-              title={`${combo.description}. ${active ? "Clique para remover." : "Substitui as médias do gráfico."}`}
+              title={`${m.comboDescriptions[combo.id as keyof typeof m.comboDescriptions] ?? combo.description}. ${active ? m.comboRemove : m.comboReplace}`}
               className={`${chip} px-2.5 py-1 tabular-nums ${
                 active ? "border-foreground bg-foreground text-background" : "border-border text-muted hover:bg-border/60 hover:text-foreground"
               }`}
@@ -256,18 +251,18 @@ export function MovingAverageBar({
           }}
         >
           <label className="flex items-center gap-1.5">
-            Tipo
+            {m.type}
             <select
               value={custom.kind}
               onChange={(e) => setCustom({ ...custom, kind: e.target.value as MovingAverageKind })}
               className="rounded-md border border-border bg-surface px-2 py-1"
             >
-              <option value="ema">{MA_NAMES.ema}</option>
-              <option value="sma">{MA_NAMES.sma}</option>
+              <option value="ema">{m.names.ema}</option>
+              <option value="sma">{m.names.sma}</option>
             </select>
           </label>
           <label className="flex items-center gap-1.5">
-            Período
+            {m.period}
             <input
               type="number"
               inputMode="numeric"
@@ -279,26 +274,24 @@ export function MovingAverageBar({
               onChange={(e) => setCustom({ ...custom, period: e.target.value })}
               className="w-20 rounded-md border border-border bg-surface px-2 py-1 tabular-nums"
             />
-            candles
+            {m.candles}
           </label>
           <button
             type="submit"
             disabled={custom.period === "" || customError !== null}
             className="rounded-md bg-accent px-2.5 py-1 font-medium text-white hover:opacity-90 disabled:opacity-40"
           >
-            Adicionar
+            {m.add}
           </button>
           <button type="button" onClick={() => setCustom(null)} className="font-medium text-muted hover:text-foreground">
-            Cancelar
+            {m.cancel}
           </button>
           {custom.period !== "" && customError && <span className="w-full text-negative">{customError}</span>}
         </form>
       )}
 
       {averages.length > 0 && (
-        <p className="text-xs text-muted">
-          O período conta candles do gráfico: no 1D, uma MME 21 cobre 21 candles de 5 minutos; no 1A, 21 pregões.
-        </p>
+        <p className="text-xs text-muted">{m.periodNote}</p>
       )}
     </div>
   );

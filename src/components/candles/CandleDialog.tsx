@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { fmt } from "@/i18n/format";
+import { useI18n } from "@/i18n/I18nProvider";
 import type { CandlePattern } from "@/lib/candles/types";
 import { PatternBadges } from "./CandleCard";
 import { CandleDiagram } from "./CandleDiagram";
@@ -8,6 +10,7 @@ import { CandleDiagram } from "./CandleDiagram";
 /** Card ampliado do padrão de candle. */
 export function CandleDialog({ pattern, onClose }: { pattern: CandlePattern | null; onClose: () => void }) {
   const ref = useRef<HTMLDialogElement>(null);
+  const { candleUi: c } = useI18n().t;
 
   useEffect(() => {
     const dialog = ref.current;
@@ -36,7 +39,7 @@ export function CandleDialog({ pattern, onClose }: { pattern: CandlePattern | nu
               <p className="text-sm italic text-muted">{pattern.englishName}</p>
               <PatternBadges pattern={pattern} />
             </div>
-            <button type="button" onClick={onClose} aria-label="Fechar" className="rounded-lg p-2 text-muted hover:bg-border/60 hover:text-foreground">
+            <button type="button" onClick={onClose} aria-label={c.close} className="rounded-lg p-2 text-muted hover:bg-border/60 hover:text-foreground">
               <svg aria-hidden viewBox="0 0 20 20" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
                 <path d="m5 5 10 10M15 5 5 15" />
               </svg>
@@ -52,14 +55,14 @@ export function CandleDialog({ pattern, onClose }: { pattern: CandlePattern | nu
             ))}
           </div>
           {pattern.kind !== "basic" && (
-            <p className="-mt-3 text-center text-xs text-muted">As velas apagadas mostram a tendência anterior, em que o padrão vale.</p>
+            <p className="-mt-3 text-center text-xs text-muted">{c.contextNote}</p>
           )}
 
           <p className="leading-relaxed">{pattern.summary}</p>
 
           <div className="grid gap-4 sm:grid-cols-2">
             <section className="rounded-xl border border-border p-4 sm:col-span-2">
-              <h3 className="mb-1.5 text-sm font-semibold">Como reconhecer</h3>
+              <h3 className="mb-1.5 text-sm font-semibold">{c.recognize}</h3>
               <ul className="list-disc space-y-1 pl-5 text-sm leading-relaxed text-foreground/90">
                 {pattern.recognition.map((r) => (
                   <li key={r}>{r}</li>
@@ -67,16 +70,16 @@ export function CandleDialog({ pattern, onClose }: { pattern: CandlePattern | nu
               </ul>
             </section>
             <section className="rounded-xl border border-border p-4">
-              <h3 className="mb-1.5 text-sm font-semibold">O que está acontecendo no mercado</h3>
+              <h3 className="mb-1.5 text-sm font-semibold">{c.market}</h3>
               <p className="text-sm leading-relaxed text-foreground/90">{pattern.psychology}</p>
             </section>
             <section className="rounded-xl border border-border p-4">
-              <h3 className="mb-1.5 text-sm font-semibold">Confirmação e uso</h3>
+              <h3 className="mb-1.5 text-sm font-semibold">{c.confirmation}</h3>
               <p className="text-sm leading-relaxed text-foreground/90">{pattern.confirmation}</p>
             </section>
           </div>
 
-          <footer className="border-t border-border pt-4 text-xs text-muted">Fonte: {pattern.source}.</footer>
+          <footer className="border-t border-border pt-4 text-xs text-muted">{fmt(c.source, { source: pattern.source })}</footer>
         </article>
       )}
     </dialog>

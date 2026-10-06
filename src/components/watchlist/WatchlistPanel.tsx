@@ -1,10 +1,13 @@
 "use client";
 
 import { useEffect, useId, useMemo, useState } from "react";
+import { apiErrorMessage } from "@/i18n/apiError";
+import type { Dictionary } from "@/i18n/dictionary";
+import { fmt } from "@/i18n/format";
+import { useI18n } from "@/i18n/I18nProvider";
 import {
   MAX_TAG_LENGTH,
   normalizeTag,
-  SCENARIO_TAGS,
   SORT_LABELS,
   sortEntries,
   type SortKey,
@@ -22,17 +25,15 @@ interface QuotesState {
   error: string | null;
 }
 
-function formatPrice(value: number, currency: string) {
+function formatPrice(value: number, currency: string, locale: string) {
   try {
-    return new Intl.NumberFormat("pt-BR", { style: "currency", currency, maximumFractionDigits: value < 1 ? 4 : 2 }).format(value);
+    return new Intl.NumberFormat(locale, { style: "currency", currency, maximumFractionDigits: value < 1 ? 4 : 2 }).format(value);
   } catch {
-    return value.toLocaleString("pt-BR", { maximumFractionDigits: 2 });
+    return value.toLocaleString(locale, { maximumFractionDigits: 2 });
   }
 }
 
-const compact = new Intl.NumberFormat("pt-BR", { notation: "compact", maximumFractionDigits: 1 });
-
-function useWatchlistQuotes(symbols: string[]): QuotesState | null {
+function useWatchlistQuotes(symbols: string[], errors: Dictionary["errors"]): QuotesState | null {
   const key = [...symbols].sort().join(",");
   const [state, setState] = useState<QuotesState | null>(null);
 
@@ -44,7 +45,7 @@ function useWatchlistQuotes(symbols: string[]): QuotesState | null {
       try {
         const res = await fetch(`/api/watchlist?symbols=${encodeURIComponent(key)}`);
         const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(data.error ?? "Falha ao atualizar a watchlist.");
+        if (!res.ok) throw new Error(apiErrorMessage(errors, data, errors.watchlistFailed));
         const bySymbol = Object.fromEntries((data.quotes as WatchlistQuote[]).map((q) => [q.symbol, q]));
         if (!cancelled) setState({ key, bySymbol, error: null });
       } catch (err) {
@@ -63,7 +64,7 @@ function useWatchlistQuotes(symbols: string[]): QuotesState | null {
       cancelled = true;
       clearInterval(id);
     };
-  }, [key]);
+  }, [key, errors]);
 
   return state;
 }
@@ -75,7 +76,12 @@ interface Props {
 
 export function WatchlistPanel({ activeSymbol, onSelect }: Props) {
   const entries = useWatchlist();
-  const quotes = useWatchlistQuotes(entries.map((e) => e.symbol));
+  const { t } = useI18n();
+  const w = t.watchlist;
+  const quotes = useWatchlistQuotes(
+    entries.map((e) => e.symbol),
+    t.errors,
+  );
   const [sort, setSort] = useState<SortKey>("change");
   const [tagFilter, setTagFilter] = useState<string | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
@@ -95,15 +101,15 @@ export function WatchlistPanel({ activeSymbol, onSelect }: Props) {
   );
 
   return (
-    <aside aria-label="Favoritos" className="flex flex-col gap-3 rounded-2xl border border-border bg-surface p-4 shadow-sm">
+    <aside aria-label={w.title} className="flex flex-col gap-3 rounded-2xl border border-border bg-surface p-4 shadow-sm">
       <header className="flex items-center justify-between gap-2">
         <h2 className="text-sm font-semibold">
-          Favoritos <span className="font-normal text-muted">({entries.length})</span>
+          {w.title} <span className="font-normal text-muted">({entries.length})</span>
         </h2>
         {entries.length > 1 && (
           <>
             <label htmlFor={sortId} className="sr-only">
-              Ordenar por
+              {w.sortBy}
             </label>
             <select
               id={sortId}
@@ -113,7 +119,7 @@ export function WatchlistPanel({ activeSymbol, onSelect }: Props) {
             >
               {(Object.keys(SORT_LABELS) as SortKey[]).map((k) => (
                 <option key={k} value={k}>
-                  {SORT_LABELS[k]}
+                  {w.sort[k]}
                 </option>
               ))}
             </select>
@@ -122,7 +128,7 @@ export function WatchlistPanel({ activeSymbol, onSelect }: Props) {
       </header>
 
       {usedTags.length > 0 && (
-        <div role="group" aria-label="Filtrar por etiqueta" className="flex flex-wrap gap-1">
+        <div role="group" aria-label={w.filterByTag} className="flex flex-wrap gap-1">
           {[null, ...usedTags].map((tag) => (
             <button
               key={tag ?? "__all__"}
@@ -131,7 +137,7 @@ export function WatchlistPanel({ activeSymbol, onSelect }: Props) {
               onClick={() => setTagFilter(tag)}
               className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${activeFilter === tag ? "bg-accent text-white" : "bg-border/60 text-muted hover:bg-border"}`}
             >
-              {tag ?? "Todas"}
+              {tag ?? w.all}
             </button>
           ))}
         </div>
@@ -140,9 +146,7 @@ export function WatchlistPanel({ activeSymbol, onSelect }: Props) {
       {quotes?.error && <p role="alert" className="text-xs text-negative">{quotes.error}</p>}
 
       {entries.length === 0 ? (
-        <p className="text-sm text-muted">
-          Nenhum favorito ainda. Use a estrela <span aria-hidden>☆</span> no painel do ativo para acompanhá-lo aqui.
-        </p>
+        <p className="text-sm text-muted">{w.empty}</p>
       ) : (
         <ul className="-mx-2 flex flex-col">
           {visible.map((entry) => (
@@ -174,6 +178,9 @@ interface RowProps {
 }
 
 function WatchlistRow({ entry, quote, loading, active, editing, onSelect, onToggleEditing }: RowProps) {
+  const { t, locale } = useI18n();
+  const w = t.watchlist;
+  const compact = new Intl.NumberFormat(locale, { notation: "compact", maximumFractionDigits: 1 });
   const up = (quote?.changePercent ?? 0) >= 0;
 
   return (
@@ -188,24 +195,24 @@ function WatchlistRow({ entry, quote, loading, active, editing, onSelect, onTogg
             <>
               <Sparkline values={quote.sparkline} />
               <div className="w-24 shrink-0 text-right tabular-nums">
-                <div className="text-sm font-medium">{formatPrice(quote.price, quote.currency)}</div>
+                <div className="text-sm font-medium">{formatPrice(quote.price, quote.currency, locale)}</div>
                 <div className={`text-xs font-semibold ${up ? "text-positive" : "text-negative"}`}>
                   {up ? "+" : ""}
                   {quote.changePercent.toFixed(2)}%
                 </div>
-                <div className="text-[11px] text-muted">Vol {compact.format(quote.volume)}</div>
+                <div className="text-[11px] text-muted">{fmt(w.volume, { value: compact.format(quote.volume) })}</div>
               </div>
             </>
           ) : (
-            <span className="text-xs text-muted">{loading ? "Carregando…" : "Sem cotação"}</span>
+            <span className="text-xs text-muted">{loading ? w.loading : w.noQuote}</span>
           )}
         </button>
         <div className="flex shrink-0 flex-col">
           <button
             type="button"
             aria-expanded={editing}
-            aria-label={`Etiquetas de ${entry.symbol}`}
-            title="Etiquetas de cenário"
+            aria-label={fmt(w.tagsOf, { symbol: entry.symbol })}
+            title={w.scenarioTags}
             onClick={onToggleEditing}
             className={`rounded p-1 hover:bg-border/60 ${editing ? "text-accent" : "text-muted"}`}
           >
@@ -216,8 +223,8 @@ function WatchlistRow({ entry, quote, loading, active, editing, onSelect, onTogg
           </button>
           <button
             type="button"
-            aria-label={`Remover ${entry.symbol} dos favoritos`}
-            title="Remover dos favoritos"
+            aria-label={fmt(w.remove, { symbol: entry.symbol })}
+            title={w.removeShort}
             onClick={() => watchlistActions.remove(entry.symbol)}
             className="rounded p-1 text-muted hover:bg-negative/10 hover:text-negative"
           >
@@ -229,7 +236,7 @@ function WatchlistRow({ entry, quote, loading, active, editing, onSelect, onTogg
       </div>
 
       {entry.tags.length > 0 && !editing && (
-        <ul aria-label="Etiquetas" className="mt-1.5 flex flex-wrap gap-1">
+        <ul aria-label={w.tags} className="mt-1.5 flex flex-wrap gap-1">
           {entry.tags.map((tag) => (
             <li key={tag} className="rounded-full bg-accent/10 px-2 py-0.5 text-[11px] font-medium text-accent">
               {tag}
@@ -244,6 +251,9 @@ function WatchlistRow({ entry, quote, loading, active, editing, onSelect, onTogg
 }
 
 function TagEditor({ entry }: { entry: WatchlistEntry }) {
+  const { t } = useI18n();
+  const w = t.watchlist;
+  const SCENARIO_TAGS = w.suggestions;
   const [draft, setDraft] = useState("");
   const inputId = useId();
   const has = (tag: string) => entry.tags.some((t) => t.toLowerCase() === tag.toLowerCase());
@@ -252,7 +262,7 @@ function TagEditor({ entry }: { entry: WatchlistEntry }) {
 
   return (
     <div className="mt-2 rounded-lg border border-border p-2">
-      <div role="group" aria-label={`Etiquetas de cenário para ${entry.symbol}`} className="flex flex-wrap gap-1">
+      <div role="group" aria-label={fmt(w.scenarioTagsFor, { symbol: entry.symbol })} className="flex flex-wrap gap-1">
         {options.map((tag) => (
           <button
             key={tag}
@@ -275,18 +285,18 @@ function TagEditor({ entry }: { entry: WatchlistEntry }) {
         }}
       >
         <label htmlFor={inputId} className="sr-only">
-          Nova etiqueta
+          {w.newTag}
         </label>
         <input
           id={inputId}
           value={draft}
           maxLength={MAX_TAG_LENGTH}
           onChange={(e) => setDraft(e.target.value)}
-          placeholder="Nova etiqueta…"
+          placeholder={w.newTagPlaceholder}
           className="min-w-0 flex-1 rounded-md border border-border bg-transparent px-2 py-1 text-xs outline-none focus:border-accent"
         />
         <button type="submit" className="rounded-md bg-accent px-2 py-1 text-xs font-medium text-white disabled:opacity-40" disabled={!normalizeTag(draft)}>
-          Adicionar
+          {w.add}
         </button>
       </form>
     </div>

@@ -125,14 +125,23 @@ function PanelLabel({ text }: { text: string }) {
 const toPoints = (path: Pt[]) => path.map(([x, y]) => `${x},${y}`).join(" ");
 
 /** Diagrama vetorial de um termo do glossário (viewBox 200×120, ver tipos). */
-export function GlossaryDiagram({ diagram, title }: { diagram: Diagram; title: string }) {
+export function GlossaryDiagram({
+  diagram,
+  title,
+  labels = { diagram: "Diagrama: {title}", volume: "Volume" },
+}: {
+  diagram: Diagram;
+  title: string;
+  /** Textos no idioma da página (o padrão é português). */
+  labels?: { diagram: string; volume: string };
+}) {
   const hasSub = Boolean(diagram.volume || diagram.sub);
   const height = hasSub ? 120 : 96;
   const slot = diagram.candles ? 180 / diagram.candles.length : 0;
   const barSlot = diagram.volume ? 180 / diagram.volume.length : 0;
 
   return (
-    <svg role="img" aria-label={`Diagrama: ${title}`} viewBox={`0 0 200 ${height}`} className="h-auto w-full">
+    <svg role="img" aria-label={labels.diagram.replace("{title}", title)} viewBox={`0 0 200 ${height}`} className="h-auto w-full">
       {hasSub && <line x1={4} x2={196} y1={95} y2={95} className="text-border" stroke="currentColor" strokeWidth={0.5} />}
 
       {diagram.path && (
@@ -180,7 +189,7 @@ export function GlossaryDiagram({ diagram, title }: { diagram: Diagram; title: s
           />
         );
       })}
-      {diagram.volume && <PanelLabel text="Volume" />}
+      {diagram.volume && <PanelLabel text={labels.volume} />}
 
       {diagram.sub && (
         <g>

@@ -1,6 +1,8 @@
 "use client";
 
 import { useId, useState } from "react";
+import { fmt } from "@/i18n/format";
+import { useI18n } from "@/i18n/I18nProvider";
 import { searchTerms } from "@/lib/glossary/search";
 import { GLOSSARY } from "@/lib/glossary/terms";
 import { CATEGORIES, type Category } from "@/lib/glossary/types";
@@ -11,6 +13,7 @@ import { useHashSlug } from "./useHashSlug";
 const COUNTS = Object.fromEntries(CATEGORIES.map((c) => [c, GLOSSARY.filter((t) => t.category === c).length]));
 
 export function GlossaryBrowser() {
+  const { glossary: g } = useI18n().t;
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<Category | null>(null);
   const inputId = useId();
@@ -23,7 +26,7 @@ export function GlossaryBrowser() {
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-3">
         <label htmlFor={inputId} className="sr-only">
-          Buscar termo
+          {g.searchLabel}
         </label>
         <div className="flex items-center gap-2 rounded-xl border border-border bg-surface px-4 py-3 shadow-sm focus-within:border-accent focus-within:ring-2 focus-within:ring-accent/25">
           <svg aria-hidden viewBox="0 0 20 20" className="h-5 w-5 shrink-0 text-muted" fill="none" stroke="currentColor" strokeWidth={2}>
@@ -35,13 +38,13 @@ export function GlossaryBrowser() {
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Buscar termo — ex: OCO, Pullback, Gap de Exaustão, Leque"
+            placeholder={g.searchPlaceholder}
             autoComplete="off"
             className="w-full bg-transparent text-base outline-none placeholder:text-muted"
           />
         </div>
 
-        <div role="group" aria-label="Filtrar por categoria" className="flex flex-wrap gap-1.5">
+        <div role="group" aria-label={g.filterLabel} className="flex flex-wrap gap-1.5">
           {[null, ...CATEGORIES].map((c) => (
             <button
               key={c ?? "__all__"}
@@ -50,7 +53,7 @@ export function GlossaryBrowser() {
               onClick={() => setCategory(c)}
               className={`rounded-full px-3 py-1 text-xs font-medium ${category === c ? "bg-accent text-white" : "bg-border/60 text-muted hover:bg-border"}`}
             >
-              {c ?? "Todas"} <span className="opacity-70">{c ? COUNTS[c] : GLOSSARY.length}</span>
+              {c ? g.categories[c] : g.all} <span className="opacity-70">{c ? COUNTS[c] : GLOSSARY.length}</span>
             </button>
           ))}
         </div>
@@ -58,8 +61,8 @@ export function GlossaryBrowser() {
 
       <p className="text-sm text-muted" aria-live="polite">
         {results.length === 0
-          ? `Nenhum termo encontrado para "${query.trim()}"${category ? ` em ${category}` : ""}.`
-          : `${results.length} ${results.length === 1 ? "termo" : "termos"}`}
+          ? `${fmt(g.noResults, { query: query.trim() })}${category ? fmt(g.inCategory, { category: g.categories[category] }) : ""}.`
+          : fmt(results.length === 1 ? g.countOne : g.countMany, { n: results.length })}
       </p>
 
       <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">

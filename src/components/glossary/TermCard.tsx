@@ -1,9 +1,12 @@
+"use client";
+
 import Link from "next/link";
-import { TOOLS } from "@/lib/drawings/types";
+import { fmt } from "@/i18n/format";
+import { useI18n } from "@/i18n/I18nProvider";
 import type { GlossaryTerm } from "@/lib/glossary/types";
 import { GlossaryDiagram } from "./GlossaryDiagram";
 
-/** Link do painel que abre o ativo do exemplo já com o desenho aplicado. */
+/** Link do painel (sem idioma; quem usa aplica href()) que abre o ativo do exemplo já com o desenho aplicado. */
 export function exampleHref(term: GlossaryTerm): string | null {
   if (!term.example) return null;
   const params = new URLSearchParams({ ativo: term.example.symbol, periodo: term.example.range, exemplo: term.slug });
@@ -12,7 +15,11 @@ export function exampleHref(term: GlossaryTerm): string | null {
 
 /** Card compacto; o título, o diagrama e "Ver detalhes" abrem o card ampliado (via #slug). */
 export function TermCard({ term }: { term: GlossaryTerm }) {
-  const href = exampleHref(term);
+  const { t, href: localized } = useI18n();
+  const g = t.glossary;
+  const example = exampleHref(term);
+  const href = example ? localized(example) : null;
+  const labels = { diagram: g.diagram, volume: g.volume };
   return (
     <article className="flex flex-col gap-3 rounded-2xl border border-border bg-surface p-5 shadow-sm">
       <header className="flex flex-wrap items-start justify-between gap-2">
@@ -21,36 +28,36 @@ export function TermCard({ term }: { term: GlossaryTerm }) {
             {term.name}
           </a>
         </h2>
-        <span className="rounded-full bg-border/60 px-2 py-0.5 text-[11px] font-medium text-muted">{term.category}</span>
+        <span className="rounded-full bg-border/60 px-2 py-0.5 text-[11px] font-medium text-muted">{g.categories[term.category]}</span>
       </header>
 
       <a
         href={`#${term.slug}`}
-        aria-label={`Ver detalhes de ${term.name}`}
+        aria-label={fmt(g.detailsOf, { name: term.name })}
         className="block rounded-xl border border-border/70 bg-background/60 p-2 transition-colors hover:border-accent/60"
       >
-        <GlossaryDiagram diagram={term.diagram} title={term.name} />
+        <GlossaryDiagram diagram={term.diagram} title={term.name} labels={labels} />
       </a>
 
       <p className="text-sm leading-relaxed">{term.definition}</p>
 
       <div className="rounded-lg bg-accent/10 p-3 text-sm leading-relaxed">
-        <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-accent">Regra de validação</div>
+        <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-accent">{g.validation}</div>
         {term.validation}
       </div>
 
       <footer className="mt-auto flex flex-wrap items-center gap-x-4 gap-y-2 pt-1 text-sm">
         <a href={`#${term.slug}`} className="rounded-lg border border-border px-3 py-1.5 font-medium hover:bg-border/60">
-          Ver detalhes
+          {g.details}
         </a>
         {href && (
           <Link href={href} className="rounded-lg bg-accent px-3 py-1.5 font-medium text-white hover:opacity-90">
-            Ver no gráfico real
+            {g.viewOnChart}
           </Link>
         )}
         {term.tool && (
           <span className="text-xs text-muted">
-            Ferramenta no gráfico: <strong className="text-foreground">{TOOLS[term.tool].label}</strong>
+            {g.chartTool} <strong className="text-foreground">{t.drawings.tools[term.tool].label}</strong>
           </span>
         )}
       </footer>

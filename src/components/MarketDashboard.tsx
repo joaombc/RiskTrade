@@ -2,6 +2,10 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, useSyncExternalStore } from "react";
+import { apiErrorMessage } from "@/i18n/apiError";
+import type { Dictionary } from "@/i18n/dictionary";
+import { fmt } from "@/i18n/format";
+import { useI18n } from "@/i18n/I18nProvider";
 import { GLOSSARY } from "@/lib/glossary/terms";
 import { parseRange, SYMBOL_PATTERN, type AssetSummary } from "@/lib/market";
 import type { PlanLevel } from "@/lib/risk";
@@ -42,10 +46,10 @@ type State =
   | { kind: "error"; message: string }
   | { kind: "ready"; summary: AssetSummary };
 
-async function fetchSummary(symbol: string): Promise<AssetSummary> {
+async function fetchSummary(symbol: string, errors: Dictionary["errors"]): Promise<AssetSummary> {
   const res = await fetch(`/api/quote?symbol=${encodeURIComponent(symbol)}`);
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error ?? "Serviço do Yahoo Finance indisponível no momento.");
+  if (!res.ok) throw new Error(apiErrorMessage(errors, data, errors.unavailable));
   return data.summary;
 }
 
@@ -66,6 +70,7 @@ function readLink(params: URLSearchParams) {
 
 export function MarketDashboard() {
   const router = useRouter();
+  const { t, href } = useI18n();
   const searchParams = useSearchParams();
   // Só a URL de entrada importa: depois disso o estado é do próprio painel.
   const [link] = useState(() => readLink(new URLSearchParams(searchParams.toString())));
@@ -99,7 +104,7 @@ export function MarketDashboard() {
   const closeExample = () => {
     setExample(null);
     // Tira o exemplo da URL para que recarregar a página não o reabra.
-    if (symbol) router.replace(`/?ativo=${encodeURIComponent(symbol)}`, { scroll: false });
+    if (symbol) router.replace(href(`/?ativo=${encodeURIComponent(symbol)}`), { scroll: false });
   };
 
   useEffect(() => {
@@ -114,7 +119,7 @@ export function MarketDashboard() {
     async function load(target: string, silent: boolean) {
       if (!silent) setState({ kind: "loading", symbol: target });
       try {
-        const summary = await fetchSummary(target);
+        const summary = await fetchSummary(target, t.errors);
         if (!cancelled) setState({ kind: "ready", summary });
       } catch (err) {
         // Numa atualização em segundo plano, mantém os últimos dados em vez de apagar a tela.
@@ -130,7 +135,7 @@ export function MarketDashboard() {
       cancelled = true;
       clearInterval(id);
     };
-  }, [symbol]);
+  }, [symbol, t.errors]);
 
   return (
     <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
@@ -142,7 +147,7 @@ export function MarketDashboard() {
           <div
             role="status"
             className="h-64 animate-pulse rounded-2xl border border-border bg-surface"
-            aria-label={state.kind === "loading" ? `Carregando ${state.symbol}` : "Carregando o painel"}
+            aria-label={state.kind === "loading" ? fmt(t.dashboard.loadingSymbol, { symbol: state.symbol }) : t.dashboard.loadingPanel}
           />
         )}
         {state.kind === "error" && (

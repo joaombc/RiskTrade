@@ -1,46 +1,43 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { GapSize, Level, OpeningPhase, PremarketReport } from "@/lib/premarket";
-import { CROSS_SIGNAL_LABELS } from "@/lib/movingAverages";
+import { apiErrorMessage } from "@/i18n/apiError";
+import type { Dictionary } from "@/i18n/dictionary";
+import { fmt } from "@/i18n/format";
+import { useI18n } from "@/i18n/I18nProvider";
+import { maLabel } from "@/lib/movingAverages";
+import type { Level, PremarketReport } from "@/lib/premarket";
 
-const PHASE_TITLE: Record<OpeningPhase, string> = {
-  pre: "Pré-mercado agora",
-  open: "Abertura de hoje",
-  after: "After-hours",
-};
+/** Textos e formatos do idioma atual, passados às seções do relatório. */
+interface Ctx {
+  p: Dictionary["premarket"];
+  t: Dictionary;
+  usd: (v: number) => string;
+  num: (v: number, digits?: number) => string;
+  pct: (v: number) => string;
+  compact: (v: number) => string;
+  date: (iso: string) => string;
+  time: (iso: string) => string;
+}
 
-const PHASE_NOTE: Record<OpeningPhase, string> = {
-  pre: "comparado ao fechamento do último pregão",
-  open: "o pregão já abriu: este é o gap real da abertura sobre o fechamento anterior",
-  after: "negócios depois do fechamento, como prévia do próximo pregão",
-};
+function useCtx(): Ctx {
+  const { t, locale } = useI18n();
+  const num = (v: number, digits = 2) => v.toLocaleString(locale, { minimumFractionDigits: digits, maximumFractionDigits: digits });
+  const compactFormat = new Intl.NumberFormat(locale, { notation: "compact", maximumFractionDigits: 2 });
+  return {
+    p: t.premarket,
+    t,
+    usd: (v) => v.toLocaleString(locale, { style: "currency", currency: "USD" }),
+    num,
+    pct: (v) => `${v >= 0 ? "+" : ""}${num(v)}%`,
+    compact: (v) => compactFormat.format(v),
+    date: (iso) =>
+      new Date(iso.length === 10 ? `${iso}T12:00:00Z` : iso).toLocaleDateString(locale, { day: "2-digit", month: "2-digit", year: "2-digit" }),
+    time: (iso) => new Date(iso).toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" }),
+  };
+}
 
-const GAP_TEXT: Record<GapSize, string> = {
-  small: "Dentro do ruído normal do ativo; sozinho, não muda a leitura do gráfico.",
-  moderate: "Relevante; observe se o preço sustenta o nível depois da abertura.",
-  large:
-    "Maior que a oscilação de um dia inteiro. Gaps assim costumam vir de notícia; veja no gráfico se é de rompimento, de continuação ou de exaustão.",
-};
-
-const GAP_LABEL: Record<GapSize, string> = { small: "Gap pequeno", moderate: "Gap moderado", large: "Gap grande" };
-
-const ANALYST_ACTION: Record<string, string> = {
-  up: "elevou para",
-  down: "rebaixou para",
-  main: "manteve",
-  reit: "reiterou",
-  init: "iniciou cobertura com",
-};
-
-const usd = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "USD" });
-const num = (v: number, digits = 2) => v.toLocaleString("pt-BR", { minimumFractionDigits: digits, maximumFractionDigits: digits });
-const pct = (v: number) => `${v >= 0 ? "+" : ""}${num(v)}%`;
-const compact = new Intl.NumberFormat("pt-BR", { notation: "compact", maximumFractionDigits: 2 });
-const date = (iso: string) => new Date(iso.length === 10 ? `${iso}T12:00:00Z` : iso).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "2-digit" });
-const time = (iso: string) => new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 const tone = (v: number) => (v >= 0 ? "text-positive" : "text-negative");
-const distance = (level: Level, from: number) => pct(((level.price - from) / from) * 100);
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -60,19 +57,14 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
   );
 }
 
-function Opening({ report }: { report: PremarketReport }) {
+function Opening({ report, c }: { report: PremarketReport; c: Ctx }) {
+  const { p, usd, num, pct, date, time } = c;
   const { opening, gap, atr, crossed } = report;
-  if (!opening) {
-    return (
-      <p className="text-sm text-muted">
-        Sem negócios fora do pregão no momento. O pré-mercado americano vai das 4h às 9h30 de Nova York, e o after-hours, das 16h às 20h.
-      </p>
-    );
-  }
+  if (!opening) return <p className="text-sm text-muted">{p.noTrading}</p>;
   return (
     <div className="flex flex-col gap-3">
       <div>
-        <p className="text-sm font-semibold">{PHASE_TITLE[opening.phase]}</p>
+        <p className="text-sm font-semibold">{p.phaseTitle[opening.phase]}</p>
         <div className="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-1">
           <span className="text-3xl font-semibold tabular-nums">{usd(opening.price)}</span>
           <span className={`text-lg font-semibold tabular-nums ${tone(opening.change)}`}>
@@ -81,159 +73,161 @@ function Opening({ report }: { report: PremarketReport }) {
           </span>
         </div>
         <p className="mt-1 text-xs text-muted">
-          Fechamento de referência {usd(opening.reference)}; {PHASE_NOTE[opening.phase]}
-          {opening.time && `. Cotação das ${time(opening.time)} (seu horário)`}.
+          {fmt(p.reference, { price: usd(opening.reference), note: p.phaseNote[opening.phase] })}
+          {opening.time && fmt(p.quoteTime, { time: time(opening.time) })}.
         </p>
       </div>
       {gap && atr && (
         <p className="rounded-lg bg-background/60 p-3 text-sm">
-          <strong>{GAP_LABEL[gap.size]}:</strong> {num(gap.atrs)} ATR (a oscilação média diária dos últimos 14 pregões é{" "}
-          {usd(atr)}). {GAP_TEXT[gap.size]}
+          <strong>{p.gapLabel[gap.size]}:</strong> {fmt(p.gapAtr, { atrs: num(gap.atrs), atr: usd(atr) })} {p.gapText[gap.size]}
         </p>
       )}
-      {report.kind === "etf" && opening.phase !== "open" && (
-        <p className="text-xs text-muted">
-          ETF fora do pregão: nos mais negociados (SPY, QQQ) o preço é confiável, mas em ETFs menores pode haver poucos negócios e
-          spread largo, e o preço pode se afastar do valor da carteira até a abertura.
-        </p>
-      )}
+      {report.kind === "etf" && opening.phase !== "open" && <p className="text-xs text-muted">{p.etfLiquidity}</p>}
       {crossed && (
         <p
           role="status"
           className={`rounded-lg border p-3 text-sm ${crossed.kind === "resistance" ? "border-positive/40 bg-positive/10" : "border-negative/40 bg-negative/10"}`}
         >
-          {crossed.kind === "resistance" ? (
-            <>
-              O preço já está <strong>acima da resistência de {usd(crossed.level.price)}</strong> (topo de {date(crossed.level.date)}). Se a
-              abertura confirmar, pode ser um gap de rompimento para cima.
-            </>
-          ) : (
-            <>
-              O preço já está <strong>abaixo do suporte de {usd(crossed.level.price)}</strong> (fundo de {date(crossed.level.date)}). Se a
-              abertura confirmar, pode ser um gap de rompimento para baixo.
-            </>
-          )}
+          {p.alreadyAbove}{" "}
+          <strong>{fmt(crossed.kind === "resistance" ? p.aboveResistance : p.belowSupport, { price: usd(crossed.level.price) })}</strong>{" "}
+          {fmt(crossed.kind === "resistance" ? p.peakOf : p.troughOf, { date: date(crossed.level.date) })}
         </p>
       )}
     </div>
   );
 }
 
-function Technical({ report }: { report: PremarketReport }) {
-  const t = report.technical;
-  if (!t) return <p className="text-sm text-muted">Histórico insuficiente para o mapa técnico.</p>;
-  const reference = report.opening?.reference ?? t.close;
+function Technical({ report, c }: { report: PremarketReport; c: Ctx }) {
+  const { p, t, usd, num, pct, compact, date } = c;
+  const tm = report.technical;
+  if (!tm) return <p className="text-sm text-muted">{p.noTechnical}</p>;
+  const reference = report.opening?.reference ?? tm.close;
+  const sma = (period: number) => maLabel({ kind: "sma", period }, t.ma.short);
   const side = (avg: number | null, name: string) =>
-    avg === null ? `${name} indisponível` : `${t.close >= avg ? "acima" : "abaixo"} da ${name} (${num(avg)})`;
+    avg === null ? fmt(p.avgUnavailable, { name }) : fmt(tm.close >= avg ? p.aboveAvg : p.belowAvg, { name, value: num(avg) });
+  const distance = (level: Level) => pct(((level.price - reference) / reference) * 100);
 
   return (
     <dl>
-      <Row label="Tendência pelas médias">
-        Fechamento de {date(t.closeDate)} ({usd(t.close)}) {side(t.sma50, "MMS 50")} e {side(t.sma200, "MMS 200")}.
+      <Row label={p.rows.trend}>
+        {fmt(p.trendText, { date: date(tm.closeDate), price: usd(tm.close), sma50: side(tm.sma50, sma(50)), sma200: side(tm.sma200, sma(200)) })}
       </Row>
-      <Row label="Resistência mais próxima">
+      <Row label={p.rows.resistance}>
         {report.levels.resistance ? (
           <>
-            {usd(report.levels.resistance.price)} <span className="text-muted">(topo de {date(report.levels.resistance.date)}, {distance(report.levels.resistance, reference)})</span>
+            {usd(report.levels.resistance.price)}{" "}
+            <span className="text-muted">
+              {fmt(p.peakDistance, { date: date(report.levels.resistance.date), distance: distance(report.levels.resistance) })}
+            </span>
           </>
         ) : (
-          <span className="text-muted">nenhum topo acima do preço no último ano</span>
+          <span className="text-muted">{p.noPeak}</span>
         )}
       </Row>
-      <Row label="Suporte mais próximo">
+      <Row label={p.rows.support}>
         {report.levels.support ? (
           <>
-            {usd(report.levels.support.price)} <span className="text-muted">(fundo de {date(report.levels.support.date)}, {distance(report.levels.support, reference)})</span>
+            {usd(report.levels.support.price)}{" "}
+            <span className="text-muted">
+              {fmt(p.troughDistance, { date: date(report.levels.support.date), distance: distance(report.levels.support) })}
+            </span>
           </>
         ) : (
-          <span className="text-muted">nenhum fundo abaixo do preço no último ano</span>
+          <span className="text-muted">{p.noTrough}</span>
         )}
       </Row>
-      <Row label="52 semanas">
-        {num(Math.abs(t.range52w.fromHighPercent), 1)}% abaixo da máxima ({usd(t.range52w.high)}) ·{" "}
-        {num(t.range52w.fromLowPercent, 1)}% acima da mínima ({usd(t.range52w.low)})
+      <Row label={p.rows.range52w}>
+        {fmt(p.range52wText, {
+          fromHigh: num(Math.abs(tm.range52w.fromHighPercent), 1),
+          high: usd(tm.range52w.high),
+          fromLow: num(tm.range52w.fromLowPercent, 1),
+          low: usd(tm.range52w.low),
+        })}
       </Row>
-      <Row label="Volume do último pregão">
-        {t.volume ? (
+      <Row label={p.rows.volume}>
+        {tm.volume ? (
           <>
-            {compact.format(t.volume.last)} ·{" "}
-            <span className={t.volume.ratio >= 1 ? "font-semibold text-positive" : ""}>{num(t.volume.ratio * 100, 0)}% da média de 20 dias</span>
+            {compact(tm.volume.last)} ·{" "}
+            <span className={tm.volume.ratio >= 1 ? "font-semibold text-positive" : ""}>
+              {fmt(p.volumeText, { percent: num(tm.volume.ratio * 100, 0) })}
+            </span>
           </>
         ) : (
-          <span className="text-muted">sem dados de volume</span>
+          <span className="text-muted">{p.noVolume}</span>
         )}
       </Row>
-      <Row label="Cruzamento MMS 10 × 50">
-        {t.cross.last ? (
+      <Row label={fmt(p.rows.cross, { pair: `${sma(10)} × 50` })}>
+        {tm.cross.last ? (
           <>
-            Último sinal: <strong className={t.cross.last.kind.startsWith("buy") ? "text-positive" : "text-negative"}>{CROSS_SIGNAL_LABELS[t.cross.last.kind]}</strong> em{" "}
-            {date(t.cross.last.date)} (fechamento {usd(t.cross.last.close)}).
-          </>
-        ) : (
-          "Nenhum cruzamento no último ano."
-        )}
-        {t.cross.position && ` Agora a MMS 10 está ${t.cross.position === "above" ? "acima" : "abaixo"} da MMS 50.`}
-      </Row>
-      <Row label="Divergência de OBV">
-        {t.divergence ? (
-          <>
-            <strong className={t.divergence.kind === "bearish" ? "text-negative" : "text-positive"}>
-              {t.divergence.kind === "bearish" ? "Baixista" : "Altista"}
+            {p.lastSignal}{" "}
+            <strong className={tm.cross.last.kind.startsWith("buy") ? "text-positive" : "text-negative"}>
+              {t.cross.labels[tm.cross.last.kind]}
             </strong>{" "}
-            em {date(t.divergence.date)} (há {t.divergence.barsAgo} pregões).
+            {fmt(p.signalOn, { date: date(tm.cross.last.date), price: usd(tm.cross.last.close) })}
           </>
         ) : (
-          <span className="text-muted">nenhuma nos últimos 30 pregões</span>
+          p.noCross
+        )}
+        {tm.cross.position && fmt(tm.cross.position === "above" ? p.crossNowAbove : p.crossNowBelow, { short: sma(10), long: sma(50) })}
+      </Row>
+      <Row label={p.rows.divergence}>
+        {tm.divergence ? (
+          <>
+            <strong className={tm.divergence.kind === "bearish" ? "text-negative" : "text-positive"}>
+              {tm.divergence.kind === "bearish" ? p.bearish : p.bullish}
+            </strong>{" "}
+            {fmt(p.divergenceOn, { date: date(tm.divergence.date), bars: tm.divergence.barsAgo })}
+          </>
+        ) : (
+          <span className="text-muted">{p.noDivergence}</span>
         )}
       </Row>
     </dl>
   );
 }
 
-function Events({ report }: { report: PremarketReport }) {
+function Events({ report, c }: { report: PremarketReport; c: Ctx }) {
+  const { p, usd, date, time } = c;
   const { earnings, analysts, news } = report;
   return (
     <div className="flex flex-col gap-4">
       {report.kind === "etf" ? (
-        <p className="text-sm text-muted">
-          ETF não divulga balanço trimestral nem tem cobertura de analistas como as ações. Os eventos que movem um ETF são os das
-          empresas da carteira e os indicadores econômicos.
-        </p>
+        <p className="text-sm text-muted">{p.etfEvents}</p>
       ) : (
         <dl>
-          <Row label="Próximo balanço">
+          <Row label={p.rows.earnings}>
             {earnings ? (
               <span className={earnings.daysAway <= 7 ? "font-semibold text-warning" : ""}>
                 {date(earnings.date)}
-                {earnings.estimate && " (data estimada)"} · em {earnings.daysAway} {earnings.daysAway === 1 ? "dia" : "dias"}
-                {earnings.daysAway <= 7 && " · atenção: balanço costuma abrir gaps"}
+                {earnings.estimate && p.estimated}
+                {earnings.daysAway === 1 ? p.inOneDay : fmt(p.inDays, { n: earnings.daysAway })}
+                {earnings.daysAway <= 7 && p.earningsSoon}
               </span>
             ) : (
-              <span className="text-muted">sem data divulgada</span>
+              <span className="text-muted">{p.noEarnings}</span>
             )}
           </Row>
-          <Row label="Analistas (30 dias)">
+          <Row label={p.rows.analysts}>
             {analysts.length === 0 ? (
-              <span className="text-muted">nenhuma mudança recente</span>
+              <span className="text-muted">{p.noAnalysts}</span>
             ) : (
               <ul className="flex flex-col gap-1">
                 {analysts.map((a) => (
                   <li key={`${a.firm}-${a.date}`}>
                     <span className="text-muted">{date(a.date)} · </span>
-                    {a.firm} {ANALYST_ACTION[a.action] ?? a.action} <strong>{a.toGrade}</strong>
+                    {a.firm} {p.analystAction[a.action as keyof typeof p.analystAction] ?? a.action} <strong>{a.toGrade}</strong>
                     {a.priceTarget !== null && (
                       <span className="text-muted">
                         {" "}
                         ·{" "}
                         {a.priorPriceTarget === null || a.priorPriceTarget === a.priceTarget ? (
-                          <>alvo {usd(a.priceTarget)}</>
+                          fmt(p.target, { price: usd(a.priceTarget) })
                         ) : (
                           <>
-                            alvo{" "}
                             <span className={a.priceTarget > a.priorPriceTarget ? "text-positive" : "text-negative"}>
-                              {a.priceTarget > a.priorPriceTarget ? "elevado" : "cortado"} para {usd(a.priceTarget)}
+                              {fmt(a.priceTarget > a.priorPriceTarget ? p.targetRaised : p.targetCut, { price: usd(a.priceTarget) })}
                             </span>{" "}
-                            (antes {usd(a.priorPriceTarget)})
+                            {fmt(p.targetBefore, { price: usd(a.priorPriceTarget) })}
                           </>
                         )}
                       </span>
@@ -246,9 +240,9 @@ function Events({ report }: { report: PremarketReport }) {
         </dl>
       )}
       <div>
-        <p className="mb-2 text-sm font-medium text-muted">Notícias que citam {report.symbol}</p>
+        <p className="mb-2 text-sm font-medium text-muted">{fmt(p.newsTitle, { symbol: report.symbol })}</p>
         {news.length === 0 ? (
-          <p className="text-sm text-muted">Nenhuma notícia recente.</p>
+          <p className="text-sm text-muted">{p.noNews}</p>
         ) : (
           <ul className="flex flex-col gap-2">
             {news.map((n) => (
@@ -258,7 +252,7 @@ function Events({ report }: { report: PremarketReport }) {
                 </a>
                 <span className="block text-xs text-muted">
                   {n.publisher} · {date(n.time)} {time(n.time)}
-                  {n.tickers > 1 && ` · cita ${n.tickers} empresas`}
+                  {n.tickers > 1 && fmt(p.mentions, { n: n.tickers })}
                 </span>
               </li>
             ))}
@@ -269,15 +263,16 @@ function Events({ report }: { report: PremarketReport }) {
   );
 }
 
-function Context({ report }: { report: PremarketReport }) {
-  if (report.context.length === 0) return <p className="text-sm text-muted">Contexto indisponível no momento.</p>;
+function Context({ report, c }: { report: PremarketReport; c: Ctx }) {
+  const { p, num, pct } = c;
+  if (report.context.length === 0) return <p className="text-sm text-muted">{p.noContext}</p>;
   return (
     <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-      {report.context.map((c) => (
-        <div key={c.symbol} className="rounded-lg border border-border p-3">
-          <p className="text-xs text-muted">{c.label}</p>
-          <p className="mt-1 font-semibold tabular-nums">{num(c.price)}</p>
-          <p className={`text-sm font-semibold tabular-nums ${tone(c.changePercent)}`}>{pct(c.changePercent)}</p>
+      {report.context.map((item) => (
+        <div key={item.symbol} className="rounded-lg border border-border p-3">
+          <p className="text-xs text-muted">{p.contextLabels[item.symbol as keyof typeof p.contextLabels] ?? item.label}</p>
+          <p className="mt-1 font-semibold tabular-nums">{num(item.price)}</p>
+          <p className={`text-sm font-semibold tabular-nums ${tone(item.changePercent)}`}>{pct(item.changePercent)}</p>
         </div>
       ))}
     </div>
@@ -286,8 +281,10 @@ function Context({ report }: { report: PremarketReport }) {
 
 type State = { kind: "loading" } | { kind: "error"; message: string } | { kind: "ready"; report: PremarketReport };
 
-/** Relatório pré-market de uma ação americana, aberto pelo botão do card do ativo. */
+/** Relatório pré-market de uma ação ou ETF americano, aberto pelo botão do card do ativo. */
 export function PremarketDialog({ symbol, onClose }: { symbol: string; onClose: () => void }) {
+  const c = useCtx();
+  const { p, t } = c;
   const ref = useRef<HTMLDialogElement>(null);
   const [state, setState] = useState<State>({ kind: "loading" });
   /** Incrementada pelo botão "Atualizar" para buscar o relatório de novo. */
@@ -303,7 +300,7 @@ export function PremarketDialog({ symbol, onClose }: { symbol: string; onClose: 
     fetch(`/api/premarket?symbol=${encodeURIComponent(symbol)}`, { signal: controller.signal })
       .then(async (res) => {
         const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(data.error ?? "Falha ao gerar o relatório.");
+        if (!res.ok) throw new Error(apiErrorMessage(t.errors, data, t.errors.reportFailed));
         setState({ kind: "ready", report: data.report });
       })
       .catch((err) => {
@@ -311,7 +308,7 @@ export function PremarketDialog({ symbol, onClose }: { symbol: string; onClose: 
         setState({ kind: "error", message: err instanceof Error ? err.message : String(err) });
       });
     return () => controller.abort();
-  }, [symbol, reloadKey]);
+  }, [symbol, reloadKey, t.errors]);
 
   const refresh = () => {
     setState({ kind: "loading" });
@@ -332,12 +329,16 @@ export function PremarketDialog({ symbol, onClose }: { symbol: string; onClose: 
         <header className="flex items-start justify-between gap-4">
           <div>
             <h2 id="premarket-title" className="text-2xl font-bold tracking-tight">
-              Relatório pré-market · <span className="font-mono">{symbol}</span>
+              {p.title} · <span className="font-mono">{symbol}</span>
             </h2>
             <p className="text-sm text-muted">
               {state.kind === "ready"
-                ? `${state.report.kind === "etf" ? "ETF · " : ""}${state.report.name} · gerado às ${time(state.report.generatedAt)}`
-                : "Ações e ETFs do mercado americano"}
+                ? fmt(p.generated, {
+                    kind: state.report.kind === "etf" ? p.etfTag : "",
+                    name: state.report.name,
+                    time: c.time(state.report.generatedAt),
+                  })
+                : p.subtitleIdle}
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-1">
@@ -347,9 +348,9 @@ export function PremarketDialog({ symbol, onClose }: { symbol: string; onClose: 
               disabled={state.kind === "loading"}
               className="rounded-lg px-2.5 py-1.5 text-xs font-medium text-muted hover:bg-border/60 hover:text-foreground disabled:opacity-40"
             >
-              Atualizar
+              {p.refresh}
             </button>
-            <button type="button" onClick={onClose} aria-label="Fechar" className="rounded-lg p-2 text-muted hover:bg-border/60 hover:text-foreground">
+            <button type="button" onClick={onClose} aria-label={p.close} className="rounded-lg p-2 text-muted hover:bg-border/60 hover:text-foreground">
               <svg aria-hidden viewBox="0 0 20 20" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
                 <path d="m5 5 10 10M15 5 5 15" />
               </svg>
@@ -358,7 +359,7 @@ export function PremarketDialog({ symbol, onClose }: { symbol: string; onClose: 
         </header>
 
         {state.kind === "loading" && (
-          <div role="status" aria-label="Gerando o relatório" className="flex flex-col gap-3">
+          <div role="status" aria-label={p.loading} className="flex flex-col gap-3">
             {[0, 1, 2].map((i) => (
               <div key={i} className="h-24 animate-pulse rounded-xl bg-border/40" />
             ))}
@@ -371,22 +372,19 @@ export function PremarketDialog({ symbol, onClose }: { symbol: string; onClose: 
         )}
         {state.kind === "ready" && (
           <>
-            <Section title="1. Abertura esperada">
-              <Opening report={state.report} />
+            <Section title={p.sections.opening}>
+              <Opening report={state.report} c={c} />
             </Section>
-            <Section title="2. Mapa técnico">
-              <Technical report={state.report} />
+            <Section title={p.sections.technical}>
+              <Technical report={state.report} c={c} />
             </Section>
-            <Section title="3. Eventos">
-              <Events report={state.report} />
+            <Section title={p.sections.events}>
+              <Events report={state.report} c={c} />
             </Section>
-            <Section title="4. Contexto do mercado">
-              <Context report={state.report} />
+            <Section title={p.sections.context}>
+              <Context report={state.report} c={c} />
             </Section>
-            <footer className="border-t border-border pt-4 text-xs text-muted">
-              Dados do Yahoo Finance, que podem ter atraso. Topos e fundos são confirmados por 5 pregões de cada lado; médias e
-              sinais seguem Murphy (cap. 9). O relatório mostra fatos e níveis a observar: não é recomendação de compra ou venda.
-            </footer>
+            <footer className="border-t border-border pt-4 text-xs text-muted">{p.footer}</footer>
           </>
         )}
       </article>
