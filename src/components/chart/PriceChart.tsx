@@ -31,12 +31,15 @@ import { HISTORY_RANGES, INTERVAL_LABELS, isIntraday, sameBars, type HistoryRang
 import {
   computeMovingAverage,
   envelopeLine,
+  envelopeRegime,
   findCrossSignals,
+  findEnvelopeSignals,
   loadMovingAverages,
   maLabel,
   saveMovingAverages,
   type CrossSignal,
   type EnvelopePercent,
+  type EnvelopeSignal,
   type MovingAverage,
 } from "@/lib/movingAverages";
 import type { OpenInterestSeries } from "@/lib/openInterest";
@@ -44,6 +47,7 @@ import { useTheme } from "@/lib/theme";
 import type { PlanLevel } from "@/lib/risk";
 import { CrossSignalPanel } from "./CrossSignalPanel";
 import { DivergencePanel } from "./DivergencePanel";
+import { EnvelopeSignalPanel } from "./EnvelopeSignalPanel";
 import { DrawingsPrimitive } from "./DrawingsPrimitive";
 import { DrawingToolbar } from "./DrawingToolbar";
 import { MovingAverageBar } from "./MovingAverageBar";
@@ -217,6 +221,19 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
     [crossLines],
   );
   const [showCrossSignals, setShowCrossSignals] = useState(true);
+  // Sinais dos envelopes: da média simples visível mais curta com envelope, na menor porcentagem marcada.
+  const envelopeSource = useMemo(() => {
+    const line = crossLines.find(({ ma }) => ma.kind === "sma" && (ma.envelopes?.length ?? 0) > 0);
+    return line ? { ...line, percent: Math.min(...line.ma.envelopes!) } : null;
+  }, [crossLines]);
+  const envelopeSignals = useMemo(
+    () =>
+      bars && envelopeSource
+        ? findEnvelopeSignals(bars, envelopeSource.values, envelopeSource.ma.period, envelopeSource.percent)
+        : [],
+    [bars, envelopeSource],
+  );
+  const [showEnvelopeSignals, setShowEnvelopeSignals] = useState(true);
   const resolvedExample = useMemo(
     () => (example && bars ? resolveExample(example.slug, example.example, bars) : NO_EXAMPLE),
     [example, bars],
@@ -641,6 +658,17 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
     const crossMarkers = (showCrossSignals ? crossSignals : []).map(
       (signal): SeriesMarker<Time> => ({ time: time(signal.index), ...crossStyle[signal.kind] }),
     );
+    const envelopeMarkers = (showEnvelopeSignals ? envelopeSignals : []).map((signal: EnvelopeSignal): SeriesMarker<Time> => {
+      if (signal.kind === "buy") return { time: time(signal.index), position: "belowBar", shape: "arrowUp", color: theme.up, text: "Compra" };
+      if (signal.kind === "sell") return { time: time(signal.index), position: "aboveBar", shape: "arrowDown", color: theme.down, text: "Venda" };
+      return {
+        time: time(signal.index),
+        position: signal.line === "upper" ? "aboveBar" : "belowBar",
+        shape: "circle",
+        color: theme.drawings.target,
+        text: "Realizar",
+      };
+    });
     const exampleMarkers = resolvedExample.markers.map(
       (m): SeriesMarker<Time> => ({
         time: m.time as UTCTimestamp,
@@ -652,7 +680,9 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
     );
     // A API exige marcadores em ordem cronológica.
     handles.priceMarkers.setMarkers(
-      [...divergenceMarkers, ...crossMarkers, ...exampleMarkers].sort((a, b) => (a.time as number) - (b.time as number)),
+      [...divergenceMarkers, ...crossMarkers, ...envelopeMarkers, ...exampleMarkers].sort(
+        (a, b) => (a.time as number) - (b.time as number),
+      ),
     );
     handles.obvMarkers.setMarkers(
       visible.map(
@@ -693,7 +723,17 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
       // Se o gráfico já foi desmontado, as séries foram junto.
       if (handlesRef.current) segments.forEach((s) => handles.chart.removeSeries(s));
     };
-  }, [bars, divergences, showDivergences, theme, resolvedExample, crossSignals, showCrossSignals]);
+  }, [
+    bars,
+    divergences,
+    showDivergences,
+    theme,
+    resolvedExample,
+    crossSignals,
+    showCrossSignals,
+    envelopeSignals,
+    showEnvelopeSignals,
+  ]);
 
   useEffect(() => {
     liveRef.current = { bars: bars ?? [], drawings, tool, pending, selectedId, fixed: resolvedExample.drawings };
@@ -837,6 +877,18 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
           intraday={isIntraday(range)}
           show={showCrossSignals}
           onShowChange={setShowCrossSignals}
+        />
+      )}
+      {bars && bars.length > 0 && !loading && envelopeSource && (
+        <EnvelopeSignalPanel
+          bars={bars}
+          average={envelopeSource.ma}
+          percent={envelopeSource.percent}
+          signals={envelopeSignals}
+          regime={envelopeRegime(envelopeSource.values, bars.length - 1, envelopeSource.ma.period, envelopeSource.percent)}
+          intraday={isIntraday(range)}
+          show={showEnvelopeSignals}
+          onShowChange={setShowEnvelopeSignals}
         />
       )}
       {bars && bars.length > 0 && (

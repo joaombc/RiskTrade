@@ -252,3 +252,50 @@ describe("envelopes", () => {
     expect(loaded.map((ma) => ma.envelopes)).toEqual([[3, 10], undefined, undefined]);
   });
 });
+
+describe("sinais dos envelopes", () => {
+  const flat = (n: number, value = 100) => Array<number | null>(n).fill(value);
+  const candle = (high: number, low: number) => ({ high, low });
+
+  it("contexto pela inclinação da média em meio período", async () => {
+    const { envelopeRegime } = await import("./movingAverages");
+    // MMS 20 ± 3%: há tendência se a média andar mais de 1,5% em 10 candles.
+    const rising = Array.from({ length: 11 }, (_, i) => 100 + i * 0.2); // +2% em 10 candles
+    expect(envelopeRegime(rising, 10, 20, 3)).toBe("up");
+    expect(envelopeRegime(rising.map((v) => 200 - v), 10, 20, 3)).toBe("down");
+    expect(envelopeRegime(flat(11), 10, 20, 3)).toBe("lateral");
+    expect(envelopeRegime([null, ...flat(10)], 10, 20, 3)).toBeNull();
+  });
+
+  it("lateral: venda na banda de cima e compra na de baixo, só no primeiro toque", async () => {
+    const { findEnvelopeSignals } = await import("./movingAverages");
+    // Média plana em 100, bandas de 3% em 103 e 97. Com período 2, o contexto existe a partir do 3º candle.
+    const bars = [candle(101, 99), candle(101, 99), candle(103.5, 100), candle(104, 102), candle(101, 99), candle(99, 96.5)];
+    expect(findEnvelopeSignals(bars, flat(6), 2, 3)).toEqual([
+      { index: 2, kind: "sell", regime: "lateral", line: "upper" },
+      { index: 5, kind: "buy", regime: "lateral", line: "lower" },
+    ]);
+  });
+
+  it("alta: compra no recuo à média e realiza na banda de cima; nunca vende na banda de cima", async () => {
+    const { findEnvelopeSignals } = await import("./movingAverages");
+    const mean = Array.from({ length: 6 }, (_, i) => 100 + i * 2); // sobe 2% por candle
+    const bars = [candle(104, 102), candle(105, 103), candle(106, 103.5), candle(109.5, 107), candle(112, 109), candle(113, 111)];
+    const signals = findEnvelopeSignals(bars, mean, 2, 3);
+    expect(signals.map((s) => [s.index, s.kind, s.line])).toEqual([
+      [2, "buy", "mean"],
+      [3, "exit", "upper"],
+    ]);
+    expect(signals.every((s) => s.regime === "up")).toBe(true);
+  });
+
+  it("baixa: vende no repique à média e realiza na banda de baixo", async () => {
+    const { findEnvelopeSignals } = await import("./movingAverages");
+    const mean = Array.from({ length: 6 }, (_, i) => 102 - i * 2);
+    const bars = [candle(100.5, 99), candle(98, 96), candle(98.5, 96), candle(97, 92), candle(92, 90), candle(91, 89)];
+    expect(findEnvelopeSignals(bars, mean, 2, 3).map((s) => [s.index, s.kind, s.line])).toEqual([
+      [2, "sell", "mean"],
+      [3, "exit", "lower"],
+    ]);
+  });
+});
