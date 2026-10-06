@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { GapSize, Level, OpeningPhase, PremarketReport } from "@/lib/premarket";
 import { CROSS_SIGNAL_LABELS } from "@/lib/movingAverages";
 
@@ -290,33 +290,32 @@ type State = { kind: "loading" } | { kind: "error"; message: string } | { kind: 
 export function PremarketDialog({ symbol, onClose }: { symbol: string; onClose: () => void }) {
   const ref = useRef<HTMLDialogElement>(null);
   const [state, setState] = useState<State>({ kind: "loading" });
-
-  // Só muda o estado depois da resposta; quem quer o esqueleto de carregamento marca antes.
-  const fetchReport = useCallback(
-    async (signal?: AbortSignal) => {
-      try {
-        const res = await fetch(`/api/premarket?symbol=${encodeURIComponent(symbol)}`, { signal });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(data.error ?? "Falha ao gerar o relatório.");
-        setState({ kind: "ready", report: data.report });
-      } catch (err) {
-        if (signal?.aborted) return;
-        setState({ kind: "error", message: err instanceof Error ? err.message : String(err) });
-      }
-    },
-    [symbol],
-  );
+  /** Incrementada pelo botão "Atualizar" para buscar o relatório de novo. */
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     ref.current?.showModal();
+  }, []);
+
+  // O estado só muda nos callbacks da resposta; o esqueleto de carregamento é marcado por quem pede.
+  useEffect(() => {
     const controller = new AbortController();
-    fetchReport(controller.signal);
+    fetch(`/api/premarket?symbol=${encodeURIComponent(symbol)}`, { signal: controller.signal })
+      .then(async (res) => {
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error ?? "Falha ao gerar o relatório.");
+        setState({ kind: "ready", report: data.report });
+      })
+      .catch((err) => {
+        if (controller.signal.aborted) return;
+        setState({ kind: "error", message: err instanceof Error ? err.message : String(err) });
+      });
     return () => controller.abort();
-  }, [fetchReport]);
+  }, [symbol, reloadKey]);
 
   const refresh = () => {
     setState({ kind: "loading" });
-    fetchReport();
+    setReloadKey((k) => k + 1);
   };
 
   return (
