@@ -36,7 +36,7 @@ export function AssetSummaryPanel({ summary }: { summary: AssetSummary }) {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {summary.isUSStock && <PremarketButton symbol={summary.symbol} />}
+          {summary.usListing && <PremarketButton symbol={summary.symbol} />}
           <span className={`rounded-full px-3 py-1 text-xs font-semibold ${status.className}`}>{status.label}</span>
           <FavoriteButton symbol={summary.symbol} name={summary.name} />
         </div>

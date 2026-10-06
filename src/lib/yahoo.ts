@@ -14,6 +14,7 @@ import {
   type HistoryRange,
   type HistoryRangeSpec,
   type SearchResult,
+  type USListing,
 } from "./market";
 import {
   atr,
@@ -176,7 +177,7 @@ export async function getAssetSummary(symbol: string): Promise<AssetSummary> {
     dayLow: quote.regularMarketDayLow ?? quote.regularMarketPrice,
     volume: quote.regularMarketVolume ?? 0,
     avgVolume20d: history ? averageVolume(history.quotes) : null,
-    isUSStock: isUSStock(quote),
+    usListing: usListing(quote),
     openInterest: quote.openInterest ?? null,
     marketStatus: toMarketStatus(quote.marketState),
     updatedAt: (quote.regularMarketTime ?? new Date()).toISOString(),
@@ -185,16 +186,19 @@ export async function getAssetSummary(symbol: string): Promise<AssetSummary> {
 
 // ─── Relatório pré-market ──────────────────────────────────────────────────────
 
-/** Ativo fora do escopo do relatório pré-market (só ações americanas). */
-export class NotUSStockError extends Error {
+/** Ativo fora do escopo do relatório pré-market (só ações e ETFs americanos). */
+export class NotUSListedError extends Error {
   constructor(symbol: string) {
-    super(`"${symbol}" não é uma ação do mercado americano`);
-    this.name = "NotUSStockError";
+    super(`"${symbol}" não é uma ação nem um ETF do mercado americano`);
+    this.name = "NotUSListedError";
   }
 }
 
-function isUSStock(quote: { market?: string; quoteType?: string }): boolean {
-  return quote.market === "us_market" && quote.quoteType === "EQUITY";
+function usListing(quote: { market?: string; quoteType?: string }): USListing | null {
+  if (quote.market !== "us_market") return null;
+  if (quote.quoteType === "EQUITY") return "stock";
+  if (quote.quoteType === "ETF") return "etf";
+  return null;
 }
 
 /** Contexto do mercado americano mostrado no relatório. */
@@ -296,17 +300,20 @@ async function optional<T>(label: string, task: Promise<T>, fallback: T): Promis
 }
 
 /**
- * Relatório pré-market de uma ação americana. Cotação e histórico são obrigatórios; balanço,
- * analistas, notícias e contexto do mercado são opcionais.
+ * Relatório pré-market de uma ação ou ETF americano. Cotação e histórico são obrigatórios;
+ * balanço, analistas, notícias e contexto do mercado são opcionais. ETF não tem balanço nem
+ * analistas, então essa parte nem é buscada.
  */
 export async function getPremarketReport(symbol: string): Promise<PremarketReport> {
   const quote = await yahooFinance.quote(symbol);
   if (!quote || quote.regularMarketPrice === undefined) throw new AssetNotFoundError(symbol);
-  if (!isUSStock(quote)) throw new NotUSStockError(quote.symbol);
+  const kind = usListing(quote);
+  if (!kind) throw new NotUSListedError(quote.symbol);
 
+  const noEvents = { earnings: null, analysts: [] as AnalystAction[] };
   const [history, ev, newsItems, context] = await Promise.all([
     getHistory(quote.symbol, "1y"),
-    optional("eventos", events(quote.symbol), { earnings: null, analysts: [] }),
+    kind === "stock" ? optional("eventos", events(quote.symbol), noEvents) : noEvents,
     optional("notícias", news(quote.symbol), []),
     optional("contexto", marketContext(), []),
   ]);
@@ -322,6 +329,7 @@ export async function getPremarketReport(symbol: string): Promise<PremarketRepor
 
   return {
     symbol: quote.symbol,
+    kind,
     name: quote.longName ?? quote.shortName ?? quote.symbol,
     currency: quote.currency ?? "USD",
     generatedAt: new Date().toISOString(),

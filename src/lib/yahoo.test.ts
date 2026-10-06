@@ -5,14 +5,18 @@ vi.mock("server-only", () => ({}));
 
 const chart = vi.fn();
 const quote = vi.fn();
+const search = vi.fn();
+const quoteSummary = vi.fn();
 vi.mock("yahoo-finance2", () => ({
   default: class {
     chart = chart;
     quote = quote;
+    search = search;
+    quoteSummary = quoteSummary;
   },
 }));
 
-const { AssetNotFoundError, getAssetSummary, getHistory, getPremarketReport, NotUSStockError } = await import("./yahoo");
+const { AssetNotFoundError, getAssetSummary, getHistory, getPremarketReport, NotUSListedError } = await import("./yahoo");
 const { GET: historyRoute } = await import("../app/api/history/route");
 const { GET: premarketRoute } = await import("../app/api/premarket/route");
 
@@ -21,6 +25,8 @@ const NO_DATA = new Error("No data found, symbol may be delisted");
 beforeEach(() => {
   chart.mockReset();
   quote.mockReset();
+  search.mockReset();
+  quoteSummary.mockReset();
 });
 
 describe("getHistory", () => {
@@ -85,26 +91,52 @@ describe("getAssetSummary", () => {
 });
 
 describe("relatório pré-market", () => {
-  it("recusa ativos que não são ações americanas", async () => {
+  it("recusa ativos que não são ações nem ETFs americanos", async () => {
     quote.mockResolvedValue({ symbol: "PETR4.SA", market: "br_market", quoteType: "EQUITY", regularMarketPrice: 50 });
-    await expect(getPremarketReport("PETR4.SA")).rejects.toBeInstanceOf(NotUSStockError);
-    quote.mockResolvedValue({ symbol: "SPY", market: "us_market", quoteType: "ETF", regularMarketPrice: 700 });
-    await expect(getPremarketReport("SPY")).rejects.toBeInstanceOf(NotUSStockError);
+    await expect(getPremarketReport("PETR4.SA")).rejects.toBeInstanceOf(NotUSListedError);
+    quote.mockResolvedValue({ symbol: "ES=F", market: "us24_market", quoteType: "FUTURE", regularMarketPrice: 7800 });
+    await expect(getPremarketReport("ES=F")).rejects.toBeInstanceOf(NotUSListedError);
   });
 
   it("a rota responde 400 com mensagem clara para ativos fora do escopo", async () => {
     quote.mockResolvedValue({ symbol: "BTC-USD", market: "ccc_market", quoteType: "CRYPTOCURRENCY", regularMarketPrice: 80000 });
     const res = await premarketRoute(new Request("http://localhost/api/premarket?symbol=BTC-USD"));
     expect(res.status).toBe(400);
-    expect((await res.json()).error).toBe("O relatório pré-market é só para ações do mercado americano.");
+    expect((await res.json()).error).toBe("O relatório pré-market é só para ações e ETFs do mercado americano.");
   });
 
-  it("o card marca só ações americanas", async () => {
-    quote.mockResolvedValue({ symbol: "MDB", market: "us_market", quoteType: "EQUITY", regularMarketPrice: 360, marketState: "PRE" });
+  it("o card identifica ações e ETFs americanos", async () => {
     chart.mockRejectedValue(NO_DATA);
-    expect((await getAssetSummary("MDB")).isUSStock).toBe(true);
-    quote.mockResolvedValue({ symbol: "PETR4.SA", market: "br_market", quoteType: "EQUITY", regularMarketPrice: 50 });
-    expect((await getAssetSummary("PETR4.SA")).isUSStock).toBe(false);
+    const cases = [
+      [{ symbol: "MDB", market: "us_market", quoteType: "EQUITY" }, "stock"],
+      [{ symbol: "SPY", market: "us_market", quoteType: "ETF" }, "etf"],
+      [{ symbol: "PETR4.SA", market: "br_market", quoteType: "EQUITY" }, null],
+      [{ symbol: "^VIX", market: "cboe_market", quoteType: "INDEX" }, null],
+    ] as const;
+    for (const [q, expected] of cases) {
+      quote.mockResolvedValue({ ...q, regularMarketPrice: 100 });
+      expect((await getAssetSummary(q.symbol)).usListing, q.symbol).toBe(expected);
+    }
+  });
+
+  it("ETF não busca balanço nem analistas", async () => {
+    quote.mockImplementation(async (s: string | string[]) =>
+      Array.isArray(s) ? [] : { symbol: "SPY", market: "us_market", quoteType: "ETF", regularMarketPrice: 700, marketState: "PRE" },
+    );
+    const bars = Array.from({ length: 30 }, (_, i) => ({
+      date: new Date(Date.now() - (30 - i) * 86_400_000),
+      open: 700,
+      high: 701,
+      low: 699,
+      close: 700,
+      volume: 1,
+    }));
+    chart.mockResolvedValue({ meta: { gmtoffset: 0 }, quotes: bars });
+    search.mockResolvedValue({ news: [] });
+    const report = await getPremarketReport("SPY");
+    expect(report.kind).toBe("etf");
+    expect(report.earnings).toBeNull();
+    expect(report.analysts).toEqual([]);
+    expect(quoteSummary).not.toHaveBeenCalled();
   });
 });
-

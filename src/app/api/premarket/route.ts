@@ -1,5 +1,5 @@
 import { SYMBOL_PATTERN } from "@/lib/market";
-import { AssetNotFoundError, getPremarketReport, NotUSStockError } from "@/lib/yahoo";
+import { AssetNotFoundError, getPremarketReport, NotUSListedError } from "@/lib/yahoo";
 
 export async function GET(request: Request) {
   const symbol = new URL(request.url).searchParams.get("symbol")?.trim() ?? "";
@@ -11,8 +11,8 @@ export async function GET(request: Request) {
     const report = await getPremarketReport(symbol.toUpperCase());
     return Response.json({ report });
   } catch (error) {
-    if (error instanceof NotUSStockError) {
-      return Response.json({ error: "O relatório pré-market é só para ações do mercado americano." }, { status: 400 });
+    if (error instanceof NotUSListedError) {
+      return Response.json({ error: "O relatório pré-market é só para ações e ETFs do mercado americano." }, { status: 400 });
     }
     if (error instanceof AssetNotFoundError) {
       return Response.json({ error: `Ativo "${symbol.toUpperCase()}" não encontrado.` }, { status: 404 });
