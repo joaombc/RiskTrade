@@ -12,10 +12,10 @@ import type { Diagram, DiagramPoint, Pt } from "./types";
 type Series = (number | null)[];
 
 /** Oscilação determinística, para as séries parecerem preço sem sortear nada. */
-const noise = (i: number, amplitude: number) => amplitude * (Math.sin(i * 1.3) * 0.6 + Math.sin(i * 0.55 + 1) * 0.4);
+export const noise = (i: number, amplitude: number) => amplitude * (Math.sin(i * 1.3) * 0.6 + Math.sin(i * 0.55 + 1) * 0.4);
 
 /** Converte séries em coordenadas do viewBox, com uma escala vertical comum a todas. */
-function plotter(series: Series[], top = 14, bottom = 88) {
+export function plotter(series: Series[], top = 14, bottom = 88) {
   const all = series.flat().filter((v): v is number => v !== null);
   const min = Math.min(...all);
   const max = Math.max(...all);
