@@ -18,6 +18,8 @@ export interface AssetSummary {
   dayLow: number;
   volume: number;
   avgVolume20d: number | null;
+  /** Ação do mercado americano: o card mostra o botão do relatório pré-market. */
+  isUSStock: boolean;
   /** Contratos em aberto do vencimento atual (só futuros e opções; null nos demais ativos). */
   openInterest: number | null;
   marketStatus: MarketStatus;

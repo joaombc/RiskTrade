@@ -15,6 +15,20 @@ import {
   type HistoryRangeSpec,
   type SearchResult,
 } from "./market";
+import {
+  atr,
+  classifyGap,
+  crossedLevel,
+  nearestLevels,
+  openingMove,
+  pickNews,
+  priceTargetOrNull,
+  technicalMap,
+  type AnalystAction,
+  type MarketContextItem,
+  type PremarketReport,
+  type QuoteSnapshot,
+} from "./premarket";
 import { SPARKLINE_SESSIONS, type WatchlistQuote } from "./watchlist";
 
 const yahooFinance = new YahooFinance({ suppressNotices: ["yahooSurvey"] });
@@ -162,8 +176,165 @@ export async function getAssetSummary(symbol: string): Promise<AssetSummary> {
     dayLow: quote.regularMarketDayLow ?? quote.regularMarketPrice,
     volume: quote.regularMarketVolume ?? 0,
     avgVolume20d: history ? averageVolume(history.quotes) : null,
+    isUSStock: isUSStock(quote),
     openInterest: quote.openInterest ?? null,
     marketStatus: toMarketStatus(quote.marketState),
     updatedAt: (quote.regularMarketTime ?? new Date()).toISOString(),
+  };
+}
+
+// ─── Relatório pré-market ──────────────────────────────────────────────────────
+
+/** Ativo fora do escopo do relatório pré-market (só ações americanas). */
+export class NotUSStockError extends Error {
+  constructor(symbol: string) {
+    super(`"${symbol}" não é uma ação do mercado americano`);
+    this.name = "NotUSStockError";
+  }
+}
+
+function isUSStock(quote: { market?: string; quoteType?: string }): boolean {
+  return quote.market === "us_market" && quote.quoteType === "EQUITY";
+}
+
+/** Contexto do mercado americano mostrado no relatório. */
+const MARKET_CONTEXT: { symbol: string; label: string }[] = [
+  { symbol: "ES=F", label: "S&P 500 futuro" },
+  { symbol: "NQ=F", label: "Nasdaq 100 futuro" },
+  { symbol: "DX-Y.NYB", label: "Índice do dólar (DXY)" },
+  { symbol: "^VIX", label: "VIX (volatilidade)" },
+];
+
+const ANALYST_WINDOW_DAYS = 30;
+const MAX_ANALYST_ACTIONS = 5;
+
+async function marketContext(): Promise<MarketContextItem[]> {
+  const quotes = await yahooFinance.quote(
+    MARKET_CONTEXT.map((c) => c.symbol),
+    { return: "array" },
+  );
+  return MARKET_CONTEXT.flatMap((c) => {
+    const q = quotes.find((x) => x.symbol === c.symbol);
+    if (!q || q.regularMarketPrice === undefined) return [];
+    return [{ symbol: c.symbol, label: c.label, price: q.regularMarketPrice, changePercent: q.regularMarketChangePercent ?? 0 }];
+  });
+}
+
+async function events(symbol: string) {
+  const summary = await yahooFinance.quoteSummary(symbol, { modules: ["calendarEvents", "upgradeDowngradeHistory"] });
+  const now = Date.now();
+
+  const next = summary.calendarEvents?.earnings?.earningsDate?.find((d) => d.getTime() > now);
+  const earnings = next
+    ? {
+        date: next.toISOString(),
+        estimate: Boolean(summary.calendarEvents?.earnings?.isEarningsDateEstimate),
+        daysAway: Math.ceil((next.getTime() - now) / DAY_MS),
+      }
+    : null;
+
+  const since = now - ANALYST_WINDOW_DAYS * DAY_MS;
+  const analysts: AnalystAction[] = (summary.upgradeDowngradeHistory?.history ?? [])
+    .filter((h) => h.epochGradeDate.getTime() >= since)
+    .slice(0, MAX_ANALYST_ACTIONS)
+    .map((h) => {
+      // Os preços-alvo vêm na resposta, mas nem toda versão dos tipos da biblioteca os declara.
+      const extra = h as unknown as { currentPriceTarget?: number; priorPriceTarget?: number };
+      return {
+        date: h.epochGradeDate.toISOString(),
+        firm: h.firm,
+        action: h.action,
+        fromGrade: h.fromGrade || null,
+        toGrade: h.toGrade,
+        priceTarget: priceTargetOrNull(extra.currentPriceTarget),
+        priorPriceTarget: priceTargetOrNull(extra.priorPriceTarget),
+      };
+    });
+  return { earnings, analysts };
+}
+
+async function news(symbol: string) {
+  const { news: items } = await yahooFinance.search(symbol, { quotesCount: 0, newsCount: 15 });
+  return pickNews(
+    items.map((n) => ({
+      title: n.title,
+      publisher: n.publisher,
+      link: n.link,
+      time: n.providerPublishTime,
+      relatedTickers: n.relatedTickers,
+    })),
+    symbol,
+  );
+}
+
+/** Campos de pré e pós-mercado da cotação. Nem toda variante do tipo Quote os declara, então são lidos um a um. */
+function quoteSnapshot(quote: object): QuoteSnapshot {
+  const q = quote as Record<string, unknown>;
+  const num = (k: string) => (typeof q[k] === "number" ? (q[k] as number) : undefined);
+  const date = (k: string) => (q[k] instanceof Date ? (q[k] as Date) : undefined);
+  return {
+    marketState: typeof q.marketState === "string" ? q.marketState : undefined,
+    regularMarketPrice: num("regularMarketPrice"),
+    regularMarketPreviousClose: num("regularMarketPreviousClose"),
+    regularMarketOpen: num("regularMarketOpen"),
+    regularMarketTime: date("regularMarketTime"),
+    preMarketPrice: num("preMarketPrice"),
+    preMarketTime: date("preMarketTime"),
+    postMarketPrice: num("postMarketPrice"),
+    postMarketTime: date("postMarketTime"),
+  };
+}
+
+/** Valor de uma parte opcional do relatório; se ela falhar, o resto continua. */
+async function optional<T>(label: string, task: Promise<T>, fallback: T): Promise<T> {
+  try {
+    return await task;
+  } catch (error) {
+    console.error(`[premarket] ${label}`, error);
+    return fallback;
+  }
+}
+
+/**
+ * Relatório pré-market de uma ação americana. Cotação e histórico são obrigatórios; balanço,
+ * analistas, notícias e contexto do mercado são opcionais.
+ */
+export async function getPremarketReport(symbol: string): Promise<PremarketReport> {
+  const quote = await yahooFinance.quote(symbol);
+  if (!quote || quote.regularMarketPrice === undefined) throw new AssetNotFoundError(symbol);
+  if (!isUSStock(quote)) throw new NotUSStockError(quote.symbol);
+
+  const [history, ev, newsItems, context] = await Promise.all([
+    getHistory(quote.symbol, "1y"),
+    optional("eventos", events(quote.symbol), { earnings: null, analysts: [] }),
+    optional("notícias", news(quote.symbol), []),
+    optional("contexto", marketContext(), []),
+  ]);
+
+  // Com o pregão aberto, o candle de hoje está incompleto: o mapa técnico usa só pregões fechados.
+  const sessionOpen = quote.marketState === "REGULAR";
+  const bars = sessionOpen ? history.bars.slice(0, -1) : history.bars;
+  const technical = technicalMap(bars, history.warmup);
+  const opening = openingMove(quoteSnapshot(quote));
+  const reference = opening?.reference ?? technical?.close ?? quote.regularMarketPrice;
+  const range = atr(bars);
+  const levels = nearestLevels(bars, reference);
+
+  return {
+    symbol: quote.symbol,
+    name: quote.longName ?? quote.shortName ?? quote.symbol,
+    currency: quote.currency ?? "USD",
+    generatedAt: new Date().toISOString(),
+    marketStatus: toMarketStatus(quote.marketState),
+    opening,
+    atr: range,
+    gap: opening ? classifyGap(opening.change, range) : null,
+    levels,
+    crossed: opening ? crossedLevel(reference, opening.price, levels) : null,
+    technical,
+    earnings: ev.earnings,
+    analysts: ev.analysts,
+    news: newsItems,
+    context,
   };
 }
