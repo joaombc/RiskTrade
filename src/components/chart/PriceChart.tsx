@@ -28,7 +28,15 @@ import { TOOLS, type Anchor, type Bar, type Drawing, type DrawingKind, type Draw
 import { resolveExample, type ResolvedExample } from "@/lib/glossary/examples";
 import type { TermExample } from "@/lib/glossary/types";
 import { computeOBV, findDivergences, type Divergence } from "@/lib/indicators";
-import { HISTORY_RANGES, INTERVAL_LABELS, isIntraday, sameBars, type HistoryRange } from "@/lib/market";
+import {
+  HISTORY_RANGES,
+  INTERVAL_LABELS,
+  isIntraday,
+  rangeSpec,
+  sameBars,
+  type HistoryRange,
+  type PresetRange,
+} from "@/lib/market";
 import {
   computeMovingAverage,
   envelopeLine,
@@ -48,6 +56,7 @@ import { useTheme } from "@/lib/theme";
 import type { PlanLevel } from "@/lib/risk";
 import { CrossSignalPanel } from "./CrossSignalPanel";
 import { BollingerPanel } from "./BollingerPanel";
+import { CustomRangeInput } from "./CustomRangeInput";
 import { DivergencePanel } from "./DivergencePanel";
 import { EnvelopeSignalPanel } from "./EnvelopeSignalPanel";
 import { DrawingsPrimitive } from "./DrawingsPrimitive";
@@ -60,7 +69,7 @@ import { CHART_THEMES } from "./theme";
 const MAGNET_PX = 10;
 /** Deslocamento máximo (px) entre pressionar e soltar para contar como clique, não arrasto. */
 const CLICK_TOLERANCE_PX = 5;
-const RANGE_KEYS = Object.keys(HISTORY_RANGES) as HistoryRange[];
+const RANGE_KEYS = Object.keys(HISTORY_RANGES) as PresetRange[];
 const NO_LEVELS: PlanLevel[] = [];
 /**
  * Intervalo de atualização do gráfico, em todos os períodos: no intradiário entram candles
@@ -827,7 +836,7 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
     <section aria-label={`Gráfico de ${symbol}`} className="rounded-2xl border border-border bg-surface p-4 shadow-sm sm:p-5">
       <header className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-sm font-semibold">
-          Gráfico <span className="font-normal text-muted">· {INTERVAL_LABELS[HISTORY_RANGES[range].interval]}</span>
+          Gráfico <span className="font-normal text-muted">· {INTERVAL_LABELS[rangeSpec(range).interval]}</span>
           {updatedAt !== null && !loading && (
             <span className="font-normal text-muted" title="O gráfico se atualiza a cada minuto com a aba visível.">
               {" "}
@@ -835,7 +844,7 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
             </span>
           )}
         </h2>
-        <div role="group" aria-label="Período" className="flex flex-wrap gap-1">
+        <div role="group" aria-label="Período" className="flex flex-wrap items-center gap-1">
           {RANGE_KEYS.map((r) => (
             <button
               key={r}
@@ -847,6 +856,7 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
               {HISTORY_RANGES[r].label}
             </button>
           ))}
+          <CustomRangeInput key={range} range={range} onChange={setRange} />
         </div>
       </header>
 

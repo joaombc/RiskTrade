@@ -3,7 +3,7 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { GLOSSARY } from "@/lib/glossary/terms";
-import { HISTORY_RANGES, SYMBOL_PATTERN, type AssetSummary, type HistoryRange } from "@/lib/market";
+import { parseRange, SYMBOL_PATTERN, type AssetSummary } from "@/lib/market";
 import type { PlanLevel } from "@/lib/risk";
 import { pickStartSymbol } from "@/lib/watchlist";
 import { AssetSearch } from "./AssetSearch";
@@ -57,7 +57,7 @@ function readLink(params: URLSearchParams) {
   const rawSymbol = params.get("ativo")?.trim().toUpperCase() ?? "";
   const symbol = SYMBOL_PATTERN.test(rawSymbol) ? rawSymbol : null;
   const rawRange = params.get("periodo") ?? "";
-  const range = Object.hasOwn(HISTORY_RANGES, rawRange) ? (rawRange as HistoryRange) : undefined;
+  const range = parseRange(rawRange) ?? undefined;
   const term = GLOSSARY.find((t) => t.slug === params.get("exemplo") && t.example);
   const example: ChartExample | null =
     term?.example && term.example.symbol === symbol ? { slug: term.slug, name: term.name, example: term.example } : null;

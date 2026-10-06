@@ -50,6 +50,26 @@ describe("getHistory", () => {
     expect(Date.now() - period1.getTime()).toBeGreaterThan(400 * 24 * 60 * 60 * 1000);
   });
 
+  it("período personalizado mostra os últimos N pregões, com o resto como aquecimento", async () => {
+    const DAY = 24 * 60 * 60 * 1000;
+    const quotes = Array.from({ length: 40 }, (_, i) => {
+      const close = 100 + i;
+      return { date: new Date(Date.now() - (40 - i) * DAY), open: close, high: close, low: close, close, volume: 1 };
+    });
+    chart.mockResolvedValue({ meta: { gmtoffset: 0 }, quotes });
+    const { bars, warmup } = await getHistory("BTC-USD", "n25");
+    expect(bars).toHaveLength(25);
+    expect(bars.at(-1)!.close).toBe(139);
+    expect(warmup).toHaveLength(15);
+  });
+
+  it("não pede ao Yahoo mais histórico intradiário do que ele guarda", async () => {
+    chart.mockResolvedValue({ meta: { gmtoffset: 0 }, quotes: [{ date: new Date(), open: 1, high: 1, low: 1, close: 1, volume: 1 }] });
+    await getHistory("AAPL", "n10"); // candles de 30 min: período + aquecimento passariam de 60 dias
+    const period1: Date = chart.mock.calls[0][1].period1;
+    expect(Date.now() - period1.getTime()).toBeLessThanOrEqual(59 * 24 * 60 * 60 * 1000 + 1000);
+  });
+
   it("mantém outras falhas como erro do serviço", async () => {
     chart.mockRejectedValue(new Error("fetch failed"));
     await expect(getHistory("AAPL", "1y")).rejects.not.toBeInstanceOf(AssetNotFoundError);

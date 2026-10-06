@@ -1,5 +1,5 @@
 import { getOpenInterest } from "@/lib/cftc";
-import { HISTORY_RANGES, isIntraday, SYMBOL_PATTERN, type HistoryRange } from "@/lib/market";
+import { isIntraday, parseRange, rangeSpec, SYMBOL_PATTERN, type HistoryRange } from "@/lib/market";
 import { alignToBars, type OpenInterestPoint } from "@/lib/openInterest";
 import { AssetNotFoundError, getHistory } from "@/lib/yahoo";
 
@@ -12,7 +12,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 async function openInterestPoints(symbol: string, range: HistoryRange): Promise<OpenInterestPoint[] | null> {
   if (isIntraday(range)) return null;
   try {
-    return await getOpenInterest(symbol, new Date(Date.now() - HISTORY_RANGES[range].days * DAY_MS));
+    return await getOpenInterest(symbol, new Date(Date.now() - rangeSpec(range).days * DAY_MS));
   } catch (error) {
     console.error("[api/history] interesse aberto", error);
     return null;
@@ -22,12 +22,12 @@ async function openInterestPoints(symbol: string, range: HistoryRange): Promise<
 export async function GET(request: Request) {
   const params = new URL(request.url).searchParams;
   const symbol = params.get("symbol")?.trim() ?? "";
-  const range = (params.get("range") ?? "1y") as HistoryRange;
+  const range = parseRange(params.get("range") ?? "1y");
 
   if (!SYMBOL_PATTERN.test(symbol)) {
     return Response.json({ error: "Ticker inválido." }, { status: 400 });
   }
-  if (!Object.hasOwn(HISTORY_RANGES, range)) {
+  if (!range) {
     return Response.json({ error: "Período inválido." }, { status: 400 });
   }
 
