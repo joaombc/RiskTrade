@@ -36,6 +36,16 @@ export interface ChannelSignal {
   kind: ChannelSignalKind;
 }
 
+export type ChannelPosition = "long" | "short" | "flat";
+
+export interface ChannelSystemState {
+  signals: ChannelSignal[];
+  /** Posição do sistema depois do último candle. */
+  position: ChannelPosition;
+  /** Candle do sinal que abriu a posição atual (null se de fora). */
+  since: number | null;
+}
+
 /**
  * A regra das 4 semanas pelo fechamento: entra comprado quando o fechamento passa a máxima do
  * canal de entrada e vendido quando perde a mínima. Com `exitPeriod` igual a `entryPeriod`, é a
@@ -43,47 +53,94 @@ export interface ChannelSignal {
  * saída mais curto (1 ou 2 semanas), é a não contínua: a posição é zerada no rompimento contrário
  * do canal curto, e o sistema fica de fora até o próximo rompimento do canal de entrada.
  */
+export function channelSystemState(
+  bars: { high: number; low: number; close: number }[],
+  entryPeriod = FOUR_WEEKS,
+  exitPeriod = entryPeriod,
+): ChannelSystemState {
+  const entry = priceChannel(bars, entryPeriod);
+  const exit = priceChannel(bars, exitPeriod);
+  const continuous = exitPeriod >= entryPeriod;
+  const signals: ChannelSignal[] = [];
+  let position: ChannelPosition = "flat";
+  let since: number | null = null;
+  const open = (i: number, kind: "buy" | "sell") => {
+    signals.push({ index: i, kind });
+    position = kind === "buy" ? "long" : "short";
+    since = i;
+  };
+  const close = (i: number) => {
+    signals.push({ index: i, kind: "exit" });
+    position = "flat";
+    since = null;
+  };
+
+  bars.forEach(({ close: price }, i) => {
+    const [up, down, exitUp, exitDown] = [entry.upper[i], entry.lower[i], exit.upper[i], exit.lower[i]];
+    if (up === null || down === null) return;
+    if (position === "long") {
+      if (continuous && price < down) open(i, "sell");
+      else if (!continuous && exitDown !== null && price < exitDown) close(i);
+      return;
+    }
+    if (position === "short") {
+      if (continuous && price > up) open(i, "buy");
+      else if (!continuous && exitUp !== null && price > exitUp) close(i);
+      return;
+    }
+    if (price > up) open(i, "buy");
+    else if (price < down) open(i, "sell");
+  });
+  return { signals, position, since };
+}
+
+/** Só os sinais do sistema (ver channelSystemState). */
 export function channelSystem(
   bars: { high: number; low: number; close: number }[],
   entryPeriod = FOUR_WEEKS,
   exitPeriod = entryPeriod,
 ): ChannelSignal[] {
-  const entry = priceChannel(bars, entryPeriod);
-  const exit = priceChannel(bars, exitPeriod);
-  const continuous = exitPeriod >= entryPeriod;
-  const signals: ChannelSignal[] = [];
-  let position: -1 | 0 | 1 = 0;
+  return channelSystemState(bars, entryPeriod, exitPeriod).signals;
+}
 
-  bars.forEach(({ close }, i) => {
-    const [up, down, exitUp, exitDown] = [entry.upper[i], entry.lower[i], exit.upper[i], exit.lower[i]];
-    if (up === null || down === null) return;
-    if (position === 1) {
-      if (continuous && close < down) {
-        signals.push({ index: i, kind: "sell" });
-        position = -1;
-      } else if (!continuous && exitDown !== null && close < exitDown) {
-        signals.push({ index: i, kind: "exit" });
-        position = 0;
-      }
-      return;
-    }
-    if (position === -1) {
-      if (continuous && close > up) {
-        signals.push({ index: i, kind: "buy" });
-        position = 1;
-      } else if (!continuous && exitUp !== null && close > exitUp) {
-        signals.push({ index: i, kind: "exit" });
-        position = 0;
-      }
-      return;
-    }
-    if (close > up) {
-      signals.push({ index: i, kind: "buy" });
-      position = 1;
-    } else if (close < down) {
-      signals.push({ index: i, kind: "sell" });
-      position = -1;
-    }
-  });
-  return signals;
+// ─── Preferências do gráfico ───────────────────────────────────────────────────
+
+/** Pregões por semana: a regra é definida em semanas de candles diários. */
+export const WEEK_BARS = 5;
+/** Canal de entrada: 4 semanas (original), 2 (mais sensível) ou 8 (filtra a lateralidade). */
+export const ENTRY_WEEKS = [2, 4, 8] as const;
+/** Saída não contínua: rompimento contrário de 2 ou 1 semana. */
+export const EXIT_WEEKS = [2, 1] as const;
+
+export interface FourWeekSettings {
+  enabled: boolean;
+  entryWeeks: (typeof ENTRY_WEEKS)[number];
+  /** null = versão contínua (sai e inverte pelo próprio canal de entrada). */
+  exitWeeks: (typeof EXIT_WEEKS)[number] | null;
+}
+
+export const DEFAULT_FOUR_WEEK: FourWeekSettings = { enabled: false, entryWeeks: 4, exitWeeks: null };
+
+const STORAGE_KEY = "risktrade:four-week:v1";
+
+/** Preferências salvas, validadas; uma saída que não seja mais curta que a entrada vira contínua. */
+export function loadFourWeekSettings(): FourWeekSettings {
+  try {
+    const raw: unknown = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "null");
+    if (!raw || typeof raw !== "object") return DEFAULT_FOUR_WEEK;
+    const r = raw as Partial<FourWeekSettings>;
+    const entryWeeks = ENTRY_WEEKS.find((w) => w === r.entryWeeks) ?? DEFAULT_FOUR_WEEK.entryWeeks;
+    const exit = EXIT_WEEKS.find((w) => w === r.exitWeeks) ?? null;
+    return { enabled: r.enabled === true, entryWeeks, exitWeeks: exit !== null && exit < entryWeeks ? exit : null };
+  } catch {
+    return DEFAULT_FOUR_WEEK;
+  }
+}
+
+export function saveFourWeekSettings(settings: FourWeekSettings): void {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+  } catch {
+    // Storage bloqueado: a escolha vale só nesta sessão.
+  }
 }

@@ -19,6 +19,7 @@ import {
   type MovingAverage,
   type MovingAverageKind,
 } from "@/lib/movingAverages";
+import { ENTRY_WEEKS, EXIT_WEEKS, type FourWeekSettings } from "@/lib/priceChannel";
 
 interface Props {
   averages: MovingAverage[];
@@ -28,12 +29,23 @@ interface Props {
   colors: string[];
   bollinger: boolean;
   onBollingerChange: (enabled: boolean) => void;
+  fourWeek: FourWeekSettings;
+  onFourWeekChange: (settings: FourWeekSettings) => void;
 }
 
 const chip = "flex items-center rounded-full border text-xs font-medium";
 
 /** Barra das médias móveis: atalhos, média personalizada e os chips das médias ativas. */
-export function MovingAverageBar({ averages, onChange, barCount, colors, bollinger, onBollingerChange }: Props) {
+export function MovingAverageBar({
+  averages,
+  onChange,
+  barCount,
+  colors,
+  bollinger,
+  onBollingerChange,
+  fourWeek,
+  onFourWeekChange,
+}: Props) {
   const [custom, setCustom] = useState<{ kind: MovingAverageKind; period: string } | null>(null);
   const full = averages.length >= MAX_MOVING_AVERAGES;
   const presets = MA_PRESETS.filter((p) => !averages.some((ma) => ma.id === maId(p.kind, p.period)));
@@ -154,6 +166,63 @@ export function MovingAverageBar({ averages, onChange, barCount, colors, bolling
         <span className="font-semibold">Bandas de Bollinger</span>
         <span className="text-muted">(MMS 20 ± 2 desvios)</span>
       </label>
+
+      <div role="group" aria-label="Regra das 4 semanas" className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs">
+        <label
+          className="flex items-center gap-1.5"
+          title="Canal de preço de Donchian: compra no fechamento acima da máxima das semanas anteriores, venda abaixo da mínima (Murphy, cap. 9)."
+        >
+          <input
+            type="checkbox"
+            checked={fourWeek.enabled}
+            onChange={(e) => onFourWeekChange({ ...fourWeek, enabled: e.target.checked })}
+          />
+          <span className="font-semibold">Regra das 4 semanas</span>
+        </label>
+        {fourWeek.enabled && (
+          <>
+            <label className="flex items-center gap-1 text-muted">
+              Entrada
+              <select
+                value={fourWeek.entryWeeks}
+                onChange={(e) => {
+                  const entryWeeks = Number(e.target.value) as FourWeekSettings["entryWeeks"];
+                  // A saída precisa ser mais curta que a entrada; senão, vira contínua.
+                  const exitWeeks = fourWeek.exitWeeks !== null && fourWeek.exitWeeks < entryWeeks ? fourWeek.exitWeeks : null;
+                  onFourWeekChange({ ...fourWeek, entryWeeks, exitWeeks });
+                }}
+                className="rounded-md border border-border bg-surface px-1.5 py-0.5"
+              >
+                {ENTRY_WEEKS.map((w) => (
+                  <option key={w} value={w}>
+                    {w} semanas{w === 4 ? " (original)" : w === 8 ? " (filtra lateral)" : " (sensível)"}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="flex items-center gap-1 text-muted">
+              Saída
+              <select
+                value={fourWeek.exitWeeks ?? "continua"}
+                onChange={(e) =>
+                  onFourWeekChange({
+                    ...fourWeek,
+                    exitWeeks: e.target.value === "continua" ? null : (Number(e.target.value) as FourWeekSettings["exitWeeks"]),
+                  })
+                }
+                className="rounded-md border border-border bg-surface px-1.5 py-0.5"
+              >
+                <option value="continua">Contínua (inverte no canal de entrada)</option>
+                {EXIT_WEEKS.filter((w) => w < fourWeek.entryWeeks).map((w) => (
+                  <option key={w} value={w}>
+                    Não contínua: {w} {w === 1 ? "semana" : "semanas"}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </>
+        )}
+      </div>
 
       <div role="group" aria-label="Combinações de médias" className="flex flex-wrap items-center gap-1.5">
         <span className="mr-1 text-xs font-semibold">Combinações</span>

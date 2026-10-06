@@ -40,3 +40,51 @@ describe("channelSystem", () => {
     expect(channelSystem(flat, 20)).toEqual([]);
   });
 });
+
+describe("channelSystemState", () => {
+  const closes = [
+    ...Array.from({ length: 6 }, (_, i) => (i % 2 ? 101 : 99)),
+    ...Array.from({ length: 8 }, (_, i) => 103 + i * 4),
+  ];
+  const bars = closes.map((c) => bar(c));
+
+  it("informa a posição atual e desde qual candle", async () => {
+    const { channelSystemState } = await import("./priceChannel");
+    const state = channelSystemState(bars, 5);
+    expect(state.position).toBe("long");
+    expect(closes[state.since!]).toBe(103);
+  });
+
+  it("de fora depois da saída, na versão não contínua", async () => {
+    const { channelSystemState } = await import("./priceChannel");
+    // Perde a mínima de 2 candles (sai), sem perder a de 5 (não abre venda).
+    const falling = [...closes, 125, 124].map((c) => bar(c));
+    const state = channelSystemState(falling, 5, 2);
+    expect(state.position).toBe("flat");
+    expect(state.since).toBeNull();
+    expect(state.signals.at(-1)?.kind).toBe("exit");
+  });
+});
+
+describe("preferências da regra no gráfico", () => {
+  const store = new Map<string, string>();
+  globalThis.localStorage = {
+    getItem: (k: string) => store.get(k) ?? null,
+    setItem: (k: string, v: string) => void store.set(k, v),
+    removeItem: (k: string) => void store.delete(k),
+  } as Storage;
+
+  it("salvam e recuperam, e corrigem combinações inválidas", async () => {
+    const { loadFourWeekSettings, saveFourWeekSettings, DEFAULT_FOUR_WEEK } = await import("./priceChannel");
+    expect(loadFourWeekSettings()).toEqual(DEFAULT_FOUR_WEEK);
+    saveFourWeekSettings({ enabled: true, entryWeeks: 8, exitWeeks: 2 });
+    expect(loadFourWeekSettings()).toEqual({ enabled: true, entryWeeks: 8, exitWeeks: 2 });
+    // Saída de 2 semanas com entrada de 2 não é mais curta: vira contínua.
+    store.set("risktrade:four-week:v1", JSON.stringify({ enabled: true, entryWeeks: 2, exitWeeks: 2 }));
+    expect(loadFourWeekSettings().exitWeeks).toBeNull();
+    store.set("risktrade:four-week:v1", JSON.stringify({ enabled: "sim", entryWeeks: 5, exitWeeks: 3 }));
+    expect(loadFourWeekSettings()).toEqual({ enabled: false, entryWeeks: 4, exitWeeks: null });
+    store.set("risktrade:four-week:v1", "{lixo");
+    expect(loadFourWeekSettings()).toEqual(DEFAULT_FOUR_WEEK);
+  });
+});

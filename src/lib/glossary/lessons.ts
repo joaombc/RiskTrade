@@ -566,12 +566,12 @@ export const LESSONS: Lesson[] = [
       {
         heading: "No RiskTrade",
         paragraphs: [
-          "O gráfico ainda não desenha o canal de preço, mas dá para aplicar a regra com as ferramentas atuais:",
+          "Marque Regra das 4 semanas na barra de médias do gráfico, num período de candles diários (3M em diante, ou 23 dias ou mais no campo Dias):",
         ],
         bullets: [
-          "Digite 20 no campo Dias do gráfico para ver as últimas 4 semanas de pregões (ou 40 para 8 semanas).",
-          "Marque a máxima e a mínima desse período com a ferramenta Suporte/Resistência: são o teto e o chão do canal.",
-          "Um fechamento acima do teto é o sinal de compra; abaixo do chão, de venda. Para a versão não contínua, marque também a mínima (ou a máxima) das últimas 2 semanas como saída.",
+          "O canal de entrada aparece em degraus: a máxima (vermelha) e a mínima (verde) das semanas anteriores. Escolha 4 semanas (original), 2 (mais sensível) ou 8 (filtra a lateralidade).",
+          "Na saída, escolha a versão contínua, que inverte a posição no próprio canal, ou a não contínua, que sai pela mínima (ou máxima) de 2 ou 1 semana, desenhada pontilhada.",
+          "Os marcadores mostram cada Compra, Venda e Saída, e o painel diz a posição do sistema, os níveis que o fechamento precisa romper e os sinais recentes.",
           "Combine com o painel de cruzamento de médias para usar o rompimento de 2 semanas como filtro, como Murphy sugere.",
         ],
       },
