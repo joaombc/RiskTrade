@@ -10,6 +10,7 @@ const CH4 = `${MURPHY}, cap. 4 (Conceitos básicos de tendência)`;
 const CH5 = `${MURPHY}, cap. 5 (Padrões de reversão)`;
 const CH6 = `${MURPHY}, cap. 6 (Padrões de continuação)`;
 const CH7 = `${MURPHY}, cap. 7 (Volume e contratos em aberto)`;
+const CH9 = `${MURPHY}, cap. 9 (Médias móveis)`;
 
 export const DETAILS: Record<string, TermDetails> = {
   "linha-de-tendencia": {
@@ -284,6 +285,17 @@ export const DETAILS: Record<string, TermDetails> = {
     pitfalls:
       "Olhe a tendência de semanas, não a variação de um dia: logo após um rompimento, o interesse aberto costuma cair um pouco, porque quem estava errado está saindo. Há também quedas sazonais perto do vencimento dos contratos. O relatório da CFTC é semanal, com a posição de terça divulgada na sexta, então o dado sempre chega com alguns dias de atraso.",
     source: `${CH7}; relatório Commitments of Traders (CFTC)`,
+  },
+  "bandas-de-bollinger": {
+    market:
+      "As bandas medem quanto o preço costuma se afastar da média nas últimas 20 sessões. Com dois desvios-padrão, cerca de 95% dos fechamentos ficam dentro delas, então tocar uma banda é um afastamento incomum: o movimento esticou. Diferente dos envelopes, que ficam a uma distância fixa, as bandas abrem quando a volatilidade cresce e fecham quando ela diminui, e se adaptam ao momento do mercado.",
+    volume:
+      "As bandas não usam volume, que entra como confirmação. Um toque na banda de cima com volume fraco reforça a leitura de sobrecompra. Já o rompimento das bandas depois de um aperto é mais confiável com volume crescente, como qualquer rompimento.",
+    trading:
+      "Murphy propõe três usos. Sobrecompra e sobrevenda: banda de cima tocada é sobrecompra, a de baixo é sobrevenda, de preferência confirmadas por um oscilador. Alvos: se o preço quica na banda de baixo e cruza a média de 20 para cima, a banda de cima vira o alvo; cruzando a média para baixo, o alvo é a banda de baixo. Numa alta forte, o preço oscila entre a banda de cima e a média, e perder a média avisa de virada. Largura: bandas muito apertadas costumam anteceder um novo movimento; muito abertas, o fim da tendência. No semanal, use 20 semanas (cerca de uma MMS 100 no diário). No RiskTrade, marque Bandas de Bollinger na barra de médias do gráfico: o painel aplica essas regras ao momento atual.",
+    pitfalls:
+      "Em tendência forte, o preço anda colado na banda: vender cada toque na banda de cima é brigar com a tendência. O aperto avisa que um movimento vem, mas não diz para que lado; espere o rompimento. E, num mercado lateral, as bandas sozinhas geram muitos sinais: Murphy recomenda combiná-las com osciladores.",
+    source: CH9,
   },
   obv: {
     market:

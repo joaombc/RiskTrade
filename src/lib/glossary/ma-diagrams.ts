@@ -1,3 +1,4 @@
+import { bollinger } from "../bollinger";
 import { ema, sma } from "../indicators";
 import { crossings } from "../movingAverages";
 import type { Diagram, DiagramPoint, Pt } from "./types";
@@ -35,15 +36,6 @@ function firstSignals(fast: Series, slow: Series) {
   const buy = all.find((c) => c.dir === "up");
   const sell = buy && all.find((c) => c.dir === "down" && c.index > buy.index);
   return { buy, sell };
-}
-
-function rollingStd(values: number[], period: number): Series {
-  return values.map((_, i) => {
-    if (i < period - 1) return null;
-    const window = values.slice(i - period + 1, i + 1);
-    const mean = window.reduce((a, b) => a + b, 0) / period;
-    return Math.sqrt(window.reduce((a, b) => a + (b - mean) ** 2, 0) / period);
-  });
 }
 
 // ─── Simples × exponencial ──────────────────────────────────────────────────────
@@ -158,10 +150,7 @@ const squeezePrices = Array.from({ length: 80 }, (_, i) =>
 );
 
 function bollingerDiagram(): Diagram {
-  const average = sma(squeezePrices, 20);
-  const deviation = rollingStd(squeezePrices, 20);
-  const upper = average.map((v, i) => (v === null ? null : v + 2 * deviation[i]!));
-  const lower = average.map((v, i) => (v === null ? null : v - 2 * deviation[i]!));
+  const { middle: average, upper, lower } = bollinger(squeezePrices.map((close) => ({ close })));
   const p = plotter([squeezePrices, upper, lower]);
   return {
     path: p.path(squeezePrices),

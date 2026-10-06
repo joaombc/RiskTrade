@@ -308,7 +308,7 @@ export const LESSONS: Lesson[] = [
       "Média simples, ponderada e exponencial; sinais com uma, duas e três médias; envelopes e bandas de Bollinger; os períodos mais usados e por que as médias só funcionam quando há tendência.",
     readingMinutes: 12,
     source: "Murphy, Technical Analysis of the Financial Markets, cap. 9 (Médias móveis)",
-    relatedTerms: ["linha-de-tendencia", "suporte-e-resistencia", "rompimento", "canal", "retracoes", "obv"],
+    relatedTerms: ["linha-de-tendencia", "suporte-e-resistencia", "rompimento", "canal", "retracoes", "obv", "bandas-de-bollinger"],
     sections: [
       {
         heading: "O que é uma média móvel",
@@ -464,7 +464,7 @@ export const LESSONS: Lesson[] = [
       {
         heading: "No RiskTrade",
         paragraphs: [
-          "A barra Médias móveis, acima das ferramentas de desenho do gráfico, tem atalhos para as médias simples de 5, 10, 20, 21, 50 e 200 períodos, que montam as combinações recomendadas por Murphy, e para as exponenciais de 9 e 21, populares no mercado brasileiro. O botão + Personalizada cria qualquer média simples ou exponencial de 2 a 400 candles. Cabem até quatro ao mesmo tempo. A linha Combinações aplica de uma vez as formações de cruzamento, substituindo as médias do gráfico; clicar de novo na combinação ativa a remove. Com duas ou três médias visíveis, o gráfico marca os cruzamentos com as regras deste capítulo: compra e venda no cruzamento duplo; alerta e confirmação no triplo. O painel Sinais de cruzamento avisa quando há um sinal nos últimos cinco candles. Cada média simples visível ganha caixas de envelope de 3%, 5% e 10%; a MMS 21 com 3% é a combinação de curto prazo do livro. Com um envelope marcado, o gráfico mostra os sinais das táticas acima (compra, venda e realizar), conforme o contexto medido pela inclinação da média, e o painel Sinais dos envelopes avisa os sinais dos últimos cinco candles. Ainda não há média ponderada nem bandas de Bollinger no gráfico.",
+          "A barra Médias móveis, acima das ferramentas de desenho do gráfico, tem atalhos para as médias simples de 5, 10, 20, 21, 50 e 200 períodos, que montam as combinações recomendadas por Murphy, e para as exponenciais de 9 e 21, populares no mercado brasileiro. O botão + Personalizada cria qualquer média simples ou exponencial de 2 a 400 candles. Cabem até quatro ao mesmo tempo. A linha Combinações aplica de uma vez as formações de cruzamento, substituindo as médias do gráfico; clicar de novo na combinação ativa a remove. Com duas ou três médias visíveis, o gráfico marca os cruzamentos com as regras deste capítulo: compra e venda no cruzamento duplo; alerta e confirmação no triplo. O painel Sinais de cruzamento avisa quando há um sinal nos últimos cinco candles. Cada média simples visível ganha caixas de envelope de 3%, 5% e 10%; a MMS 21 com 3% é a combinação de curto prazo do livro. Com um envelope marcado, o gráfico mostra os sinais das táticas acima (compra, venda e realizar), conforme o contexto medido pela inclinação da média, e o painel Sinais dos envelopes avisa os sinais dos últimos cinco candles. A caixa Bandas de Bollinger desenha as bandas (MMS 20 ± 2 desvios) e um painel aplica as regras da seção sobre elas. Ainda não há média ponderada no gráfico.",
         ],
         bullets: [
           "Cruzamento duplo de futuros: a combinação 5-20 (MMS 5 e MMS 20).",

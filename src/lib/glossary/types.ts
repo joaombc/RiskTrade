@@ -7,6 +7,7 @@ export const CATEGORIES = [
   "Gaps",
   "Linhas",
   "Volume",
+  "Indicadores",
 ] as const;
 export type Category = (typeof CATEGORIES)[number];
 

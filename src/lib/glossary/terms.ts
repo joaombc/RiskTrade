@@ -1,5 +1,6 @@
 import { DETAILS } from "./details-data";
 import { EXAMPLES } from "./examples-data";
+import { MA_DIAGRAMS } from "./ma-diagrams";
 import type { Diagram, DiagramCandle, DiagramPoint, GlossaryTerm, Pt } from "./types";
 
 // ─── Helpers de diagrama ───────────────────────────────────────────────────────
@@ -684,6 +685,17 @@ const TERMS: GlossaryTerm[] = [
         lines: [{ from: [140, 100], to: [175, 108], tone: "resistance", dashed: true, label: "cai na alta final", labelAt: "start" }],
       },
     },
+  },
+  {
+    slug: "bandas-de-bollinger",
+    name: "Bandas de Bollinger",
+    aliases: ["Bollinger", "BB", "bandas", "desvio-padrão", "volatilidade", "aperto", "squeeze", "%B", "sobrecompra", "sobrevenda"],
+    category: "Indicadores",
+    definition:
+      "Duas bandas a dois desvios-padrão acima e abaixo de uma média móvel de 20 períodos, criadas por John Bollinger. Cerca de 95% dos preços ficam entre elas, e a distância entre as bandas aumenta e diminui com a volatilidade.",
+    validation:
+      "Tocar a banda de cima indica sobrecompra; a de baixo, sobrevenda: o preço costuma achar resistência e suporte nelas. Se quicar na banda de baixo e cruzar a média de 20 para cima, o alvo é a banda de cima (e vice-versa). Confirme com um oscilador.",
+    diagram: MA_DIAGRAMS.bollinger,
   },
 ];
 

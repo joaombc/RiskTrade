@@ -21,6 +21,7 @@ import {
   type Time,
   type UTCTimestamp,
 } from "lightweight-charts";
+import { bollinger, loadBollingerEnabled, readBollinger, saveBollingerEnabled } from "@/lib/bollinger";
 import { loadDrawings, saveDrawings } from "@/lib/drawings/storage";
 import { createTimeAxis } from "@/lib/drawings/timeAxis";
 import { TOOLS, type Anchor, type Bar, type Drawing, type DrawingKind, type DrawingOptions } from "@/lib/drawings/types";
@@ -46,6 +47,7 @@ import type { OpenInterestSeries } from "@/lib/openInterest";
 import { useTheme } from "@/lib/theme";
 import type { PlanLevel } from "@/lib/risk";
 import { CrossSignalPanel } from "./CrossSignalPanel";
+import { BollingerPanel } from "./BollingerPanel";
 import { DivergencePanel } from "./DivergencePanel";
 import { EnvelopeSignalPanel } from "./EnvelopeSignalPanel";
 import { DrawingsPrimitive } from "./DrawingsPrimitive";
@@ -234,6 +236,9 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
     [bars, envelopeSource],
   );
   const [showEnvelopeSignals, setShowEnvelopeSignals] = useState(true);
+  const [bollingerOn, setBollingerOn] = useState(loadBollingerEnabled);
+  const bands = useMemo(() => (bars && bollingerOn ? bollinger(bars, warmup) : null), [bars, warmup, bollingerOn]);
+  const bollingerReading = useMemo(() => (bars && bands ? readBollinger(bars, bands) : null), [bars, bands]);
   const resolvedExample = useMemo(
     () => (example && bars ? resolveExample(example.slug, example.example, bars) : NO_EXAMPLE),
     [example, bars],
@@ -568,6 +573,50 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
     };
   }, [bars, averageLines, theme]);
 
+  useEffect(() => {
+    saveBollingerEnabled(bollingerOn);
+  }, [bollingerOn]);
+
+  // Bandas de Bollinger: bandas de cima e de baixo e a média central tracejada, numa cor neutra.
+  useEffect(() => {
+    const handles = handlesRef.current;
+    if (!handles || !bars || !bands) return;
+    const lines = (
+      [
+        [bands.upper, LineStyle.Solid, "BB +2σ"],
+        [bands.middle, LineStyle.Dashed, ""],
+        [bands.lower, LineStyle.Solid, "BB −2σ"],
+      ] as const
+    ).map(([values, lineStyle, title]) => {
+      const line = handles.chart.addSeries(
+        LineSeries,
+        {
+          color: theme.drawings.muted,
+          lineWidth: 1,
+          lineStyle,
+          priceLineVisible: false,
+          lastValueVisible: title !== "",
+          crosshairMarkerVisible: false,
+          title,
+        },
+        PRICE_PANE,
+      );
+      line.setData(
+        bars.map((b, i) => {
+          const value = values[i];
+          return value === null ? { time: b.time as UTCTimestamp } : { time: b.time as UTCTimestamp, value };
+        }),
+      );
+      return line;
+    });
+    return () => {
+      const alive = handlesRef.current?.chart.panes()[PRICE_PANE]?.getSeries() ?? [];
+      lines.forEach((line) => {
+        if (alive.includes(line)) handles.chart.removeSeries(line);
+      });
+    };
+  }, [bars, bands, theme]);
+
   // Interesse aberto (futuros): painel próprio, criado só quando há dados, em degraus porque o
   // relatório da CFTC é semanal.
   useEffect(() => {
@@ -834,6 +883,8 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
         onChange={setAverages}
         barCount={bars && !loading ? bars.length + (warmup?.length ?? 0) : null}
         colors={theme.movingAverages}
+        bollinger={bollingerOn}
+        onBollingerChange={setBollingerOn}
       />
 
       <DrawingToolbar
@@ -890,6 +941,9 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
           show={showEnvelopeSignals}
           onShowChange={setShowEnvelopeSignals}
         />
+      )}
+      {bars && bars.length > 0 && !loading && bollingerOn && (
+        <BollingerPanel bars={bars} reading={bollingerReading} intraday={isIntraday(range)} />
       )}
       {bars && bars.length > 0 && (
         <DivergencePanel
