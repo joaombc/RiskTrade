@@ -4,9 +4,10 @@ import type { ChartResultArrayQuote } from "yahoo-finance2/modules/chart";
 import type { Bar } from "./drawings/types";
 import {
   averageVolume,
-  HISTORY_RANGES,
   lastSessions,
+  MAX_LOOKBACK_DAYS,
   MAX_WARMUP_BARS,
+  rangeSpec,
   WARMUP_DAYS,
   toMarketStatus,
   type AssetSummary,
@@ -96,9 +97,11 @@ export interface History {
  * um trecho anterior, para que uma MMS 200 já comece na borda esquerda do gráfico.
  */
 export async function getHistory(symbol: string, range: HistoryRange): Promise<History> {
-  const spec: HistoryRangeSpec = HISTORY_RANGES[range];
+  const spec: HistoryRangeSpec = rangeSpec(range);
   const start = Date.now() - spec.days * DAY_MS;
-  const chart = await fetchChart(symbol, new Date(start - WARMUP_DAYS[spec.interval] * DAY_MS), spec.interval);
+  // Período + aquecimento, sem passar do histórico que o Yahoo guarda para o intervalo.
+  const lookback = Math.min(spec.days + WARMUP_DAYS[spec.interval], MAX_LOOKBACK_DAYS[spec.interval] ?? Infinity);
+  const chart = await fetchChart(symbol, new Date(Date.now() - lookback * DAY_MS), spec.interval);
 
   const all = toBars(chart.quotes);
   const bars = spec.sessions

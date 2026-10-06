@@ -1,5 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { averageVolume, lastSessions, sameBars, toMarketStatus, type DailyBar } from "./market";
+import {
+  averageVolume,
+  customInterval,
+  customRange,
+  isIntraday,
+  lastSessions,
+  parseRange,
+  rangeSpec,
+  sameBars,
+  toMarketStatus,
+  type DailyBar,
+} from "./market";
 
 function bars(volumes: (number | null)[]): DailyBar[] {
   return volumes.map((volume, i) => ({ date: new Date(2026, 0, i + 1), volume }));
@@ -75,3 +86,36 @@ describe("sameBars", () => {
     expect(sameBars([bar(1, 1.5)], [bar(1, 1.5), bar(2, 1.6)])).toBe(false);
   });
 });
+
+describe("período personalizado", () => {
+  it("aceita de 1 a 5000 pregões inteiros", () => {
+    expect(customRange(20)).toBe("n20");
+    expect(customRange(5000)).toBe("n5000");
+    expect([0, 5001, 2.5, NaN].map(customRange)).toEqual([null, null, null, null]);
+  });
+
+  it("valida o período vindo da URL ou da API", () => {
+    expect(parseRange("1y")).toBe("1y");
+    expect(parseRange("n200")).toBe("n200");
+    expect(parseRange("n0")).toBeNull();
+    expect(parseRange("n99999")).toBeNull();
+    expect(parseRange("200")).toBeNull();
+    expect(parseRange("constructor")).toBeNull();
+  });
+
+  it("escolhe o candle na mesma lógica dos botões", () => {
+    expect([1, 2, 5, 6, 10, 11, 22, 23, 200].map(customInterval)).toEqual([
+      "5m", "15m", "15m", "30m", "30m", "60m", "60m", "1d", "1d",
+    ]);
+    expect(isIntraday("n20")).toBe(true);
+    expect(isIntraday("n200")).toBe(false);
+  });
+
+  it("busca dias corridos suficientes para os pregões pedidos e mostra só os últimos N", () => {
+    const spec = rangeSpec("n200");
+    expect(spec).toMatchObject({ interval: "1d", sessions: 200 });
+    expect(spec.days).toBeGreaterThanOrEqual(280);
+    expect(rangeSpec("1y")).toMatchObject({ label: "1A", days: 365 });
+  });
+});
+

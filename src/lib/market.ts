@@ -65,7 +65,55 @@ export const HISTORY_RANGES = {
   "2y": { label: "2A", interval: "1d", days: 730 },
   "5y": { label: "5A", interval: "1d", days: 1826 },
 } as const satisfies Record<string, HistoryRangeSpec>;
-export type HistoryRange = keyof typeof HISTORY_RANGES;
+/** Períodos dos botões do gráfico. */
+export type PresetRange = keyof typeof HISTORY_RANGES;
+/** Período digitado: os últimos N pregões ("n200"). */
+export type CustomRange = `n${number}`;
+export type HistoryRange = PresetRange | CustomRange;
+
+export const MIN_CUSTOM_SESSIONS = 1;
+/** Cerca de 20 anos de pregões. */
+export const MAX_CUSTOM_SESSIONS = 5000;
+
+/** Período personalizado com N pregões, ou null fora dos limites. */
+export function customRange(sessions: number): CustomRange | null {
+  return Number.isInteger(sessions) && sessions >= MIN_CUSTOM_SESSIONS && sessions <= MAX_CUSTOM_SESSIONS
+    ? `n${sessions}`
+    : null;
+}
+
+/** Quantidade de pregões de um período personalizado (null nos botões). */
+export function customSessions(range: HistoryRange): number | null {
+  const match = /^n(\d+)$/.exec(range);
+  return match ? Number(match[1]) : null;
+}
+
+/** Valida um período vindo de fora (URL, API): botão conhecido ou "n" + pregões dentro dos limites. */
+export function parseRange(value: string): HistoryRange | null {
+  if (Object.hasOwn(HISTORY_RANGES, value)) return value as PresetRange;
+  const match = /^n(\d{1,5})$/.exec(value);
+  return match ? customRange(Number(match[1])) : null;
+}
+
+/**
+ * Tamanho do candle de um período personalizado, na mesma lógica dos botões: 1 pregão em 5 min
+ * (1D), até 5 em 15 min (5D), até 10 em 30 min (2S), até 22 em 1 h (1M) e daí em diante diário.
+ */
+export function customInterval(sessions: number): ChartInterval {
+  if (sessions <= 1) return "5m";
+  if (sessions <= 5) return "15m";
+  if (sessions <= 10) return "30m";
+  if (sessions <= 22) return "60m";
+  return "1d";
+}
+
+/** Especificação de qualquer período, botão ou personalizado. */
+export function rangeSpec(range: HistoryRange): HistoryRangeSpec {
+  const sessions = customSessions(range);
+  if (sessions === null) return HISTORY_RANGES[range as PresetRange];
+  // Cerca de 7 dias corridos a cada 5 pregões, mais uma semana de folga para feriados.
+  return { label: `${sessions}D`, interval: customInterval(sessions), days: Math.ceil((sessions * 7) / 5) + 7, sessions };
+}
 
 /** Máximo de fechamentos anteriores ao período enviados para aquecer as médias móveis. */
 export const MAX_WARMUP_BARS = 400;
@@ -83,6 +131,17 @@ export const WARMUP_DAYS: Record<ChartInterval, number> = {
   "1d": 600,
 };
 
+/**
+ * Máximo de dias corridos que o Yahoo devolve em cada intervalo intradiário (cerca de 60 dias de
+ * 5 a 30 min e 730 de 1 h). Período + aquecimento não podem passar disso.
+ */
+export const MAX_LOOKBACK_DAYS: Partial<Record<ChartInterval, number>> = {
+  "5m": 59,
+  "15m": 59,
+  "30m": 59,
+  "60m": 729,
+};
+
 export const INTERVAL_LABELS: Record<ChartInterval, string> = {
   "5m": "candles de 5 min",
   "15m": "candles de 15 min",
@@ -92,7 +151,7 @@ export const INTERVAL_LABELS: Record<ChartInterval, string> = {
 };
 
 export function isIntraday(range: HistoryRange): boolean {
-  return HISTORY_RANGES[range].interval !== "1d";
+  return rangeSpec(range).interval !== "1d";
 }
 
 /** Pausa a partir da qual consideramos que o pregão terminou (mercados com horário). */
