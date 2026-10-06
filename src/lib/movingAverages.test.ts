@@ -214,3 +214,41 @@ describe("findCrossSignals", () => {
     expect(findCrossSignals([line(5, v), line(10, v), line(20, v), line(50, v)])).toEqual([]);
   });
 });
+
+describe("envelopes", () => {
+  it("deslocam a média pela porcentagem, para cima e para baixo", async () => {
+    const { envelopeLine } = await import("./movingAverages");
+    expect(envelopeLine([null, 100, 200], 3, "upper")).toEqual([null, 103, 206]);
+    expect(envelopeLine([100], 10, "lower")[0]).toBeCloseTo(90);
+  });
+
+  it("ligam e desligam por porcentagem, sempre em ordem, e só em médias simples", async () => {
+    const { toggleEnvelope } = await import("./movingAverages");
+    let list = addMovingAverage(addMovingAverage([], "sma", 21), "ema", 9);
+    list = toggleEnvelope(list, "sma-21", 10);
+    list = toggleEnvelope(list, "sma-21", 3);
+    expect(list[0].envelopes).toEqual([3, 10]);
+    list = toggleEnvelope(list, "sma-21", 10);
+    expect(list[0].envelopes).toEqual([3]);
+    expect(toggleEnvelope(list, "ema-9", 3)[1].envelopes).toBeUndefined();
+  });
+
+  it("são salvos com a média e validados ao carregar", async () => {
+    const store = new Map<string, string>();
+    globalThis.localStorage = {
+      getItem: (k: string) => store.get(k) ?? null,
+      setItem: (k: string, v: string) => void store.set(k, v),
+      removeItem: (k: string) => void store.delete(k),
+    } as Storage;
+    store.set(
+      "risktrade:moving-averages:v1",
+      JSON.stringify([
+        { id: "sma-21", kind: "sma", period: 21, visible: true, slot: 0, envelopes: [10, 7, 3] },
+        { id: "ema-9", kind: "ema", period: 9, visible: true, slot: 1, envelopes: [3] },
+        { id: "sma-50", kind: "sma", period: 50, visible: true, slot: 2, envelopes: "5" },
+      ]),
+    );
+    const loaded = loadMovingAverages();
+    expect(loaded.map((ma) => ma.envelopes)).toEqual([[3, 10], undefined, undefined]);
+  });
+});
