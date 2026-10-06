@@ -130,7 +130,7 @@ describe("atalhos", () => {
     const { MA_PRESETS, maId } = await import("./movingAverages");
     const ids = MA_PRESETS.map((p) => maId(p.kind, p.period));
     expect(new Set(ids).size).toBe(ids.length);
-    for (const period of [5, 10, 20, 50, 200]) expect(ids, `MMS ${period}`).toContain(`sma-${period}`);
+    for (const period of [5, 10, 20, 21, 50, 200]) expect(ids, `MMS ${period}`).toContain(`sma-${period}`);
     expect(MA_PRESETS.every((p) => isValidPeriod(p.period))).toBe(true);
   });
 });

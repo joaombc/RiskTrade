@@ -28,6 +28,8 @@ export const MA_PRESETS: { kind: MovingAverageKind; period: number }[] = [
   { kind: "sma", period: 5 },
   { kind: "sma", period: 10 },
   { kind: "sma", period: 20 },
+  // Número de Fibonacci citado por Murphy e base dos envelopes de 3% de curto prazo.
+  { kind: "sma", period: 21 },
   { kind: "sma", period: 50 },
   { kind: "sma", period: 200 },
   { kind: "ema", period: 9 },
