@@ -26,12 +26,14 @@ interface Props {
   /** Candles disponíveis para as médias, incluindo o aquecimento (null enquanto carrega). */
   barCount: number | null;
   colors: string[];
+  bollinger: boolean;
+  onBollingerChange: (enabled: boolean) => void;
 }
 
 const chip = "flex items-center rounded-full border text-xs font-medium";
 
 /** Barra das médias móveis: atalhos, média personalizada e os chips das médias ativas. */
-export function MovingAverageBar({ averages, onChange, barCount, colors }: Props) {
+export function MovingAverageBar({ averages, onChange, barCount, colors, bollinger, onBollingerChange }: Props) {
   const [custom, setCustom] = useState<{ kind: MovingAverageKind; period: string } | null>(null);
   const full = averages.length >= MAX_MOVING_AVERAGES;
   const presets = MA_PRESETS.filter((p) => !averages.some((ma) => ma.id === maId(p.kind, p.period)));
@@ -143,6 +145,15 @@ export function MovingAverageBar({ averages, onChange, barCount, colors }: Props
             ))}
         </div>
       )}
+
+      <label
+        className="flex w-fit items-center gap-1.5 text-xs"
+        title="Média de 20 períodos com bandas a 2 desvios-padrão acima e abaixo (Murphy, cap. 9)."
+      >
+        <input type="checkbox" checked={bollinger} onChange={(e) => onBollingerChange(e.target.checked)} />
+        <span className="font-semibold">Bandas de Bollinger</span>
+        <span className="text-muted">(MMS 20 ± 2 desvios)</span>
+      </label>
 
       <div role="group" aria-label="Combinações de médias" className="flex flex-wrap items-center gap-1.5">
         <span className="mr-1 text-xs font-semibold">Combinações</span>
