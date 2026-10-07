@@ -4,23 +4,21 @@ import { useId, useState } from "react";
 import { fmt } from "@/i18n/format";
 import { useI18n } from "@/i18n/I18nProvider";
 import { searchTerms } from "@/lib/glossary/search";
-import { GLOSSARY } from "@/lib/glossary/terms";
-import { CATEGORIES, type Category } from "@/lib/glossary/types";
+import { CATEGORIES, type Category, type GlossaryTerm } from "@/lib/glossary/types";
 import { TermCard } from "./TermCard";
 import { TermDialog } from "./TermDialog";
 import { useHashSlug } from "./useHashSlug";
 
-const COUNTS = Object.fromEntries(CATEGORIES.map((c) => [c, GLOSSARY.filter((t) => t.category === c).length]));
-
-export function GlossaryBrowser() {
+/** Recebe os termos já no idioma da página (montados no servidor). */
+export function GlossaryBrowser({ terms }: { terms: GlossaryTerm[] }) {
   const { glossary: g } = useI18n().t;
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<Category | null>(null);
   const inputId = useId();
-  const results = searchTerms(GLOSSARY, query, category);
+  const results = searchTerms(terms, query, category);
   const [openSlug, closeTerm] = useHashSlug();
   // O card ampliado independe do filtro: um link direto (#slug) sempre abre o termo.
-  const openTerm = GLOSSARY.find((t) => t.slug === openSlug) ?? null;
+  const openTerm = terms.find((t) => t.slug === openSlug) ?? null;
 
   return (
     <div className="flex flex-col gap-6">
@@ -53,7 +51,7 @@ export function GlossaryBrowser() {
               onClick={() => setCategory(c)}
               className={`rounded-full px-3 py-1 text-xs font-medium ${category === c ? "bg-accent text-white" : "bg-border/60 text-muted hover:bg-border"}`}
             >
-              {c ? g.categories[c] : g.all} <span className="opacity-70">{c ? COUNTS[c] : GLOSSARY.length}</span>
+              {c ? g.categories[c] : g.all} <span className="opacity-70">{c ? terms.filter((t) => t.category === c).length : terms.length}</span>
             </button>
           ))}
         </div>

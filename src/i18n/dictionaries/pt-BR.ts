@@ -605,6 +605,36 @@ export const ptBR = {
     diagramOne: "{name}: 1 vela",
     diagramMany: "{name}: {n} velas",
   },
+  candleIntro: {
+    heading: "Como ler uma vela",
+    anatomy:
+      "A vela usa os mesmos dados da barra: abertura, máxima, mínima e fechamento. O corpo vai da abertura ao fechamento; as sombras (ou pavios) mostram a máxima e a mínima. No livro, a vela de alta é branca (vazada) e a de baixa, preta; aqui elas aparecem em verde e vermelho, como no gráfico do RiskTrade. Os japoneses dão grande peso à abertura e ao fechamento.",
+    patterns:
+      "Um padrão de velas tem de uma a cinco velas e retrata a psicologia dos participantes naquele momento. A maioria indica reversão, mas há padrões de continuação. Quase sempre existe um par: para cada padrão de alta há um de baixa, em geral com o mesmo nome.",
+    diagramLabel: "Anatomia de uma vela de alta e de uma vela de baixa",
+    high: "máxima",
+    close: "fechamento",
+    open: "abertura",
+    low: "mínima",
+    shadow: "sombra",
+    body: "corpo",
+    bullish: "de alta (branca)",
+    bearish: "de baixa (preta)",
+    rules: [
+      {
+        title: "O contexto é obrigatório",
+        text: "Um padrão de reversão de alta só existe depois de uma queda, e um de baixa só depois de uma alta. A mesma figura numa alta não é um padrão de alta. Antes de procurar padrões, defina a tendência de curto prazo; uma média móvel de cerca de 10 períodos resolve.",
+      },
+      {
+        title: "Confirme antes de agir",
+        text: "A maioria dos padrões de reversão pede confirmação no pregão seguinte: uma vela no sentido da reversão, ou o fechamento além do padrão. Os padrões mostram a psicologia do momento, não garantem o próximo movimento.",
+      },
+      {
+        title: "Filtre com um oscilador",
+        text: "Greg Morris propõe considerar só os padrões de reversão que aparecem quando um oscilador (como o estocástico %D) está em sobrecompra, acima de 80, ou em sobrevenda, abaixo de 20. Isso elimina muitos sinais prematuros.",
+      },
+    ],
+  },
   pages: {
     glossaryTitle: "Glossário · RiskTrade",
     glossaryDescription:

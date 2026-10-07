@@ -41,7 +41,8 @@ export function CandleCard({ pattern }: { pattern: CandlePattern }) {
             {pattern.name}
           </a>
         </h3>
-        <p className="text-xs italic text-muted">{pattern.englishName}</p>
+        {/* Em inglês o nome já é o original. */}
+        {pattern.englishName !== pattern.name && <p className="text-xs italic text-muted">{pattern.englishName}</p>}
         <PatternBadges pattern={pattern} />
       </header>
 

@@ -6,7 +6,6 @@ import { apiErrorMessage } from "@/i18n/apiError";
 import type { Dictionary } from "@/i18n/dictionary";
 import { fmt } from "@/i18n/format";
 import { useI18n } from "@/i18n/I18nProvider";
-import { GLOSSARY } from "@/lib/glossary/terms";
 import { parseRange, SYMBOL_PATTERN, type AssetSummary } from "@/lib/market";
 import type { PlanLevel } from "@/lib/risk";
 import { pickStartSymbol } from "@/lib/watchlist";
@@ -57,23 +56,23 @@ async function fetchSummary(symbol: string, errors: Dictionary["errors"]): Promi
  * Lê o link do glossário ("Ver no gráfico real"): /?ativo=PETR4.SA&periodo=5y&exemplo=oco.
  * Parâmetros inválidos são ignorados.
  */
-function readLink(params: URLSearchParams) {
+function readLink(params: URLSearchParams, examples: ChartExample[]) {
   const rawSymbol = params.get("ativo")?.trim().toUpperCase() ?? "";
   const symbol = SYMBOL_PATTERN.test(rawSymbol) ? rawSymbol : null;
   const rawRange = params.get("periodo") ?? "";
   const range = parseRange(rawRange) ?? undefined;
-  const term = GLOSSARY.find((t) => t.slug === params.get("exemplo") && t.example);
-  const example: ChartExample | null =
-    term?.example && term.example.symbol === symbol ? { slug: term.slug, name: term.name, example: term.example } : null;
+  const match = examples.find((e) => e.slug === params.get("exemplo"));
+  const example = match && match.example.symbol === symbol ? match : null;
   return { symbol, range, example };
 }
 
-export function MarketDashboard() {
+/** `examples`: os exemplos "Ver no gráfico real" do glossário, já no idioma da página. */
+export function MarketDashboard({ examples }: { examples: ChartExample[] }) {
   const router = useRouter();
   const { t, href } = useI18n();
   const searchParams = useSearchParams();
   // Só a URL de entrada importa: depois disso o estado é do próprio painel.
-  const [link] = useState(() => readLink(new URLSearchParams(searchParams.toString())));
+  const [link] = useState(() => readLink(new URLSearchParams(searchParams.toString()), examples));
   const [symbol, setSymbol] = useState<string | null>(link.symbol);
   const [state, setState] = useState<State>({ kind: "idle" });
   // Remonta a busca para exibir o ticker aberto por fora dela (watchlist ou link do glossário).

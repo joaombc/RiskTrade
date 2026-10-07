@@ -36,7 +36,8 @@ export function CandleDialog({ pattern, onClose }: { pattern: CandlePattern | nu
               <h2 id="candle-dialog-title" className="text-2xl font-bold tracking-tight">
                 {pattern.name}
               </h2>
-              <p className="text-sm italic text-muted">{pattern.englishName}</p>
+              {/* Em inglês o nome já é o original. */}
+              {pattern.englishName !== pattern.name && <p className="text-sm italic text-muted">{pattern.englishName}</p>}
               <PatternBadges pattern={pattern} />
             </div>
             <button type="button" onClick={onClose} aria-label={c.close} className="rounded-lg p-2 text-muted hover:bg-border/60 hover:text-foreground">

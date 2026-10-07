@@ -3,15 +3,13 @@
 import { useId, useState } from "react";
 import { fmt } from "@/i18n/format";
 import { useI18n } from "@/i18n/I18nProvider";
-import { CANDLE_PATTERNS } from "@/lib/candles/patterns";
 import { searchCandles, type CandleFilters } from "@/lib/candles/search";
-import { KIND_LABELS, type CandleKind } from "@/lib/candles/types";
+import type { CandleKind, CandlePattern } from "@/lib/candles/types";
 import { useHashSlug } from "../glossary/useHashSlug";
 import { CandleCard } from "./CandleCard";
 import { CandleDialog } from "./CandleDialog";
 
-const KINDS = Object.keys(KIND_LABELS) as CandleKind[];
-const COUNTS = [...new Set(CANDLE_PATTERNS.map((p) => p.candleCount))].sort((a, b) => a - b);
+const KINDS: CandleKind[] = ["basic", "reversal", "continuation"];
 
 function Chip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
@@ -26,14 +24,16 @@ function Chip({ active, onClick, children }: { active: boolean; onClick: () => v
   );
 }
 
-export function CandleBrowser() {
+/** Recebe os padrões já no idioma da página (montados no servidor). */
+export function CandleBrowser({ patterns }: { patterns: CandlePattern[] }) {
+  const counts = [...new Set(patterns.map((p) => p.candleCount))].sort((a, b) => a - b);
   const { candleUi: c } = useI18n().t;
   const [filters, setFilters] = useState<CandleFilters>({ query: "", kind: null, bias: null, count: null });
   const set = (patch: Partial<CandleFilters>) => setFilters((f) => ({ ...f, ...patch }));
   const inputId = useId();
-  const results = searchCandles(CANDLE_PATTERNS, filters);
+  const results = searchCandles(patterns, filters);
   const [openSlug, close] = useHashSlug();
-  const open = CANDLE_PATTERNS.find((p) => p.slug === openSlug) ?? null;
+  const open = patterns.find((p) => p.slug === openSlug) ?? null;
 
   return (
     <div className="flex flex-col gap-5">
@@ -86,7 +86,7 @@ export function CandleBrowser() {
             <Chip active={filters.count === null} onClick={() => set({ count: null })}>
               {c.all}
             </Chip>
-            {COUNTS.map((n) => (
+            {counts.map((n) => (
               <Chip key={n} active={filters.count === n} onClick={() => set({ count: n })}>
                 {n}
               </Chip>

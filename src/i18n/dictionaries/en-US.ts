@@ -17,7 +17,7 @@ export const enUS: Dictionary = {
     themeToLight: "Switch to light theme",
   },
   contentNotice:
-    "This study content is still in Portuguese: the English translation is coming in the next steps. Charts and diagrams work the same.",
+    "This lesson is still in Portuguese: the English translation is coming in the next step. The diagrams work the same.",
   errors: {
     invalid_symbol: "Invalid ticker.",
     not_found: 'We could not find "{symbol}". Check the ticker (e.g. AAPL, PETR4.SA, BTC-USD).',
@@ -632,6 +632,36 @@ export const enUS: Dictionary = {
     candleMany: "{n} candles",
     diagramOne: "{name}: 1 candle",
     diagramMany: "{name}: {n} candles",
+  },
+  candleIntro: {
+    heading: "How to read a candle",
+    anatomy:
+      "A candle uses the same data as a bar: open, high, low and close. The body runs from the open to the close; the shadows (or wicks) show the high and the low. In the book, the up candle is white (hollow) and the down candle black; here they appear in green and red, as on the RiskTrade chart. The Japanese place great weight on the open and the close.",
+    patterns:
+      "A candle pattern has one to five candles and captures the psychology of the participants at that moment. Most signal reversals, but there are continuation patterns. There is almost always a pair: for each bullish pattern there is a bearish one, usually with the same name.",
+    diagramLabel: "Anatomy of a bullish and a bearish candle",
+    high: "high",
+    close: "close",
+    open: "open",
+    low: "low",
+    shadow: "shadow",
+    body: "body",
+    bullish: "bullish (white)",
+    bearish: "bearish (black)",
+    rules: [
+      {
+        title: "Context is mandatory",
+        text: "A bullish reversal pattern only exists after a decline, and a bearish one only after a rally. The same shape in a rally is not a bullish pattern. Before looking for patterns, define the short-term trend; a moving average of about 10 periods does the job.",
+      },
+      {
+        title: "Confirm before acting",
+        text: "Most reversal patterns call for confirmation in the next session: a candle in the direction of the reversal, or a close beyond the pattern. Patterns show the psychology of the moment; they don't guarantee the next move.",
+      },
+      {
+        title: "Filter with an oscillator",
+        text: "Greg Morris suggests considering only reversal patterns that appear when an oscillator (such as the stochastic %D) is overbought, above 80, or oversold, below 20. This eliminates many premature signals.",
+      },
+    ],
   },
   pages: {
     glossaryTitle: "Glossary · RiskTrade",

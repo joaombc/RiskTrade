@@ -9,18 +9,6 @@ export interface Ohlc {
 export type CandleKind = "basic" | "reversal" | "continuation";
 export type Bias = "bullish" | "bearish" | "neutral";
 
-export const KIND_LABELS: Record<CandleKind, string> = {
-  basic: "Velas básicas",
-  reversal: "Reversão",
-  continuation: "Continuação",
-};
-
-export const BIAS_LABELS: Record<Bias, string> = {
-  bullish: "Alta",
-  bearish: "Baixa",
-  neutral: "Neutro",
-};
-
 /** Uma versão do padrão (ex.: engolfo de alta), com as velas que o formam. */
 export interface CandleVariant {
   bias: Bias;
@@ -32,7 +20,7 @@ export interface CandleVariant {
 
 export interface CandlePattern {
   slug: string;
-  /** Nome em português (com os dois nomes, quando a versão de baixa tem outro nome). */
+  /** Nome no idioma da página (em português, com os dois nomes quando a versão de baixa tem outro nome). */
   name: string;
   /** Nome original em inglês, como na lista do livro. */
   englishName: string;
