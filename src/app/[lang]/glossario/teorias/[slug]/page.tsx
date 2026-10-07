@@ -8,7 +8,7 @@ import { hasLocale, localePath } from "@/i18n/config";
 import { getDictionary } from "@/i18n/dictionary";
 import { fmt } from "@/i18n/format";
 import { LESSONS } from "@/lib/glossary/lessons";
-import { GLOSSARY } from "@/lib/glossary/terms";
+import { getGlossary } from "@/lib/glossary/localize";
 
 // Só existem as aulas cadastradas; qualquer outro endereço vira 404.
 export const dynamicParams = false;
@@ -37,10 +37,10 @@ export default async function LessonPage({ params }: Props) {
   const { slug, lang } = await params;
   const lesson = LESSONS.find((l) => l.slug === slug);
   if (!lesson || !hasLocale(lang)) notFound();
-  const t = await getDictionary(lang);
+  const [t, glossary] = await Promise.all([getDictionary(lang), getGlossary(lang)]);
 
   const toc = lesson.sections.filter((s) => s.heading);
-  const related = GLOSSARY.filter((t) => lesson.relatedTerms.includes(t.slug));
+  const related = glossary.filter((t) => lesson.relatedTerms.includes(t.slug));
 
   return (
     <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-8 px-4 py-12 sm:px-6">

@@ -10,8 +10,8 @@ import type { CandleKind, CandlePattern, CandleVariant, Ohlc } from "./types";
  */
 
 const CH12 = "Murphy, Technical Analysis of the Financial Markets, cap. 12 (Morris)";
-const CH12_DETAIL = `${CH12}: padrão detalhado no capítulo`;
-const CLASSIC = `${CH12}: padrão da lista do capítulo; descrição com base em Nison e Morris`;
+export const CH12_DETAIL = `${CH12}: padrão detalhado no capítulo`;
+export const CLASSIC = `${CH12}: padrão da lista do capítulo; descrição com base em Nison e Morris`;
 
 const k = (o: number, h: number, l: number, c: number): Ohlc => ({ o, h, l, c });
 
