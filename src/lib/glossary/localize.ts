@@ -1,7 +1,9 @@
 import type { Locale } from "@/i18n/config";
+import type { LessonTranslation } from "./en/lessons";
 import type { TermTranslation } from "./en/terms";
+import { LESSONS } from "./lessons";
 import { GLOSSARY } from "./terms";
-import type { Diagram, DiagramLine, GlossaryTerm } from "./types";
+import type { Diagram, DiagramLine, GlossaryTerm, Lesson } from "./types";
 
 type Labels = Record<string, string>;
 
@@ -49,4 +51,37 @@ export async function getGlossary(locale: Locale): Promise<GlossaryTerm[]> {
   if (locale === "pt-BR") return GLOSSARY;
   const [{ TERMS_EN }, { LABELS_EN }] = await Promise.all([import("./en/terms"), import("./en/labels")]);
   return GLOSSARY.map((term) => localizeTerm(term, TERMS_EN[term.slug], LABELS_EN));
+}
+
+/** A aula em inglês: textos da tradução, seção por seção, e diagramas com os rótulos traduzidos. */
+export function localizeLesson(lesson: Lesson, text: LessonTranslation, labels: Labels): Lesson {
+  return {
+    ...lesson,
+    title: text.title,
+    subtitle: text.subtitle,
+    summary: text.summary,
+    source: text.source,
+    takeaways: text.takeaways,
+    sections: lesson.sections.map((section, i) => {
+      const t = text.sections[i];
+      return {
+        ...section,
+        heading: t.heading,
+        paragraphs: t.paragraphs,
+        ...(section.bullets && { bullets: t.bullets }),
+        ...(section.diagram && {
+          diagram: { diagram: translateDiagram(section.diagram.diagram, labels), caption: t.caption ?? section.diagram.caption },
+        }),
+      };
+    }),
+  };
+}
+
+/** Aulas no idioma pedido. O inglês só é carregado quando necessário (no servidor). */
+export async function getLessons(locale: Locale): Promise<Lesson[]> {
+  if (locale === "pt-BR") return LESSONS;
+  const [{ LESSONS_EN, LESSON_LABELS_EN }, { LABELS_EN }] = await Promise.all([import("./en/lessons"), import("./en/labels")]);
+  // Os rótulos próprios das aulas valem por cima dos do glossário.
+  const labels = { ...LABELS_EN, ...LESSON_LABELS_EN };
+  return LESSONS.map((lesson) => localizeLesson(lesson, LESSONS_EN[lesson.slug], labels));
 }

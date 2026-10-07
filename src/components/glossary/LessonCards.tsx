@@ -3,10 +3,10 @@
 import Link from "next/link";
 import { fmt } from "@/i18n/format";
 import { useI18n } from "@/i18n/I18nProvider";
-import { LESSONS } from "@/lib/glossary/lessons";
+import type { Lesson } from "@/lib/glossary/types";
 
-/** Seção "Teorias" do glossário: aulas mais longas, cada uma com página própria. */
-export function LessonCards() {
+/** Seção "Teorias" do glossário: aulas mais longas, cada uma com página própria (já no idioma da página). */
+export function LessonCards({ lessons }: { lessons: Lesson[] }) {
   const { t, href } = useI18n();
   const g = t.glossary;
   return (
@@ -18,7 +18,7 @@ export function LessonCards() {
         <p className="text-sm text-muted">{g.lessonsSubtitle}</p>
       </div>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        {LESSONS.map((lesson) => (
+        {lessons.map((lesson) => (
           <Link
             key={lesson.slug}
             href={href(`/glossario/teorias/${lesson.slug}`)}

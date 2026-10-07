@@ -1,14 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ContentNotice } from "@/components/ContentNotice";
 import { GlossaryDiagram } from "@/components/glossary/GlossaryDiagram";
 import { SiteHeader } from "@/components/SiteHeader";
 import { hasLocale, localePath } from "@/i18n/config";
 import { getDictionary } from "@/i18n/dictionary";
 import { fmt } from "@/i18n/format";
 import { LESSONS } from "@/lib/glossary/lessons";
-import { getGlossary } from "@/lib/glossary/localize";
+import { getGlossary, getLessons } from "@/lib/glossary/localize";
 
 // Só existem as aulas cadastradas; qualquer outro endereço vira 404.
 export const dynamicParams = false;
@@ -20,8 +19,9 @@ export function generateStaticParams() {
 type Props = PageProps<"/[lang]/glossario/teorias/[slug]">;
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { slug } = await params;
-  const lesson = LESSONS.find((l) => l.slug === slug);
+  const { slug, lang } = await params;
+  if (!hasLocale(lang)) return {};
+  const lesson = (await getLessons(lang)).find((l) => l.slug === slug);
   return lesson ? { title: `${lesson.title} · RiskTrade`, description: lesson.summary } : {};
 }
 
@@ -35,9 +35,10 @@ const anchor = (heading: string) =>
 
 export default async function LessonPage({ params }: Props) {
   const { slug, lang } = await params;
-  const lesson = LESSONS.find((l) => l.slug === slug);
-  if (!lesson || !hasLocale(lang)) notFound();
-  const [t, glossary] = await Promise.all([getDictionary(lang), getGlossary(lang)]);
+  if (!hasLocale(lang)) notFound();
+  const [t, glossary, lessons] = await Promise.all([getDictionary(lang), getGlossary(lang), getLessons(lang)]);
+  const lesson = lessons.find((l) => l.slug === slug);
+  if (!lesson) notFound();
 
   const toc = lesson.sections.filter((s) => s.heading);
   const related = glossary.filter((t) => lesson.relatedTerms.includes(t.slug));
@@ -45,7 +46,6 @@ export default async function LessonPage({ params }: Props) {
   return (
     <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-8 px-4 py-12 sm:px-6">
       <SiteHeader current="/glossario" lang={lang} />
-      <ContentNotice text={t.contentNotice} />
 
       <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_240px]">
         <article className="min-w-0 max-w-3xl">

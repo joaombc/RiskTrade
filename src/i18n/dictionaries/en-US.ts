@@ -16,8 +16,6 @@ export const enUS: Dictionary = {
     themeToDark: "Switch to dark theme",
     themeToLight: "Switch to light theme",
   },
-  contentNotice:
-    "This lesson is still in Portuguese: the English translation is coming in the next step. The diagrams work the same.",
   errors: {
     invalid_symbol: "Invalid ticker.",
     not_found: 'We could not find "{symbol}". Check the ticker (e.g. AAPL, PETR4.SA, BTC-USD).',

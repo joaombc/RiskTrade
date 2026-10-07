@@ -3,8 +3,10 @@ import { getCandlePatterns } from "../candles/localize";
 import { CANDLE_PATTERNS } from "../candles/patterns";
 import { searchCandles } from "../candles/search";
 import { LABELS_EN } from "./en/labels";
+import { LESSON_LABELS_EN, LESSONS_EN } from "./en/lessons";
 import { TERMS_EN } from "./en/terms";
-import { getGlossary } from "./localize";
+import { getGlossary, getLessons } from "./localize";
+import { LESSONS } from "./lessons";
 import { searchTerms } from "./search";
 import { GLOSSARY } from "./terms";
 import type { Diagram } from "./types";
@@ -92,5 +94,46 @@ describe("candles em inglês", () => {
     expect(find("engulfing")).toContain("engolfo");
     expect(find("hanging man")).toEqual(["martelo-enforcado"]);
     expect(find("evening star")).toContain("estrela-da-manha-tarde");
+  });
+});
+
+describe("aulas em inglês", () => {
+  it("em português devolve as aulas originais", async () => {
+    expect(await getLessons("pt-BR")).toBe(LESSONS);
+  });
+
+  it("toda aula tem tradução com a mesma estrutura: seções, parágrafos, itens, legendas e resumo", () => {
+    expect(Object.keys(LESSONS_EN).sort()).toEqual(LESSONS.map((l) => l.slug).sort());
+    for (const lesson of LESSONS) {
+      const en = LESSONS_EN[lesson.slug];
+      expect(en.sections.length, lesson.slug).toBe(lesson.sections.length);
+      expect(en.takeaways.length, lesson.slug).toBe(lesson.takeaways.length);
+      lesson.sections.forEach((s, i) => {
+        const where = `${lesson.slug} · seção ${i} (${s.heading})`;
+        const t = en.sections[i];
+        expect(!!t.heading, where).toBe(!!s.heading);
+        expect(t.paragraphs.length, where).toBe(s.paragraphs.length);
+        expect(t.bullets?.length, where).toBe(s.bullets?.length);
+        expect(!!t.caption, where).toBe(!!s.diagram);
+      });
+    }
+  });
+
+  it("todo rótulo com palavras nos diagramas das aulas tem tradução", () => {
+    const labels = { ...LABELS_EN, ...LESSON_LABELS_EN };
+    const texts = LESSONS.flatMap((l) => l.sections.flatMap((s) => (s.diagram ? diagramTexts(s.diagram.diagram) : [])));
+    // Letras soltas (ondas, pontos A-B-C, S1) e números não se traduzem.
+    const missing = [...new Set(texts)].filter((text) => /[A-Za-zÀ-ú]{2,}/.test(text) && text !== "OBV" && !(text in labels));
+    expect(missing).toEqual([]);
+  });
+
+  it("monta as aulas em inglês sem trocar o C de Dow pela cabeça do OCO", async () => {
+    const en = await getLessons("en-US");
+    const dow = en.find((l) => l.slug === "teoria-de-dow")!;
+    expect(dow.title).toBe("Dow Theory");
+    const failure = dow.sections.find((s) => s.diagram?.caption.startsWith("Failure swing"))!;
+    expect(diagramTexts(failure.diagram!.diagram)).toEqual(expect.arrayContaining(["A", "B", "C", "S", "C fails to exceed A: stronger signal"]));
+    const fourWeek = en.find((l) => l.slug === "regra-das-4-semanas")!;
+    expect(diagramTexts(fourWeek.sections[1].diagram!.diagram)).toEqual(expect.arrayContaining(["4-wk high", "4-wk low"]));
   });
 });
