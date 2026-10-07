@@ -1,13 +1,10 @@
+"use client";
+
+import type { Dictionary } from "@/i18n/dictionary";
+import { fmt } from "@/i18n/format";
+import { useI18n } from "@/i18n/I18nProvider";
 import type { Bar } from "@/lib/drawings/types";
-import {
-  ENVELOPE_REGIME_LABELS,
-  ENVELOPE_SIGNAL_LABELS,
-  maLabel,
-  RECENT_CROSS_BARS,
-  type EnvelopeRegime,
-  type EnvelopeSignal,
-  type MovingAverage,
-} from "@/lib/movingAverages";
+import { maLabel, RECENT_CROSS_BARS, type EnvelopeRegime, type EnvelopeSignal, type MovingAverage } from "@/lib/movingAverages";
 
 const MAX_LISTED = 5;
 
@@ -17,29 +14,16 @@ const TONE: Record<EnvelopeSignal["kind"], string> = {
   exit: "bg-target/15 text-target",
 };
 
-/** O que fazer em cada contexto, segundo as táticas da aula de médias móveis. */
-const PLAYBOOK: Record<EnvelopeRegime, string> = {
-  lateral: "reversão à média: venda na banda de cima, compra na de baixo, alvo na média central",
-  up: "a favor da alta: compra nos recuos até a média, realização na banda de cima; não vender na banda de cima",
-  down: "a favor da baixa: venda nos repiques até a média, realização na banda de baixo; não comprar na banda de baixo",
-};
-
-function explain(s: EnvelopeSignal, label: string, percent: number): string {
-  // Sem artigo: cada frase põe o seu ("tocou a banda…", "alvo na banda…").
-  const band = (side: "upper" | "lower") => `banda de ${side === "upper" ? "cima" : "baixo"} (${side === "upper" ? "+" : "−"}${percent}%)`;
+/** O que aconteceu em cada sinal, segundo as táticas da aula de médias móveis. */
+function explain(s: EnvelopeSignal, label: string, percent: number, e: Dictionary["envelope"]): string {
+  const band = (side: "upper" | "lower") => fmt(side === "upper" ? e.bandUpper : e.bandLower, { percent });
   switch (s.regime) {
     case "lateral":
-      return s.kind === "sell"
-        ? `mercado lateral e a máxima tocou a ${band("upper")}: sobrecompra; alvo na ${label}`
-        : `mercado lateral e a mínima tocou a ${band("lower")}: sobrevenda; alvo na ${label}`;
+      return s.kind === "sell" ? fmt(e.lateralSell, { band: band("upper"), label }) : fmt(e.lateralBuy, { band: band("lower"), label });
     case "up":
-      return s.kind === "buy"
-        ? `tendência de alta e o recuo tocou a ${label}: compra a favor da tendência; alvo na ${band("upper")}`
-        : `tendência de alta e a máxima alcançou a ${band("upper")}: alvo da compra atingido`;
+      return s.kind === "buy" ? fmt(e.upBuy, { label, band: band("upper") }) : fmt(e.upExit, { band: band("upper") });
     case "down":
-      return s.kind === "sell"
-        ? `tendência de baixa e o repique tocou a ${label}: venda a favor da tendência; alvo na ${band("lower")}`
-        : `tendência de baixa e a mínima alcançou a ${band("lower")}: alvo da venda atingido`;
+      return s.kind === "sell" ? fmt(e.downSell, { label, band: band("lower") }) : fmt(e.downExit, { band: band("lower") });
   }
 }
 
@@ -57,73 +41,75 @@ interface Props {
 
 /** Painel dos sinais dos envelopes: envelope usado, contexto atual, alerta recente e lista. */
 export function EnvelopeSignalPanel({ bars, average, percent, signals, regime, intraday, show, onShowChange }: Props) {
-  const label = maLabel(average);
+  const { t, locale } = useI18n();
+  const e = t.envelope;
+  const label = maLabel(average, t.ma.short);
   const dateFormat = new Intl.DateTimeFormat(
-    "pt-BR",
+    locale,
     intraday
       ? { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }
       : { day: "2-digit", month: "2-digit", year: "2-digit" },
   );
   const dateOf = (s: EnvelopeSignal) => dateFormat.format(new Date(bars[s.index].time * 1000));
-  const price = (value: number) => value.toLocaleString("pt-BR", { maximumFractionDigits: 2 });
+  const price = (value: number) => value.toLocaleString(locale, { maximumFractionDigits: 2 });
 
   const latest = signals[signals.length - 1];
   const recent = latest && bars.length - 1 - latest.index < RECENT_CROSS_BARS ? latest : null;
   const listed = signals.slice(-MAX_LISTED).reverse();
-  const recentTone = !recent ? "" : recent.kind === "buy" ? "border-positive/40 bg-positive/10 text-positive" : recent.kind === "sell" ? "border-negative/40 bg-negative/10 text-negative" : "border-target/40 bg-target/10 text-target";
+  const recentTone = !recent
+    ? ""
+    : recent.kind === "buy"
+      ? "border-positive/40 bg-positive/10 text-positive"
+      : recent.kind === "sell"
+        ? "border-negative/40 bg-negative/10 text-negative"
+        : "border-target/40 bg-target/10 text-target";
 
   return (
     <div className="mt-4 flex flex-col gap-3 border-t border-border pt-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="text-sm font-semibold">
-          Sinais dos envelopes{" "}
+          {e.title}{" "}
           <span className="font-normal text-muted">
             · {label} ± {percent}%
           </span>
         </h3>
         <label className="flex items-center gap-1.5 text-xs text-muted">
-          <input type="checkbox" checked={show} onChange={(e) => onShowChange(e.target.checked)} />
-          Mostrar sinais no gráfico
+          <input type="checkbox" checked={show} onChange={(ev) => onShowChange(ev.target.checked)} />
+          {t.signals.show}
         </label>
       </div>
 
       <p className="text-sm">
         {regime ? (
           <>
-            Contexto agora: <strong>{ENVELOPE_REGIME_LABELS[regime]}</strong>. Tática: {PLAYBOOK[regime]}.
+            {e.contextNow} <strong>{e.regime[regime]}</strong>. {e.tactic} {e.playbook[regime]}.
           </>
         ) : (
-          <span className="text-muted">A média ainda não tem histórico suficiente para medir o contexto.</span>
+          <span className="text-muted">{e.noHistory}</span>
         )}
       </p>
 
       {recent ? (
         <div role="alert" className={`rounded-lg border p-3 text-sm ${recentTone}`}>
-          <strong>
-            {ENVELOPE_SIGNAL_LABELS[recent.kind]} em {dateOf(recent)}:
-          </strong>{" "}
-          {explain(recent, label, percent)} (fechamento {price(bars[recent.index].close)}).
-          {recent.index === bars.length - 1 && (
-            <span className="mt-1 block text-xs opacity-80">
-              O sinal está no último candle: se ele ainda estiver em formação, o toque pode se desfazer até o fechamento.
-            </span>
-          )}
+          <strong>{fmt(t.signals.at, { label: e.labels[recent.kind], date: dateOf(recent) })}</strong>{" "}
+          {explain(recent, label, percent, e)} {fmt(t.signals.close, { price: price(bars[recent.index].close) })}.
+          {recent.index === bars.length - 1 && <span className="mt-1 block text-xs opacity-80">{t.signals.openCandle}</span>}
         </div>
       ) : (
-        <p className="text-sm text-muted">Nenhum sinal nos últimos {RECENT_CROSS_BARS} candles.</p>
+        <p className="text-sm text-muted">{fmt(e.noneRecent, { count: RECENT_CROSS_BARS })}</p>
       )}
 
       {listed.length > 0 && (
         <details className="text-sm">
-          <summary className="cursor-pointer text-xs font-medium text-muted">Sinais no período ({signals.length})</summary>
+          <summary className="cursor-pointer text-xs font-medium text-muted">{fmt(t.signals.inPeriod, { count: signals.length })}</summary>
           <ul className="mt-2 flex flex-col gap-2">
             {listed.map((s) => (
               <li key={`${s.kind}-${s.index}`} className="flex gap-2">
                 <span className={`mt-0.5 h-fit shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ${TONE[s.kind]}`}>
-                  {ENVELOPE_SIGNAL_LABELS[s.kind]}
+                  {e.labels[s.kind]}
                 </span>
                 <span className="text-muted">
-                  {dateOf(s)}: {explain(s, label, percent)} (fechamento {price(bars[s.index].close)}).
+                  {dateOf(s)}: {explain(s, label, percent, e)} {fmt(t.signals.close, { price: price(bars[s.index].close) })}.
                 </span>
               </li>
             ))}
@@ -131,11 +117,7 @@ export function EnvelopeSignalPanel({ bars, average, percent, signals, regime, i
         </details>
       )}
 
-      <p className="text-[11px] text-muted">
-        Táticas de curto prazo da aula de médias móveis, além do Murphy. O contexto vem da inclinação da média: tendência quando ela
-        anda mais que metade da largura do envelope em meio período. Defina o stop antes de entrar; na reversão, ele fica além da
-        banda tocada.
-      </p>
+      <p className="text-[11px] text-muted">{e.footer}</p>
     </div>
   );
 }

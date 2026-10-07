@@ -1,11 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { fmt } from "@/i18n/format";
+import { useI18n } from "@/i18n/I18nProvider";
 import {
   customInterval,
   customRange,
   customSessions,
-  INTERVAL_LABELS,
   MAX_CUSTOM_SESSIONS,
   MIN_CUSTOM_SESSIONS,
   type HistoryRange,
@@ -16,6 +17,8 @@ import {
  * volta a mostrar o período atual sempre que ele muda.
  */
 export function CustomRangeInput({ range, onChange }: { range: HistoryRange; onChange: (range: HistoryRange) => void }) {
+  const { t } = useI18n();
+  const c = t.customRange;
   const active = customSessions(range);
   const [draft, setDraft] = useState(active === null ? "" : String(active));
   const sessions = Number(draft);
@@ -32,14 +35,14 @@ export function CustomRangeInput({ range, onChange }: { range: HistoryRange; onC
       }}
       title={
         invalid
-          ? `Use um número inteiro de ${MIN_CUSTOM_SESSIONS} a ${MAX_CUSTOM_SESSIONS} pregões.`
+          ? fmt(c.invalid, { min: MIN_CUSTOM_SESSIONS, max: MAX_CUSTOM_SESSIONS })
           : valid
-            ? `Últimos ${sessions} pregões, em ${INTERVAL_LABELS[customInterval(sessions)]}.`
-            : "Digite a quantidade de dias (pregões) e confirme."
+            ? fmt(c.valid, { n: sessions, interval: t.chart.intervals[customInterval(sessions)] })
+            : c.idle
       }
     >
       <label className="sr-only" htmlFor="custom-range-days">
-        Quantidade de dias (pregões)
+        {c.label}
       </label>
       <input
         id="custom-range-days"
@@ -48,7 +51,7 @@ export function CustomRangeInput({ range, onChange }: { range: HistoryRange; onC
         min={MIN_CUSTOM_SESSIONS}
         max={MAX_CUSTOM_SESSIONS}
         step={1}
-        placeholder="Dias"
+        placeholder={c.placeholder}
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
         aria-invalid={invalid}
@@ -61,7 +64,7 @@ export function CustomRangeInput({ range, onChange }: { range: HistoryRange; onC
         disabled={!valid || sessions === active}
         className="rounded-md px-2 py-1 text-xs font-medium text-muted hover:bg-border/60 disabled:opacity-40"
       >
-        Ir
+        {c.go}
       </button>
     </form>
   );

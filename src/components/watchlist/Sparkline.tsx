@@ -1,9 +1,15 @@
+"use client";
+
+import { fmt } from "@/i18n/format";
+import { useI18n } from "@/i18n/I18nProvider";
+
 const WIDTH = 80;
 const HEIGHT = 28;
 const PAD = 2;
 
 /** Mini-gráfico de linha dos fechamentos recentes, verde se o período fecha em alta. */
 export function Sparkline({ values }: { values: number[] }) {
+  const { t, locale } = useI18n();
   if (values.length < 2) {
     return <div aria-hidden className="h-7 w-20" />;
   }
@@ -26,7 +32,11 @@ export function Sparkline({ values }: { values: number[] }) {
   return (
     <svg
       role="img"
-      aria-label={`Tendência de ${values.length} sessões: ${up ? "alta" : "baixa"} de ${Math.abs(change).toFixed(1)}%`}
+      aria-label={fmt(t.watchlist.sparkline, {
+        sessions: values.length,
+        direction: up ? t.watchlist.sparkUp : t.watchlist.sparkDown,
+        percent: Math.abs(change).toLocaleString(locale, { maximumFractionDigits: 1 }),
+      })}
       viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
       className={`h-7 w-20 shrink-0 ${up ? "text-positive" : "text-negative"}`}
     >

@@ -1,8 +1,10 @@
+"use client";
+
 import Link from "next/link";
+import { fmt } from "@/i18n/format";
+import { useI18n } from "@/i18n/I18nProvider";
 import { BANDWIDTH_LOOKBACK, STRONG_TREND_BARS, type BollingerReading } from "@/lib/bollinger";
 import type { Bar } from "@/lib/drawings/types";
-
-const num = (v: number) => v.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 interface Props {
   bars: Bar[];
@@ -12,8 +14,11 @@ interface Props {
 
 /** Leitura das bandas de Bollinger no último candle, com as regras de Murphy (cap. 9). */
 export function BollingerPanel({ bars, reading, intraday }: Props) {
+  const { t, locale, href } = useI18n();
+  const b = t.bollinger;
+  const num = (v: number) => v.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const dateFormat = new Intl.DateTimeFormat(
-    "pt-BR",
+    locale,
     intraday ? { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" } : { day: "2-digit", month: "2-digit", year: "2-digit" },
   );
   const dateOf = (i: number) => dateFormat.format(new Date(bars[i].time * 1000));
@@ -21,23 +26,23 @@ export function BollingerPanel({ bars, reading, intraday }: Props) {
   return (
     <div className="mt-4 flex flex-col gap-3 border-t border-border pt-4">
       <h3 className="text-sm font-semibold">
-        Bandas de Bollinger <span className="font-normal text-muted">· MMS 20 ± 2 desvios-padrão</span>
+        {b.title} <span className="font-normal text-muted">{b.params}</span>
       </h3>
 
       {!reading ? (
-        <p className="text-sm text-muted">Histórico insuficiente para as bandas (são precisos 20 candles).</p>
+        <p className="text-sm text-muted">{b.insufficient}</p>
       ) : (
         <ul className="flex flex-col gap-2 text-sm">
           <li>
-            <strong>Posição:</strong> fechamento {num(reading.close)}, entre a banda de baixo ({num(reading.lower)}) e a de cima (
-            {num(reading.upper)}), com %B de {num(reading.percentB)}
+            <strong>{b.position}</strong>{" "}
+            {fmt(b.positionText, { close: num(reading.close), lower: num(reading.lower), upper: num(reading.upper), b: num(reading.percentB) })}
             {reading.percentB >= 1
-              ? ": acima da banda de cima, sobrecomprado."
+              ? b.aboveUpper
               : reading.percentB <= 0
-                ? ": abaixo da banda de baixo, sobrevendido."
+                ? b.belowLower
                 : reading.percentB >= 0.5
-                  ? ", na metade de cima."
-                  : ", na metade de baixo."}
+                  ? b.upperHalf
+                  : b.lowerHalf}
           </li>
 
           {reading.touch && (
@@ -45,65 +50,57 @@ export function BollingerPanel({ bars, reading, intraday }: Props) {
               role="status"
               className={`rounded-lg border p-3 ${reading.touch.band === "upper" ? "border-negative/40 bg-negative/10" : "border-positive/40 bg-positive/10"}`}
             >
-              <strong>{reading.touch.band === "upper" ? "Sobrecompra" : "Sobrevenda"}:</strong> o preço tocou a banda de{" "}
-              {reading.touch.band === "upper" ? "cima" : "baixo"} em {dateOf(reading.touch.index)}. Murphy lembra que o preço costuma
-              achar {reading.touch.band === "upper" ? "resistência na banda de cima" : "suporte na banda de baixo"}, e que o sinal
-              fica mais forte confirmado por um oscilador.
-              {reading.strongTrend === (reading.touch.band === "upper" ? "up" : "down") &&
-                " Mas o mercado está em tendência forte nessa direção: aqui o toque é sinal de força, não de reversão."}
+              <strong>{reading.touch.band === "upper" ? b.overbought : b.oversold}</strong>{" "}
+              {fmt(reading.touch.band === "upper" ? b.touchUpper : b.touchLower, { date: dateOf(reading.touch.index) })}
+              {reading.strongTrend === (reading.touch.band === "upper" ? "up" : "down") && b.touchStrong}
             </li>
           )}
 
           <li>
-            <strong>Alvo:</strong>{" "}
+            <strong>{b.target}</strong>{" "}
             {reading.target ? (
               <>
-                o preço cruzou a média de 20 para {reading.target.direction === "up" ? "cima" : "baixo"} em{" "}
-                {dateOf(reading.target.crossIndex)}
-                {reading.target.fromBand &&
-                  `, depois de tocar a banda de ${reading.target.direction === "up" ? "baixo" : "cima"} (o caso clássico do livro)`}
-                , então o alvo é a <strong>banda de {reading.target.direction === "up" ? "cima" : "baixo"}</strong>, hoje em{" "}
-                {num(reading.target.price)}.
-                {reading.target.crossIndex === bars.length - 1 &&
-                  " O cruzamento está no último candle: se ele ainda estiver em formação, pode se desfazer até o fechamento."}
+                {fmt(reading.target.direction === "up" ? b.crossedUp : b.crossedDown, { date: dateOf(reading.target.crossIndex) })}
+                {reading.target.fromBand && (reading.target.direction === "up" ? b.fromLower : b.fromUpper)}
+                {b.thenTarget} <strong>{reading.target.direction === "up" ? b.upperBand : b.lowerBand}</strong>
+                {fmt(b.today, { price: num(reading.target.price) })}
+                {reading.target.crossIndex === bars.length - 1 && b.crossOpen}
               </>
             ) : (
-              "sem cruzamento da média de 20 no período."
+              b.noCross
             )}
           </li>
 
           {reading.strongTrend && (
             <li>
-              <strong>Tendência forte de {reading.strongTrend === "up" ? "alta" : "baixa"}:</strong> os últimos {STRONG_TREND_BARS}{" "}
-              fechamentos ficaram {reading.strongTrend === "up" ? "acima" : "abaixo"} da média, com toque na banda de{" "}
-              {reading.strongTrend === "up" ? "cima" : "baixo"}. O preço tende a oscilar entre essa banda e a média, e{" "}
-              {reading.strongTrend === "up" ? "fechar abaixo" : "fechar acima"} da média ({num(reading.middle)}) avisa de virada.
+              <strong>{reading.strongTrend === "up" ? b.strongUp : b.strongDown}</strong>{" "}
+              {fmt(reading.strongTrend === "up" ? b.strongUpText : b.strongDownText, { n: STRONG_TREND_BARS, middle: num(reading.middle) })}
             </li>
           )}
 
           <li>
-            <strong>Largura:</strong> {num(reading.width.current)}% do preço
+            <strong>{b.width}</strong> {fmt(b.widthText, { width: num(reading.width.current) })}
             {reading.width.state === "squeeze" ? (
               <>
-                , entre as menores dos últimos {BANDWIDTH_LOOKBACK} candles: <strong>aperto</strong>. Bandas apertadas costumam
-                anteceder o início de um movimento forte; observe a direção do rompimento.
+                {fmt(b.squeezePrefix, { n: BANDWIDTH_LOOKBACK })} <strong>{b.squeeze}</strong>
+                {b.squeezeText}
               </>
             ) : reading.width.state === "wide" ? (
               <>
-                , entre as maiores dos últimos {BANDWIDTH_LOOKBACK} candles: <strong>bandas muito abertas</strong>. Isso costuma
-                aparecer perto do fim da tendência atual.
+                {fmt(b.widePrefix, { n: BANDWIDTH_LOOKBACK })} <strong>{b.wide}</strong>
+                {b.wideText}
               </>
             ) : (
-              <>, dentro do normal para os últimos {BANDWIDTH_LOOKBACK} candles.</>
+              fmt(b.normal, { n: BANDWIDTH_LOOKBACK })
             )}
           </li>
         </ul>
       )}
 
       <p className="text-[11px] text-muted">
-        Regras de Murphy (cap. 9). As bandas funcionam melhor junto com osciladores de sobrecompra e sobrevenda.{" "}
-        <Link href="/glossario#bandas-de-bollinger" className="font-medium text-accent hover:underline">
-          Como operar com as bandas
+        {b.footer}{" "}
+        <Link href={href("/glossario#bandas-de-bollinger")} className="font-medium text-accent hover:underline">
+          {b.link}
         </Link>
       </p>
     </div>

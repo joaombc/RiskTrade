@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
+import { apiErrorMessage } from "@/i18n/apiError";
+import { fmt } from "@/i18n/format";
+import { useI18n } from "@/i18n/I18nProvider";
 import type { SearchResult } from "@/lib/market";
 
 const DEBOUNCE_MS = 250;
@@ -12,6 +15,7 @@ interface Props {
 
 export function AssetSearch({ onSelect, initialQuery = "" }: Props) {
   const listId = useId();
+  const { t } = useI18n();
   const [query, setQuery] = useState(initialQuery);
   const [results, setResults] = useState<SearchResult[]>([]);
   const [open, setOpen] = useState(false);
@@ -31,14 +35,14 @@ export function AssetSearch({ onSelect, initialQuery = "" }: Props) {
       try {
         const res = await fetch(`/api/search?q=${encodeURIComponent(term)}`, { signal: controller.signal });
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error);
+        if (!res.ok) throw new Error(apiErrorMessage(t.errors, data, t.errors.searchFailed));
         setResults(data.results);
         setError(null);
         setActive(-1);
       } catch (err) {
         if (controller.signal.aborted) return;
         setResults([]);
-        setError(err instanceof Error && err.message ? err.message : "Falha ao buscar ativos.");
+        setError(err instanceof Error && err.message ? err.message : t.errors.searchFailed);
       } finally {
         setLoading(false);
       }
@@ -48,7 +52,7 @@ export function AssetSearch({ onSelect, initialQuery = "" }: Props) {
       clearTimeout(timer);
       controller.abort();
     };
-  }, [query, open]);
+  }, [query, open, t.errors]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -86,7 +90,7 @@ export function AssetSearch({ onSelect, initialQuery = "" }: Props) {
   return (
     <div ref={containerRef} className="relative w-full">
       <label htmlFor={`${listId}-input`} className="sr-only">
-        Buscar ativo
+        {t.search.label}
       </label>
       <div className="flex items-center gap-2 rounded-xl border border-border bg-surface px-4 py-3 shadow-sm focus-within:border-accent focus-within:ring-2 focus-within:ring-accent/25">
         <svg aria-hidden viewBox="0 0 20 20" className="h-5 w-5 shrink-0 text-muted" fill="none" stroke="currentColor" strokeWidth={2}>
@@ -102,7 +106,7 @@ export function AssetSearch({ onSelect, initialQuery = "" }: Props) {
           aria-activedescendant={active >= 0 ? `${listId}-opt-${active}` : undefined}
           autoComplete="off"
           spellCheck={false}
-          placeholder="Busque por ticker ou empresa — ex: AAPL, PETR4.SA, BTC-USD"
+          placeholder={t.search.placeholder}
           className="w-full bg-transparent text-base outline-none placeholder:text-muted"
           value={query}
           onChange={(e) => {
@@ -113,7 +117,7 @@ export function AssetSearch({ onSelect, initialQuery = "" }: Props) {
           onKeyDown={handleKeyDown}
         />
         {loading && (
-          <span aria-label="Carregando" className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-muted border-t-transparent" />
+          <span aria-label={t.search.loading} className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-muted border-t-transparent" />
         )}
       </div>
 
@@ -125,9 +129,7 @@ export function AssetSearch({ onSelect, initialQuery = "" }: Props) {
         >
           {error && <li className="px-4 py-3 text-sm text-negative">{error}</li>}
           {!error && !loading && results.length === 0 && (
-            <li className="px-4 py-3 text-sm text-muted">
-              Nenhum resultado. Pressione Enter para buscar &quot;{query.trim().toUpperCase()}&quot; diretamente.
-            </li>
+            <li className="px-4 py-3 text-sm text-muted">{fmt(t.search.noResults, { query: query.trim().toUpperCase() })}</li>
           )}
           {results.map((r, i) => (
             <li

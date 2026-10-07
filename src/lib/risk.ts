@@ -1,3 +1,5 @@
+import { fmt } from "../i18n/format";
+
 /**
  * Gestão de risco: dimensionamento de posição pelo risco máximo aceito, validação da
  * relação recompensa/risco (mínimo 3:1, Murphy) e saída fracionada em terços.
@@ -57,34 +59,85 @@ export type RiskResult = { ok: true; plan: RiskPlan } | { ok: false; errors: str
 export const MIN_REWARD_RISK = 3;
 export const RECOMMENDED_MAX_RISK_PERCENT = 2;
 
+/** Mensagens do cálculo de risco; o padrão é português, e a interface passa as do idioma atual. */
+export interface RiskMessages {
+  noCapital: string;
+  badRiskPercent: string;
+  noEntry: string;
+  noStop: string;
+  badLot: string;
+  stopLong: string;
+  stopShort: string;
+  targetLong: string;
+  targetShort: string;
+  /** Com {risk} e {max}. */
+  riskAboveRecommended: string;
+  lotAboveRisk: string;
+  capitalBelowLot: string;
+  cappedByCapital: string;
+  tooSmallForThirds: string;
+  targetBelow1R: string;
+  partial1: string;
+  partial2: string;
+  partial3: string;
+  note1: string;
+  note2: string;
+  note3: string;
+}
+
+export const PT_RISK_MESSAGES: RiskMessages = {
+  noCapital: "Informe o capital total da conta.",
+  badRiskPercent: "O risco por operação deve estar entre 0% e 100%.",
+  noEntry: "Informe o preço de entrada.",
+  noStop: "Defina o stop-loss antes de calcular a posição.",
+  badLot: "O lote deve ser um número inteiro maior ou igual a 1.",
+  stopLong: "Na compra, o stop deve ficar abaixo da entrada.",
+  stopShort: "Na venda, o stop deve ficar acima da entrada.",
+  targetLong: "Na compra, o alvo deve ficar acima da entrada.",
+  targetShort: "Na venda, o alvo deve ficar abaixo da entrada.",
+  riskAboveRecommended: "Risco de {risk}% por operação está acima do recomendado (1% a {max}%).",
+  lotAboveRisk: "O risco de um lote passa do risco máximo permitido: aproxime o stop, aumente o capital ou reduza o lote.",
+  capitalBelowLot: "O capital não cobre nem um lote ao preço de entrada.",
+  cappedByCapital: "A quantidade foi limitada pelo capital disponível; o risco efetivo ficou abaixo do máximo.",
+  tooSmallForThirds: "Posição pequena demais para dividir em terços com o lote informado.",
+  targetBelow1R: "O alvo está a menos de 1R da entrada: não há espaço para a parcial de proteção antes dele.",
+  partial1: "1º terço",
+  partial2: "2º terço",
+  partial3: "3º terço",
+  note1: "Primeiro movimento (1R). Depois dela, mova o stop para a entrada.",
+  note2: "Alvo do padrão.",
+  note3: "Condução: siga a tendência com stop móvel abaixo dos fundos (ou acima dos topos, na venda).",
+};
+
 /** Arredonda para baixo no múltiplo do lote, tolerando erro de ponto flutuante (499,9999… → 500). */
 function floorToLot(quantity: number, lotSize: number): number {
   return Math.floor(quantity / lotSize + 1e-9) * lotSize;
 }
 
-export function computeRiskPlan(input: RiskInput): RiskResult {
+export function computeRiskPlan(input: RiskInput, messages: RiskMessages = PT_RISK_MESSAGES): RiskResult {
+  const m = messages;
   const { capital, riskPercent, direction, entry, stop, target, lotSize } = input;
   const errors: string[] = [];
   const long = direction === "long";
 
-  if (!(capital > 0)) errors.push("Informe o capital total da conta.");
-  if (!(riskPercent > 0 && riskPercent <= 100)) errors.push("O risco por operação deve estar entre 0% e 100%.");
-  if (!(entry > 0)) errors.push("Informe o preço de entrada.");
-  if (!(stop > 0)) errors.push("Defina o stop-loss antes de calcular a posição.");
-  if (!(lotSize >= 1 && Number.isInteger(lotSize))) errors.push("O lote deve ser um número inteiro maior ou igual a 1.");
+  if (!(capital > 0)) errors.push(m.noCapital);
+  if (!(riskPercent > 0 && riskPercent <= 100)) errors.push(m.badRiskPercent);
+  if (!(entry > 0)) errors.push(m.noEntry);
+  if (!(stop > 0)) errors.push(m.noStop);
+  if (!(lotSize >= 1 && Number.isInteger(lotSize))) errors.push(m.badLot);
   if (errors.length > 0) return { ok: false, errors };
 
   if (long ? stop >= entry : stop <= entry) {
-    errors.push(long ? "Na compra, o stop deve ficar abaixo da entrada." : "Na venda, o stop deve ficar acima da entrada.");
+    errors.push(long ? m.stopLong : m.stopShort);
   }
   if (target !== undefined && (long ? target <= entry : target >= entry)) {
-    errors.push(long ? "Na compra, o alvo deve ficar acima da entrada." : "Na venda, o alvo deve ficar abaixo da entrada.");
+    errors.push(long ? m.targetLong : m.targetShort);
   }
   if (errors.length > 0) return { ok: false, errors };
 
   const warnings: string[] = [];
   if (riskPercent > RECOMMENDED_MAX_RISK_PERCENT) {
-    warnings.push(`Risco de ${riskPercent}% por operação está acima do recomendado (1% a ${RECOMMENDED_MAX_RISK_PERCENT}%).`);
+    warnings.push(fmt(m.riskAboveRecommended, { risk: riskPercent, max: RECOMMENDED_MAX_RISK_PERCENT }));
   }
 
   const riskPerUnit = Math.abs(entry - stop);
@@ -97,11 +150,11 @@ export function computeRiskPlan(input: RiskInput): RiskResult {
   if (quantity === 0) {
     warnings.push(
       byRisk === 0
-        ? "O risco de um lote passa do risco máximo permitido: aproxime o stop, aumente o capital ou reduza o lote."
-        : "O capital não cobre nem um lote ao preço de entrada.",
+        ? m.lotAboveRisk
+        : m.capitalBelowLot,
     );
   } else if (cappedByCapital) {
-    warnings.push("A quantidade foi limitada pelo capital disponível; o risco efetivo ficou abaixo do máximo.");
+    warnings.push(m.cappedByCapital);
   }
 
   const actualRisk = quantity * riskPerUnit;
@@ -123,7 +176,7 @@ export function computeRiskPlan(input: RiskInput): RiskResult {
     plan.rewardRisk = rewardRisk;
     plan.potentialProfit = quantity * rewardPerUnit;
     plan.meetsMinRewardRisk = rewardRisk >= MIN_REWARD_RISK;
-    Object.assign(plan, planThirds(input, target, quantity, riskPerUnit, rewardRisk, warnings));
+    Object.assign(plan, planThirds(input, target, quantity, riskPerUnit, rewardRisk, warnings, m));
   }
 
   return { ok: true, plan };
@@ -140,14 +193,15 @@ function planThirds(
   riskPerUnit: number,
   rewardRisk: number,
   warnings: string[],
+  m: RiskMessages,
 ): Pick<RiskPlan, "partials" | "riskFreeProfit"> {
   const third = floorToLot(quantity / 3, lotSize);
   if (third === 0) {
-    if (quantity > 0) warnings.push("Posição pequena demais para dividir em terços com o lote informado.");
+    if (quantity > 0) warnings.push(m.tooSmallForThirds);
     return {};
   }
   if (rewardRisk <= 1) {
-    warnings.push("O alvo está a menos de 1R da entrada: não há espaço para a parcial de proteção antes dele.");
+    warnings.push(m.targetBelow1R);
     return {};
   }
 
@@ -159,23 +213,23 @@ function planThirds(
   return {
     partials: [
       {
-        label: "1º terço",
+        label: m.partial1,
         quantity: third,
         price: firstPrice,
         profit: firstProfit,
-        note: "Primeiro movimento (1R). Depois dela, mova o stop para a entrada.",
+        note: m.note1,
       },
       {
-        label: "2º terço",
+        label: m.partial2,
         quantity: third,
         price: target,
         profit: targetProfit,
-        note: "Alvo do padrão.",
+        note: m.note2,
       },
       {
-        label: "3º terço",
+        label: m.partial3,
         quantity: quantity - 2 * third,
-        note: "Condução: siga a tendência com stop móvel abaixo dos fundos (ou acima dos topos, na venda).",
+        note: m.note3,
       },
     ],
     riskFreeProfit: firstProfit,

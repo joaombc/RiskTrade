@@ -36,13 +36,13 @@ const TARGET_LENGTH = 15;
 export const FIBONACCI_LEVELS = [0, 0.382, 0.5, 0.618, 1];
 export const THIRDS_LEVELS = [0, 1 / 3, 0.5, 2 / 3, 1];
 
-export function formatPrice(price: number): string {
+export function formatPrice(price: number, locale = "pt-BR"): string {
   const digits = Math.abs(price) < 1 ? 4 : 2;
-  return price.toLocaleString("pt-BR", { minimumFractionDigits: digits, maximumFractionDigits: digits });
+  return price.toLocaleString(locale, { minimumFractionDigits: digits, maximumFractionDigits: digits });
 }
 
-function formatPercent(ratio: number): string {
-  return `${(ratio * 100).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%`;
+function formatPercent(ratio: number, locale: string): string {
+  return `${(ratio * 100).toLocaleString(locale, { maximumFractionDigits: 1 })}%`;
 }
 
 /** Preço da reta que passa por `a` e `b` no índice lógico `logical`. */
@@ -150,11 +150,36 @@ export function roleSegments(bars: Bar[], level: number, threshold = BREAK_THRES
 
 export type TriangleType = "symmetric" | "ascending" | "descending" | "undefined";
 
+/** Textos que os desenhos escrevem no gráfico, no idioma da interface. */
+export interface CanvasLabels {
+  locale: string;
+  triangle: Record<TriangleType, string>;
+  target: string;
+  targetIfUp: string;
+  targetIfDown: string;
+  targetProjected: string;
+  fanReversal: string;
+  support: string;
+  resistance: string;
+}
+
 export const TRIANGLE_LABEL: Record<TriangleType, string> = {
   symmetric: "Triângulo simétrico",
   ascending: "Triângulo ascendente",
   descending: "Triângulo descendente",
   undefined: "Triângulo",
+};
+
+export const PT_CANVAS_LABELS: CanvasLabels = {
+  locale: "pt-BR",
+  triangle: TRIANGLE_LABEL,
+  target: "Alvo",
+  targetIfUp: "Alvo se romper ↑",
+  targetIfDown: "Alvo se romper ↓",
+  targetProjected: "Alvo (projeção)",
+  fanReversal: "3ª linha rompida: reversão",
+  support: "Suporte",
+  resistance: "Resistência",
 };
 
 export interface Breakout {
@@ -287,21 +312,21 @@ function horizontal(price: number, from: number, to: number, tone: Tone, extendR
   };
 }
 
-function targetShapes(from: DataPoint, target: number, text: string): Shape[] {
+function targetShapes(from: DataPoint, target: number, text: string, locale: string): Shape[] {
   return [
     { type: "line", from, to: { logical: from.logical, price: target }, tone: "target", dashed: true },
     { ...horizontal(target, from.logical, from.logical + TARGET_LENGTH, "target", false), dashed: true },
     {
       type: "label",
       at: { logical: from.logical + TARGET_LENGTH, price: target },
-      text: `${text} ${formatPrice(target)}`,
+      text: `${text} ${formatPrice(target, locale)}`,
       tone: "target",
       placement: "right",
     },
   ];
 }
 
-function retracement(a: DataPoint, b: DataPoint, levels: number[]): Shape[] {
+function retracement(a: DataPoint, b: DataPoint, levels: number[], locale: string): Shape[] {
   const left = Math.min(a.logical, b.logical);
   const right = Math.max(a.logical, b.logical);
   const shapes: Shape[] = [{ type: "line", from: a, to: b, tone: "muted", dashed: true }];
@@ -312,14 +337,14 @@ function retracement(a: DataPoint, b: DataPoint, levels: number[]): Shape[] {
     shapes.push({
       type: "label",
       at: { logical: left, price },
-      text: `${formatPercent(ratio)} · ${formatPrice(price)}`,
+      text: `${formatPercent(ratio, locale)} · ${formatPrice(price, locale)}`,
       tone: edge ? "muted" : "primary",
     });
   }
   return shapes;
 }
 
-export function buildShapes(drawing: Drawing, bars: Bar[], axis: TimeAxis): Shape[] {
+export function buildShapes(drawing: Drawing, bars: Bar[], axis: TimeAxis, labels: CanvasLabels = PT_CANVAS_LABELS): Shape[] {
   const pts = drawing.points.map((p) => ({ logical: axis.toLogical(p.time), price: p.price }));
   if (pts.length === 0) return [];
 
@@ -343,7 +368,7 @@ export function buildShapes(drawing: Drawing, bars: Bar[], axis: TimeAxis): Shap
         { type: "label", at: p, text: String(i + 1), tone: i === 0 ? "primary" : "muted", placement: "below" },
       ]);
       if (reversal) {
-        shapes.push({ type: "label", at: reversal, text: "3ª linha rompida: reversão", tone: "target", placement: "below" });
+        shapes.push({ type: "label", at: reversal, text: labels.fanReversal, tone: "target", placement: "below" });
       }
       return shapes;
     }
@@ -353,7 +378,7 @@ export function buildShapes(drawing: Drawing, bars: Bar[], axis: TimeAxis): Shap
       if (!drawing.options.roleReversal || bars.length === 0) {
         return [
           { ...horizontal(level, 0, Math.max(bars.length - 1, 0), "primary"), extendLeft: true },
-          { type: "label", at: { logical: Math.max(bars.length - 1, 0), price: level }, text: formatPrice(level), tone: "primary" },
+          { type: "label", at: { logical: Math.max(bars.length - 1, 0), price: level }, text: formatPrice(level, labels.locale), tone: "primary" },
         ];
       }
       const segments = roleSegments(bars, level);
@@ -365,7 +390,7 @@ export function buildShapes(drawing: Drawing, bars: Bar[], axis: TimeAxis): Shap
       shapes.push({
         type: "label",
         at: { logical: last.to, price: level },
-        text: `${last.role === "support" ? "Suporte" : "Resistência"} · ${formatPrice(level)}`,
+        text: `${last.role === "support" ? labels.support : labels.resistance} · ${formatPrice(level, labels.locale)}`,
         tone: last.role,
       });
       return shapes;
@@ -391,10 +416,10 @@ export function buildShapes(drawing: Drawing, bars: Bar[], axis: TimeAxis): Shap
     }
 
     case "fibonacci":
-      return retracement(pts[0], pts[1], FIBONACCI_LEVELS);
+      return retracement(pts[0], pts[1], FIBONACCI_LEVELS, labels.locale);
 
     case "thirds":
-      return retracement(pts[0], pts[1], THIRDS_LEVELS);
+      return retracement(pts[0], pts[1], THIRDS_LEVELS, labels.locale);
 
     case "speedLines": {
       const [a, b] = pts;
@@ -421,14 +446,14 @@ export function buildShapes(drawing: Drawing, bars: Bar[], axis: TimeAxis): Shap
         { type: "line", from: { logical: t.start, price: upper(t.start) }, to: { logical: lineEnd, price: upper(lineEnd) }, tone: "primary" },
         { type: "line", from: { logical: t.start, price: lower(t.start) }, to: { logical: lineEnd, price: lower(lineEnd) }, tone: "primary" },
         { type: "line", from: { logical: t.start, price: upper(t.start) }, to: { logical: t.start, price: lower(t.start) }, tone: "muted", dashed: true },
-        { type: "label", at: { logical: t.start, price: upper(t.start) }, text: TRIANGLE_LABEL[t.type], tone: "primary" },
+        { type: "label", at: { logical: t.start, price: upper(t.start) }, text: labels.triangle[t.type], tone: "primary" },
       ];
       if (t.breakout && t.target !== undefined) {
         const at = { logical: t.breakout.logical, price: t.breakout.price };
-        shapes.push(...targetShapes(at, t.target, "Alvo"));
+        shapes.push(...targetShapes(at, t.target, labels.target, labels.locale));
       } else {
-        shapes.push(...targetShapes({ logical: t.end, price: upper(t.end) }, t.potentialTargets.up, "Alvo se romper ↑"));
-        shapes.push(...targetShapes({ logical: t.end, price: lower(t.end) }, t.potentialTargets.down, "Alvo se romper ↓"));
+        shapes.push(...targetShapes({ logical: t.end, price: upper(t.end) }, t.potentialTargets.up, labels.targetIfUp, labels.locale));
+        shapes.push(...targetShapes({ logical: t.end, price: lower(t.end) }, t.potentialTargets.down, labels.targetIfDown, labels.locale));
       }
       return shapes;
     }
@@ -443,7 +468,7 @@ export function buildShapes(drawing: Drawing, bars: Bar[], axis: TimeAxis): Shap
         { type: "label", at: ls, text: "OE", tone: "primary", placement },
         { type: "label", at: head, text: hs.inverse ? "C · OCO invertido" : "C · OCO", tone: "primary", placement },
         { type: "label", at: rs, text: "OD", tone: "primary", placement },
-        ...targetShapes(hs.projectedFrom, hs.target, hs.breakout ? "Alvo" : "Alvo (projeção)"),
+        ...targetShapes(hs.projectedFrom, hs.target, hs.breakout ? labels.target : labels.targetProjected, labels.locale),
       ];
     }
   }

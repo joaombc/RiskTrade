@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useId, useMemo, useState } from "react";
+import { fmt } from "@/i18n/format";
+import { useI18n } from "@/i18n/I18nProvider";
 import {
   computeRiskPlan,
   MIN_REWARD_RISK,
@@ -44,8 +46,10 @@ function save(key: string, value: unknown) {
   }
 }
 
-function toInput(price: number): string {
-  return price.toFixed(price < 1 ? 4 : 2).replace(".", ",");
+/** Preço no formato do campo: vírgula decimal em português, ponto em inglês. */
+function toInput(price: number, locale: string): string {
+  const text = price.toFixed(price < 1 ? 4 : 2);
+  return locale === "pt-BR" ? text.replace(".", ",") : text;
 }
 
 interface Props {
@@ -56,12 +60,14 @@ interface Props {
 }
 
 export function RiskCalculator({ symbol, currency, currentPrice, onLevelsChange }: Props) {
+  const { t, locale } = useI18n();
+  const r = t.risk;
   // Montado só no cliente (após a cotação), então o localStorage está disponível.
   const [settings, setSettings] = useState<Settings>(() => load(SETTINGS_KEY, { capital: "", riskPercent: "1" }));
   const [plan, setPlan] = useState<SymbolPlan>(() =>
     load(PLAN_KEY_PREFIX + symbol, {
       direction: "long" as Direction,
-      entry: toInput(currentPrice),
+      entry: toInput(currentPrice, locale),
       stop: "",
       target: "",
       lotSize: symbol.endsWith(".SA") ? "100" : "1",
@@ -84,44 +90,44 @@ export function RiskCalculator({ symbol, currency, currentPrice, onLevelsChange 
         stop: stop ?? NaN,
         target,
         lotSize: Number(plan.lotSize),
-      }),
-    [settings, plan.direction, plan.lotSize, entry, stop, target],
+      }, r.messages),
+    [settings, plan.direction, plan.lotSize, entry, stop, target, r.messages],
   );
 
   // Linhas no gráfico: só os níveis válidos do plano (entrada e stop coerentes).
   const levels = useMemo<PlanLevel[]>(() => {
     if (!result.ok || entry === undefined || stop === undefined) return [];
     const list: PlanLevel[] = [
-      { price: entry, label: "Entrada", kind: "entry" },
-      { price: stop, label: "Stop", kind: "stop" },
+      { price: entry, label: r.levelEntry, kind: "entry" },
+      { price: stop, label: r.levelStop, kind: "stop" },
     ];
-    if (target !== undefined) list.push({ price: target, label: "Alvo", kind: "target" });
+    if (target !== undefined) list.push({ price: target, label: r.levelTarget, kind: "target" });
     const first = result.plan.partials?.[0]?.price;
     if (first !== undefined) list.push({ price: first, label: "1/3 (1R)", kind: "partial" });
     return list;
-  }, [result, entry, stop, target]);
+  }, [result, entry, stop, target, r]);
 
   useEffect(() => onLevelsChange(levels), [levels, onLevelsChange]);
   useEffect(() => () => onLevelsChange([]), [onLevelsChange]);
 
   const money = (value: number) => {
     try {
-      return new Intl.NumberFormat("pt-BR", { style: "currency", currency: currency || "BRL" }).format(value);
+      return new Intl.NumberFormat(locale, { style: "currency", currency: currency || "BRL" }).format(value);
     } catch {
-      return value.toLocaleString("pt-BR", { maximumFractionDigits: 2 });
+      return value.toLocaleString(locale, { maximumFractionDigits: 2 });
     }
   };
   const update = (patch: Partial<SymbolPlan>) => setPlan((p) => ({ ...p, ...patch }));
   const long = plan.direction === "long";
 
   return (
-    <section aria-label={`Gestão de risco para ${symbol}`} className="rounded-2xl border border-border bg-surface p-4 shadow-sm sm:p-5">
+    <section aria-label={fmt(r.label, { symbol })} className="rounded-2xl border border-border bg-surface p-4 shadow-sm sm:p-5">
       <header className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h2 className="text-sm font-semibold">Gestão de risco</h2>
-          <p className="text-xs text-muted">Defina o stop antes de entrar. O tamanho da posição sai do risco aceito.</p>
+          <h2 className="text-sm font-semibold">{r.title}</h2>
+          <p className="text-xs text-muted">{r.subtitle}</p>
         </div>
-        <div role="group" aria-label="Direção" className="flex rounded-lg bg-border/60 p-0.5 text-xs font-medium">
+        <div role="group" aria-label={r.direction} className="flex rounded-lg bg-border/60 p-0.5 text-xs font-medium">
           {(["long", "short"] as const).map((d) => (
             <button
               key={d}
@@ -130,7 +136,7 @@ export function RiskCalculator({ symbol, currency, currentPrice, onLevelsChange 
               onClick={() => update({ direction: d })}
               className={`rounded-md px-3 py-1 ${plan.direction === d ? (d === "long" ? "bg-positive text-white" : "bg-negative text-white") : "text-muted"}`}
             >
-              {d === "long" ? "Compra" : "Venda"}
+              {d === "long" ? r.long : r.short}
             </button>
           ))}
         </div>
@@ -139,46 +145,46 @@ export function RiskCalculator({ symbol, currency, currentPrice, onLevelsChange 
       <div className="grid gap-6 md:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
         <div className="grid grid-cols-2 gap-3 self-start">
           <Field
-            label={`Capital total${currency ? ` (${currency})` : ""}`}
+            label={currency ? fmt(r.capitalCurrency, { currency }) : r.capital}
             value={settings.capital}
-            placeholder="100.000"
+            placeholder={r.capitalPlaceholder}
             onChange={(v) => setSettings((s) => ({ ...s, capital: v }))}
             className="col-span-2"
           />
           <Field
-            label="Risco por operação (%)"
+            label={r.riskPercent}
             value={settings.riskPercent}
             placeholder="1"
             onChange={(v) => setSettings((s) => ({ ...s, riskPercent: v }))}
-            hint={`Recomendado: 1% a ${RECOMMENDED_MAX_RISK_PERCENT}%`}
+            hint={fmt(r.recommended, { max: RECOMMENDED_MAX_RISK_PERCENT })}
           />
           <Field
-            label="Lote"
+            label={r.lot}
             value={plan.lotSize}
             inputMode="numeric"
             onChange={(v) => update({ lotSize: v.replace(/\D/g, "") })}
-            hint={symbol.endsWith(".SA") ? "100 = lote padrão B3" : "Múltiplo de negociação"}
+            hint={symbol.endsWith(".SA") ? r.lotB3 : r.lotOther}
           />
           <Field
-            label="Entrada"
+            label={r.entry}
             value={plan.entry}
             onChange={(v) => update({ entry: v })}
             className="col-span-2"
-            action={{ label: "Usar preço atual", onClick: () => update({ entry: toInput(currentPrice) }) }}
+            action={{ label: r.useCurrent, onClick: () => update({ entry: toInput(currentPrice, locale) }) }}
           />
           <Field
-            label="Stop-loss"
+            label={r.stop}
             value={plan.stop}
-            placeholder={long ? "Abaixo do suporte" : "Acima da resistência"}
+            placeholder={long ? r.stopPlaceholderLong : r.stopPlaceholderShort}
             onChange={(v) => update({ stop: v })}
-            hint={long ? "Logo abaixo do suporte" : "Logo acima da resistência"}
+            hint={long ? r.stopHintLong : r.stopHintShort}
           />
           <Field
-            label="Alvo"
+            label={r.target}
             value={plan.target}
-            placeholder={long ? "Acima da entrada" : "Abaixo da entrada"}
+            placeholder={long ? r.targetPlaceholderLong : r.targetPlaceholderShort}
             onChange={(v) => update({ target: v })}
-            hint="Ex.: alvo do padrão"
+            hint={r.targetHint}
           />
         </div>
 
@@ -199,16 +205,21 @@ export function RiskCalculator({ symbol, currency, currentPrice, onLevelsChange 
 }
 
 function PlanSummary({ plan, money, hasTarget }: { plan: RiskPlan; money: (v: number) => string; hasTarget: boolean }) {
-  const qty = plan.quantity.toLocaleString("pt-BR");
+  const { t, locale } = useI18n();
+  const r = t.risk;
+  const qty = plan.quantity.toLocaleString(locale);
   return (
     <div className="flex flex-col gap-4">
       <div className="grid grid-cols-2 gap-3 xl:grid-cols-3">
-        <Stat label="Quantidade" value={qty} emphasis />
-        <Stat label="Valor da posição" value={money(plan.positionValue)} />
+        <Stat label={r.quantity} value={qty} emphasis />
+        <Stat label={r.positionValue} value={money(plan.positionValue)} />
         <Stat
-          label="Risco efetivo"
+          label={r.actualRisk}
           value={money(plan.actualRisk)}
-          detail={`${plan.actualRiskPercent.toLocaleString("pt-BR", { maximumFractionDigits: 2 })}% do capital · máx. ${money(plan.maxRisk)}`}
+          detail={fmt(r.actualRiskDetail, {
+            percent: plan.actualRiskPercent.toLocaleString(locale, { maximumFractionDigits: 2 }),
+            max: money(plan.maxRisk),
+          })}
         />
       </div>
 
@@ -216,20 +227,20 @@ function PlanSummary({ plan, money, hasTarget }: { plan: RiskPlan; money: (v: nu
         <RewardRiskBadge rewardRisk={plan.rewardRisk} ok={Boolean(plan.meetsMinRewardRisk)} profit={plan.potentialProfit} money={money} />
       ) : (
         <p className="rounded-xl border border-dashed border-border p-3 text-sm text-muted">
-          Defina o alvo para validar a relação recompensa/risco (mínimo {MIN_REWARD_RISK}:1) e planejar as parciais.
+          {fmt(r.noTargetHint, { min: MIN_REWARD_RISK })}
         </p>
       )}
 
       {plan.partials && (
         <div>
-          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">Realização parcial em terços</h3>
+          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">{r.partialsTitle}</h3>
           <table className="w-full text-sm">
             <thead className="sr-only">
               <tr>
-                <th>Parcial</th>
-                <th>Quantidade</th>
-                <th>Preço</th>
-                <th>Resultado</th>
+                <th>{r.partial}</th>
+                <th>{r.quantity}</th>
+                <th>{r.price}</th>
+                <th>{r.result}</th>
               </tr>
             </thead>
             <tbody>
@@ -239,8 +250,8 @@ function PlanSummary({ plan, money, hasTarget }: { plan: RiskPlan; money: (v: nu
                     <div className="font-medium">{p.label}</div>
                     <div className="text-xs text-muted">{p.note}</div>
                   </td>
-                  <td className="py-2 pr-2 text-right tabular-nums">{p.quantity.toLocaleString("pt-BR")}</td>
-                  <td className="py-2 pr-2 text-right tabular-nums">{p.price !== undefined ? money(p.price) : "Stop móvel"}</td>
+                  <td className="py-2 pr-2 text-right tabular-nums">{p.quantity.toLocaleString(locale)}</td>
+                  <td className="py-2 pr-2 text-right tabular-nums">{p.price !== undefined ? money(p.price) : r.trailingStop}</td>
                   <td className="py-2 text-right tabular-nums text-positive">{p.profit !== undefined ? `+${money(p.profit)}` : "—"}</td>
                 </tr>
               ))}
@@ -248,7 +259,7 @@ function PlanSummary({ plan, money, hasTarget }: { plan: RiskPlan; money: (v: nu
           </table>
           {plan.riskFreeProfit !== undefined && (
             <p className="mt-2 rounded-lg bg-positive/10 p-2 text-xs text-positive">
-              Após o 1º terço, com o stop na entrada, a operação fica livre de risco: o pior resultado passa a ser +{money(plan.riskFreeProfit)}.
+              {fmt(r.riskFree, { profit: money(plan.riskFreeProfit) })}
             </p>
           )}
         </div>
@@ -278,25 +289,25 @@ function RewardRiskBadge({
   profit?: number;
   money: (v: number) => string;
 }) {
-  const ratio = rewardRisk.toLocaleString("pt-BR", { maximumFractionDigits: 1, minimumFractionDigits: 1 });
+  const { t, locale } = useI18n();
+  const r = t.risk;
+  const ratio = rewardRisk.toLocaleString(locale, { maximumFractionDigits: 1, minimumFractionDigits: 1 });
   // Barra até 5:1, com marca no mínimo de 3:1.
   const fill = Math.min(rewardRisk / 5, 1) * 100;
   return (
     <div role={ok ? undefined : "alert"} className={`rounded-xl border p-3 ${ok ? "border-positive/40 bg-positive/10" : "border-negative/40 bg-negative/10"}`}>
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <span className={`text-lg font-semibold tabular-nums ${ok ? "text-positive" : "text-negative"}`}>
-          Recompensa/Risco {ratio} : 1
+          {fmt(r.rewardRisk, { ratio })}
         </span>
-        {profit !== undefined && <span className="text-sm tabular-nums text-muted">Potencial: +{money(profit)}</span>}
+        {profit !== undefined && <span className="text-sm tabular-nums text-muted">{fmt(r.potential, { profit: money(profit) })}</span>}
       </div>
       <div className="relative mt-2 h-1.5 rounded-full bg-border" aria-hidden>
         <div className={`h-full rounded-full ${ok ? "bg-positive" : "bg-negative"}`} style={{ width: `${fill}%` }} />
         <div className="absolute top-1/2 h-3 w-0.5 -translate-y-1/2 bg-foreground" style={{ left: `${(MIN_REWARD_RISK / 5) * 100}%` }} />
       </div>
       <p className={`mt-2 text-xs ${ok ? "text-positive" : "text-negative"}`}>
-        {ok
-          ? "Relação saudável: o alvo paga ao menos 3 vezes o risco assumido."
-          : `Abaixo de ${MIN_REWARD_RISK}:1. O alvo não compensa o risco: reavalie o stop, o alvo ou não entre.`}
+        {ok ? r.healthy : fmt(r.unhealthy, { min: MIN_REWARD_RISK })}
       </p>
     </div>
   );

@@ -25,10 +25,10 @@ export async function GET(request: Request) {
   const range = parseRange(params.get("range") ?? "1y");
 
   if (!SYMBOL_PATTERN.test(symbol)) {
-    return Response.json({ error: "Ticker inválido." }, { status: 400 });
+    return Response.json({ error: "Ticker inválido.", code: "invalid_symbol" }, { status: 400 });
   }
   if (!range) {
-    return Response.json({ error: "Período inválido." }, { status: 400 });
+    return Response.json({ error: "Período inválido.", code: "invalid_range" }, { status: 400 });
   }
 
   try {
@@ -37,11 +37,14 @@ export async function GET(request: Request) {
     return Response.json({ bars, warmup, openInterest: points ? alignToBars(bars, points) : null });
   } catch (error) {
     if (error instanceof AssetNotFoundError) {
-      return Response.json({ error: `Sem histórico de preços para "${symbol.toUpperCase()}".` }, { status: 404 });
+      return Response.json(
+        { error: `Sem histórico de preços para "${symbol.toUpperCase()}".`, code: "no_history", symbol: symbol.toUpperCase() },
+        { status: 404 },
+      );
     }
     console.error("[api/history]", error);
     return Response.json(
-      { error: "Serviço do Yahoo Finance indisponível no momento. Tente novamente em instantes." },
+      { error: "Serviço do Yahoo Finance indisponível no momento. Tente novamente em instantes.", code: "unavailable" },
       { status: 502 },
     );
   }

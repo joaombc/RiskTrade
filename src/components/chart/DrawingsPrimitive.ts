@@ -11,7 +11,7 @@ import type {
   SeriesType,
   Time,
 } from "lightweight-charts";
-import { buildShapes, type Shape, type Tone } from "@/lib/drawings/geometry";
+import { buildShapes, PT_CANVAS_LABELS, type CanvasLabels, type Shape, type Tone } from "@/lib/drawings/geometry";
 import { createTimeAxis, type TimeAxis } from "@/lib/drawings/timeAxis";
 import type { Bar, Drawing } from "@/lib/drawings/types";
 
@@ -151,6 +151,7 @@ export class DrawingsPrimitive implements ISeriesPrimitive<Time> {
   private fixedIds = new Set<string>();
   private axis: TimeAxis = createTimeAxis([]);
   private shapeCache = new Map<Drawing, Shape[]>();
+  private labels: CanvasLabels = PT_CANVAS_LABELS;
   private readonly views = [new DrawingsPaneView(this)];
 
   constructor(palette: Palette) {
@@ -180,6 +181,14 @@ export class DrawingsPrimitive implements ISeriesPrimitive<Time> {
 
   setPalette(palette: Palette): void {
     this.palette = palette;
+    this.requestUpdate?.();
+  }
+
+  /** Textos escritos no gráfico (alvos, triângulos…) no idioma da interface. */
+  setLabels(labels: CanvasLabels): void {
+    if (labels === this.labels) return;
+    this.labels = labels;
+    this.shapeCache.clear();
     this.requestUpdate?.();
   }
 
@@ -222,7 +231,7 @@ export class DrawingsPrimitive implements ISeriesPrimitive<Time> {
     this.pixelDrawings = all.map((drawing) => {
       let shapes = this.shapeCache.get(drawing);
       if (!shapes) {
-        shapes = buildShapes(drawing, this.state.bars, this.axis);
+        shapes = buildShapes(drawing, this.state.bars, this.axis, this.labels);
         this.shapeCache.set(drawing, shapes);
       }
 
@@ -257,7 +266,7 @@ export class DrawingsPrimitive implements ISeriesPrimitive<Time> {
     const prices = this.state.fixed.flatMap((drawing) => {
       let shapes = this.shapeCache.get(drawing);
       if (!shapes) {
-        shapes = buildShapes(drawing, this.state.bars, this.axis);
+        shapes = buildShapes(drawing, this.state.bars, this.axis, this.labels);
         this.shapeCache.set(drawing, shapes);
       }
       return shapes.flatMap((s) => (s.type === "line" ? [s.from.price, s.to.price] : [s.at.price]));

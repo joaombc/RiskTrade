@@ -1,13 +1,16 @@
 "use client";
 
+import { fmt } from "@/i18n/format";
+import { useI18n } from "@/i18n/I18nProvider";
 import { MAX_WATCHLIST_SIZE } from "@/lib/watchlist";
 import { useWatchlist, watchlistActions } from "./useWatchlist";
 
 export function FavoriteButton({ symbol, name }: { symbol: string; name: string }) {
   const entries = useWatchlist();
+  const { watchlist: w } = useI18n().t;
   const favorited = entries.some((e) => e.symbol === symbol);
   const full = !favorited && entries.length >= MAX_WATCHLIST_SIZE;
-  const label = favorited ? "Remover dos favoritos" : full ? `Limite de ${MAX_WATCHLIST_SIZE} favoritos atingido` : "Adicionar aos favoritos";
+  const label = favorited ? w.favoriteRemove : full ? fmt(w.favoriteFull, { max: MAX_WATCHLIST_SIZE }) : w.favoriteAdd;
 
   return (
     <button

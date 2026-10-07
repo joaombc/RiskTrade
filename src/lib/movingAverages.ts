@@ -98,7 +98,9 @@ export const MAX_MA_PERIOD = MAX_WARMUP_BARS;
 const STORAGE_KEY = "risktrade:moving-averages:v1";
 
 export const maId = (kind: MovingAverageKind, period: number) => `${kind}-${period}`;
-export const maLabel = (ma: Pick<MovingAverage, "kind" | "period">) => `${MA_LABELS[ma.kind]} ${ma.period}`;
+/** Sigla e período ("MMS 20"); `labels` troca as siglas pelas do idioma (ex.: SMA/EMA). */
+export const maLabel = (ma: Pick<MovingAverage, "kind" | "period">, labels: Record<MovingAverageKind, string> = MA_LABELS) =>
+  `${labels[ma.kind]} ${ma.period}`;
 
 export function isValidPeriod(period: number): boolean {
   return Number.isInteger(period) && period >= MIN_MA_PERIOD && period <= MAX_MA_PERIOD;
