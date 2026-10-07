@@ -17,8 +17,6 @@ export const ptBR = {
     themeToDark: "Ativar tema escuro",
     themeToLight: "Ativar tema claro",
   },
-  /** Aviso das páginas de estudo ainda não traduzidas (vazio em português: nada a avisar). */
-  contentNotice: "",
   errors: {
     invalid_symbol: "Ticker inválido.",
     not_found: 'Não encontramos o ativo "{symbol}". Verifique o ticker (ex: AAPL, PETR4.SA, BTC-USD).',
