@@ -70,6 +70,14 @@ export const LESSON_LABELS_EN: Record<string, string> = {
   "%K rápido": "fast %K",
   "%K lento": "slow %K",
   "%D mais baixo": "lower %D",
+  // %R de Williams
+  "máxima de 10": "10-period high",
+  "mínima de 10": "10-period low",
+  fechamento: "close",
+  "%R = −100 × (máx. − fech.) ÷ (máx. − mín.)": "%R = −100 × (high − close) ÷ (high − low)",
+  "−20 sobrecompra": "−20 overbought",
+  "−80 sobrevenda": "−80 oversold",
+  "%R mais baixo": "lower %R",
 };
 
 export const LESSONS_EN: Record<string, LessonTranslation> = {
@@ -627,6 +635,102 @@ export const LESSONS_EN: Record<string, LessonTranslation> = {
       "The signal comes from %K crossing %D in the extreme zones; the right-hand crossover is more reliable.",
       "Divergence between %D and price, with %D above 80 or below 20, is the most important signal.",
       "Trade in the direction of the major trend; the weekly stochastic helps define it.",
+    ],
+  },
+  "r-de-williams": {
+    title: "Larry Williams' %R",
+    subtitle: "Where the close sits relative to the recent high",
+    summary:
+      "How %R measures the distance from the close to the high of the range, why the scale runs from 0 to −100, the −20 and −80 zones, why the signal is the exit from the zones, divergences and how it compares with the stochastic and the RSI.",
+    source:
+      "Murphy, Technical Analysis of the Financial Markets, ch. 10 (Oscillators and Contrary Opinion); Larry Williams, How I Made One Million Dollars Last Year Trading Commodities (1973)",
+    sections: [
+      {
+        heading: "Origins",
+        paragraphs: [
+          "%R was introduced by Larry Williams in 1973, in the book How I Made One Million Dollars Last Year Trading Commodities. Murphy describes it in the oscillators chapter, next to the stochastic, to which it is directly related.",
+        ],
+      },
+      {
+        heading: "The idea",
+        paragraphs: [
+          "%R answers one question: how far is today's close from the high of the last N periods, as a proportion of the whole range? Closing at the high, the market shows full strength; closing at the low, full weakness.",
+        ],
+      },
+      {
+        heading: "How it is calculated",
+        paragraphs: ["%R = −100 × (highest high of N − close) ÷ (highest high of N − lowest low of N). Williams used N = 10."],
+        bullets: [
+          "Example: over the last 10 days, the high was 60 and the low 42. Closing at 58, %R is −100 × (60 − 58) ÷ (60 − 42) ≈ −11: near the top of the range.",
+          "Closing at the high, %R is 0; at the low, −100.",
+          "It is the stochastic's fast %K shifted: %R = %K − 100. The stochastic measures the distance to the low; %R, to the high.",
+        ],
+        caption: "Ten candles with the range's high and low: the last one closes near the high, and %R is near 0.",
+      },
+      {
+        heading: "The inverted scale",
+        paragraphs: [
+          "Because %R measures the distance to the high, the scale is upside down: 0 is the top and −100 the bottom. Murphy plots %R from 0 to 100 with an inverted axis; most current software, RiskTrade included, uses negative values. The reading is the same: the closer to 0, the closer to the high.",
+        ],
+      },
+      {
+        heading: "The −20 and −80 zones",
+        paragraphs: [
+          "Above −20 (from 0 to −20), the market is overbought; below −80 (from −80 to −100), oversold. Because %R isn't smoothed, it is very sensitive and touches the extreme zones often, much more than the RSI.",
+        ],
+      },
+      {
+        heading: "The signal is the exit from the zones",
+        paragraphs: [
+          "Because it is so sensitive, trading the mere touch of the zones gives too many signals. The most common reading is to wait for the exit: the sell comes when %R, after being above −20, moves back below it; the buy, when it moves back above −80.",
+        ],
+        caption: "10-period %R: the sell comes when it leaves the area above −20, and the buy when it leaves the area below −80.",
+      },
+      {
+        heading: "Divergences and failures",
+        paragraphs: [
+          "As with other oscillators, divergence is an important warning: price makes a new high, but %R makes a lower high. A typical case is a %R that, in an uptrend, can no longer reach the overbought zone while price is still rising: closes are no longer as near the highs.",
+          "Confirmation comes from price, such as the break of a trendline, or from the exit from the zones.",
+        ],
+        caption: "Price makes a higher high, but the 10-period %R doesn't get back above −20: the rally has lost strength.",
+      },
+      {
+        heading: "%R, stochastic and RSI",
+        paragraphs: [
+          "%R is the fast stochastic upside down, without the %D smoothing: that is why it is the most sensitive of the three. The slow stochastic smooths the same information and gives fewer signals. The RSI uses closes only and is the most stable. Using %R with one of them helps filter signals.",
+        ],
+      },
+      {
+        heading: "Which period to use",
+        paragraphs: [
+          "Williams used 10 periods. A rule of thumb tied to cycles is to use about half the dominant cycle: 10 days for the monthly cycle of about 20 sessions. Longer periods, such as 14 or 20, make %R slower and reduce false signals.",
+        ],
+      },
+      {
+        heading: "With the trend",
+        paragraphs: [
+          "In a strong trend, %R can spend days pinned at 0 or −100. Murphy's rule applies here too: use the oscillator in the direction of the major trend. In an uptrend, buy when %R leaves oversold and use overbought only to take profits; in a downtrend, sell when it leaves overbought.",
+        ],
+      },
+      {
+        heading: "In RiskTrade",
+        paragraphs: ["Use the Williams %R buttons in the chart's averages bar:"],
+        bullets: [
+          "Choose 10 (Williams), 14 or 20. Clicking the active button again turns %R off.",
+          "The pane has a fixed 0 to −100 scale, with dashed −20 and −80 lines and a dotted −50 line.",
+          "Arrows mark zone exits: sell when leaving the area above −20, buy when leaving the area below −80.",
+          "The reading panel shows the value, the zone and the last exit.",
+          "Combine it with the stochastic or the RSI, and drag the pane by its ⋮⋮ handle close to price to see divergences.",
+        ],
+      },
+    ],
+    takeaways: [
+      "%R = −100 × (highest high of N − close) ÷ (highest high of N − lowest low of N); it ranges from 0 (at the high) to −100 (at the low).",
+      "It is the fast stochastic upside down: %R = %K − 100.",
+      "Above −20 is overbought; below −80, oversold.",
+      "%R is very sensitive: the signal is the exit from the zones, not the touch.",
+      "In an uptrend, a %R that no longer reaches −20 while price rises is a divergence warning.",
+      "Use it in the direction of the major trend and combine it with a slower oscillator.",
     ],
   },
   "ondas-de-elliott": {
