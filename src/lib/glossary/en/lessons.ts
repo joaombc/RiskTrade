@@ -64,6 +64,12 @@ export const LESSON_LABELS_EN: Record<string, string> = {
   "C não supera A": "C fails to exceed A",
   "IFR 14": "RSI 14",
   "IFR mais baixo": "lower RSI",
+  // Estocástico
+  "80 sobrecompra": "80 overbought",
+  "20 sobrevenda": "20 oversold",
+  "%K rápido": "fast %K",
+  "%K lento": "slow %K",
+  "%D mais baixo": "lower %D",
 };
 
 export const LESSONS_EN: Record<string, LessonTranslation> = {
@@ -515,6 +521,112 @@ export const LESSONS_EN: Record<string, LessonTranslation> = {
       "The failure swing, when the RSI fails to repeat the extreme and breaks the intervening point, is Wilder's strongest signal.",
       "Divergences between the RSI and price, with the RSI in an extreme zone, are the most important warning.",
       "Trade the RSI in the direction of the major trend; it works best in a sideways market.",
+    ],
+  },
+  estocastico: {
+    title: "Stochastic %K %D",
+    subtitle: "George Lane's oscillator: where the close falls within the recent range",
+    summary:
+      "How the stochastic measures the close's position between the recent high and low, the difference between the fast and slow versions, the 80 and 20 zones, %K crossing %D, divergences and how to combine it with the trend.",
+    source: "Murphy, Technical Analysis of the Financial Markets, ch. 10 (Oscillators and Contrary Opinion)",
+    sections: [
+      {
+        heading: "Origins",
+        paragraphs: [
+          "The stochastic oscillator was popularized by George Lane, president of Investment Educators, in the 1950s and 1960s. Along with Wilder's RSI, it is one of the oscillators most used by technical analysts.",
+        ],
+      },
+      {
+        heading: "The idea: where the close falls within the range",
+        paragraphs: [
+          "Lane started from a simple observation: in an uptrend, closes tend to be near the period's highs; in a downtrend, near the lows. When, in an uptrend, closes start moving away from the highs, buying power is fading, even if price is still rising.",
+          "The stochastic measures exactly that: where today's close sits within the range between the high and the low of the last periods. Near 100, the close is at the top of the range; near 0, at the bottom.",
+        ],
+      },
+      {
+        heading: "How it is calculated",
+        paragraphs: [
+          "There are two lines. The main one, %K, is 100 × (close − lowest low of N) ÷ (highest high of N − lowest low of N), with N usually equal to 14. The second, %D, is a 3-period average of %K and works as a signal line.",
+        ],
+        bullets: [
+          "Example: over the last 14 days, the high was 120 and the low 100. Closing today at 115, %K is 100 × (115 − 100) ÷ (120 − 100) = 75.",
+          "Closing at the top of the range, %K is 100; at the bottom, it is 0.",
+          "Because it uses highs and lows, not just closes, the stochastic reacts to intraday moves that the RSI doesn't see.",
+        ],
+      },
+      {
+        heading: "Fast and slow",
+        paragraphs: [
+          "The %K calculated directly (the fast stochastic) is very sensitive and swings too much. That is why most analysts use the slow stochastic: the fast %D becomes the new %K, and the new %D is a 3-period average of it. That is the (14, 3, 3) version, smoother and more reliable.",
+        ],
+        caption: "The fast %K (gray) and the slow %K (blue) on the same price: the slow one removes much of the noise.",
+      },
+      {
+        heading: "The 80 and 20 zones",
+        paragraphs: [
+          "Above 80, the market is overbought; below 20, oversold. Some people use 70 and 30, as with the RSI. As with other oscillators, being in an extreme zone is a warning, not a signal: in a strong trend, the stochastic can spend a long time near 100 or 0.",
+        ],
+      },
+      {
+        heading: "%K crossing %D",
+        paragraphs: [
+          "The moment to act comes from the crossing of the two lines. A buy happens when %K crosses above %D with both lines below 20; a sell, when %K crosses below %D with both lines above 80. Crossings in the middle of the range carry little weight.",
+          "Murphy notes that the right-hand crossover, when %K crosses %D after %D has already turned, is usually more reliable than the left-hand crossover, when %K crosses %D while %D is still moving in the prior direction.",
+        ],
+        caption: "Slow stochastic (14, 3, 3): the sell comes when %K crosses below %D above 80, and the buy when it crosses above below 20.",
+      },
+      {
+        heading: "Divergences",
+        paragraphs: [
+          "For Murphy, the stochastic's most important signal is divergence between %D and price with %D in an extreme zone. In a bearish divergence, price makes a higher high and %D, above 80, makes a lower high: closes are moving away from the highs. The bullish divergence is the mirror image, below 20.",
+          "As with every oscillator, divergence is a warning. The %K crossing %D, or the break of a trendline in price, gives the confirmation.",
+        ],
+        caption: "Price makes a higher high, but %D, above 80, makes a lower high: the rally has lost strength.",
+      },
+      {
+        heading: "Stochastic and the trend",
+        paragraphs: [
+          "The stochastic works best in sideways markets. In a strong trend, it can stay in the extreme zone for days and generate countertrend signals that come to nothing.",
+          "Murphy's rule is to use the oscillator in the direction of the major trend: in an uptrend, use dips of the stochastic below 20 to buy and use overbought only to take profits; in a downtrend, the reverse. One way to define the trend is the weekly stochastic: the weekly signal gives the direction, and the daily one the moment to enter.",
+        ],
+      },
+      {
+        heading: "Which period to use",
+        paragraphs: [
+          "Lane used 14 periods, and that is the standard. Short periods, such as 5 or 9, make the stochastic jumpier, with more signals and more false ones; they suit very short-term traders. Long periods, such as 21, bring the indicator closer to the monthly cycle and reduce noise.",
+        ],
+      },
+      {
+        heading: "Weekly and monthly",
+        paragraphs: [
+          "The stochastic can be applied to weekly and monthly charts. On those time frames, signals are rare and more important, and they serve as a filter for daily signals.",
+        ],
+      },
+      {
+        heading: "Stochastic and RSI",
+        paragraphs: [
+          "Both measure overbought and oversold, but in different ways. The RSI compares the size of up moves with that of down moves, using closes only. The stochastic compares the close with the range between high and low, which is why it reacts faster. Many analysts use both: a signal confirmed by both is stronger.",
+        ],
+      },
+      {
+        heading: "In RiskTrade",
+        paragraphs: ["Use the Stochastic buttons in the chart's averages bar:"],
+        bullets: [
+          "Choose 14 (standard), 5 (short term) or 21 (monthly cycle), always in the slow version (N, 3, 3). Clicking the active button again turns the stochastic off.",
+          "The pane shows %K (solid line) and %D (another color), with dashed 80 and 20 lines and a dotted 50 line.",
+          "Arrows mark crossovers in the zones: buy when %K crosses above %D below 20, sell when it crosses below above 80.",
+          "The reading panel shows %K, %D, the zone, the last crossover and the last zone signal.",
+          "Drag the pane by its ⋮⋮ handle close to price and compare divergences; combine it with the RSI to confirm signals.",
+        ],
+      },
+    ],
+    takeaways: [
+      "%K = 100 × (close − lowest low of N) ÷ (highest high of N − lowest low of N); %D is the 3-period average of %K.",
+      "Use the slow version (14, 3, 3): the fast stochastic swings too much.",
+      "80 and 20 mark overbought and oversold; being in the zone is a warning, not a signal.",
+      "The signal comes from %K crossing %D in the extreme zones; the right-hand crossover is more reliable.",
+      "Divergence between %D and price, with %D above 80 or below 20, is the most important signal.",
+      "Trade in the direction of the major trend; the weekly stochastic helps define it.",
     ],
   },
   "ondas-de-elliott": {

@@ -364,6 +364,7 @@ export const enUS: Dictionary = {
     open: " The crossover is on the last candle: if it is still forming, it may disappear by the close.",
     footer:
       "Murphy's rules (ch. 10): the most important signal is divergence between %D and price with %D above 80 or below 20. The %K crossing %D in the extreme zones gives the moment to act. In a strong trend, the stochastic can stay in a zone for a long time: trade in the direction of the major trend. The arrows on the pane mark crossovers in the zones.",
+    link: "Stochastic lesson",
   },
   bollinger: {
     title: "Bollinger Bands",
