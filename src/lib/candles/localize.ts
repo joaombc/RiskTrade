@@ -21,5 +21,5 @@ export function localizePattern(pattern: CandlePattern, text: PatternTranslation
 export async function getCandlePatterns(locale: Locale): Promise<CandlePattern[]> {
   if (locale === "pt-BR") return CANDLE_PATTERNS;
   const { PATTERNS_EN, SOURCES_EN } = await import("./en");
-  return CANDLE_PATTERNS.map((p) => localizePattern(p, PATTERNS_EN[p.slug], SOURCES_EN));
+  return CANDLE_PATTERNS.map((p) => (PATTERNS_EN[p.slug] ? localizePattern(p, PATTERNS_EN[p.slug], SOURCES_EN) : p));
 }

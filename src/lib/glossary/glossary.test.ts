@@ -16,6 +16,7 @@ describe("searchTerms", () => {
     expect(searchTerms(GLOSSARY, "OCO", null).map((t) => t.slug).slice(0, 2)).toEqual(["oco", "oco-invertido"]);
     expect(searchTerms(GLOSSARY, "fibonacci", null)[0].slug).toBe("retracoes");
     expect(searchTerms(GLOSSARY, "pullback", null)[0].slug).toBe("pullback");
+    expect(searchTerms(GLOSSARY, "momentum", null)[0].slug).toBe("linha-de-momentum");
   });
 
   it("filtra por categoria, com ou sem texto", () => {

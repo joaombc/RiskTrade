@@ -50,7 +50,8 @@ export function localizeTerm(term: GlossaryTerm, text: TermTranslation, labels: 
 export async function getGlossary(locale: Locale): Promise<GlossaryTerm[]> {
   if (locale === "pt-BR") return GLOSSARY;
   const [{ TERMS_EN }, { LABELS_EN }] = await Promise.all([import("./en/terms"), import("./en/labels")]);
-  return GLOSSARY.map((term) => localizeTerm(term, TERMS_EN[term.slug], LABELS_EN));
+  // Sem tradução (os testes cobram), o termo fica em português em vez de derrubar a página.
+  return GLOSSARY.map((term) => (TERMS_EN[term.slug] ? localizeTerm(term, TERMS_EN[term.slug], LABELS_EN) : term));
 }
 
 /** A aula em inglês: textos da tradução, seção por seção, e diagramas com os rótulos traduzidos. */
@@ -83,5 +84,5 @@ export async function getLessons(locale: Locale): Promise<Lesson[]> {
   const [{ LESSONS_EN, LESSON_LABELS_EN }, { LABELS_EN }] = await Promise.all([import("./en/lessons"), import("./en/labels")]);
   // Os rótulos próprios das aulas valem por cima dos do glossário.
   const labels = { ...LABELS_EN, ...LESSON_LABELS_EN };
-  return LESSONS.map((lesson) => localizeLesson(lesson, LESSONS_EN[lesson.slug], labels));
+  return LESSONS.map((lesson) => (LESSONS_EN[lesson.slug] ? localizeLesson(lesson, LESSONS_EN[lesson.slug], labels) : lesson));
 }
