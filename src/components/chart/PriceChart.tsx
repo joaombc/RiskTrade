@@ -52,6 +52,7 @@ import {
   type PaneId,
 } from "@/lib/paneOrder";
 import { isWidening, loadMaOscillatorVisible, maDifference, readMaOscillator, saveMaOscillatorVisible } from "@/lib/maOscillator";
+import { failureSwings, loadRsiPeriod, OVERBOUGHT, OVERSOLD, readRsi, rsi, saveRsiPeriod, zoneExits, type RsiPeriod } from "@/lib/rsi";
 import { loadMomentumPeriod, momentum, readMomentum, saveMomentumPeriod, zeroCrossings, type MomentumPeriod } from "@/lib/momentum";
 import {
   HISTORY_RANGES,
@@ -86,6 +87,7 @@ import { EnvelopeSignalPanel } from "./EnvelopeSignalPanel";
 import { FourWeekPanel } from "./FourWeekPanel";
 import { MaOscillatorPanel } from "./MaOscillatorPanel";
 import { MomentumPanel } from "./MomentumPanel";
+import { RsiPanel } from "./RsiPanel";
 import { DrawingsPrimitive } from "./DrawingsPrimitive";
 import { DrawingToolbar } from "./DrawingToolbar";
 import { MovingAverageBar } from "./MovingAverageBar";
@@ -142,12 +144,13 @@ const ENVELOPE_STYLE: Record<EnvelopePercent, LineStyle> = {
   10: LineStyle.LargeDashed,
 };
 const NO_EXAMPLE: ResolvedExample = { drawings: [], markers: [] };
-/** Altura do gráfico conforme o número de painéis opcionais abertos (0 a 3). */
+/** Altura do gráfico conforme o número de painéis opcionais abertos (0 a 4). */
 const CHART_HEIGHT = [
   "h-[560px] sm:h-[640px]",
   "h-[680px] sm:h-[780px]",
   "h-[800px] sm:h-[920px]",
   "h-[920px] sm:h-[1060px]",
+  "h-[1040px] sm:h-[1200px]",
 ];
 
 /**
@@ -393,6 +396,11 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
     [bars, momentumPeriod, warmup],
   );
   const momentumReading = useMemo(() => (bars && momentumValues ? readMomentum(bars, momentumValues) : null), [bars, momentumValues]);
+
+  const [rsiPeriod, setRsiPeriod] = useState<RsiPeriod | null>(loadRsiPeriod);
+  const [showRsiSignals, setShowRsiSignals] = useState(true);
+  const rsiValues = useMemo(() => (bars && rsiPeriod ? rsi(bars, rsiPeriod, warmup) : null), [bars, rsiPeriod, warmup]);
+  const rsiReading = useMemo(() => (rsiValues ? readRsi(rsiValues) : null), [rsiValues]);
   const fourWeekSystem = useMemo(() => {
     if (!bars || !fourWeek.enabled || isIntraday(range)) return null;
     const entryBars = fourWeek.entryWeeks * WEEK_BARS;
@@ -776,6 +784,10 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
   }, [maOscillatorVisible]);
 
   useEffect(() => {
+    saveRsiPeriod(rsiPeriod);
+  }, [rsiPeriod]);
+
+  useEffect(() => {
     paneOrderRef.current = paneOrder;
     savePaneOrder(paneOrder);
     arrange();
@@ -990,6 +1002,55 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
     };
   }, [bars, maOscillator, maOscillatorVisible, theme, t, arrange]);
 
+  // IFR de Wilder: escala fixa de 0 a 100, linhas de 70, 50 e 30, e setas nas saídas das zonas
+  // (círculos nos failure swings).
+  useEffect(() => {
+    const handles = handlesRef.current;
+    if (!handles || !bars || !rsiPeriod || !rsiValues) return;
+    const series = addPaneSeries(handles, "rsi", LineSeries, {
+      color: theme.rsi,
+      lineWidth: 2,
+      priceLineVisible: false,
+      autoscaleInfoProvider: () => ({ priceRange: { minValue: 0, maxValue: 100 } }),
+    });
+    // Só 70 e 30 ganham etiqueta no eixo; a de 50 encostaria no valor atual.
+    (
+      [
+        [OVERBOUGHT, LineStyle.Dashed, true],
+        [50, LineStyle.Dotted, false],
+        [OVERSOLD, LineStyle.Dashed, true],
+      ] as const
+    ).forEach(([price, lineStyle, axisLabelVisible]) =>
+      series.createPriceLine({ price, color: theme.drawings.muted, lineWidth: 1, lineStyle, axisLabelVisible }),
+    );
+    series.setData(
+      bars.map((b, i) => {
+        const value = rsiValues[i];
+        return value === null ? { time: b.time as UTCTimestamp } : { time: b.time as UTCTimestamp, value };
+      }),
+    );
+    createSeriesMarkers(
+      series,
+      showRsiSignals
+        ? [...zoneExits(rsiValues), ...failureSwings(rsiValues)]
+            .sort((a, b) => a.index - b.index)
+            .map(
+              (s): SeriesMarker<Time> => ({
+                time: bars[s.index].time as UTCTimestamp,
+                position: s.kind === "buy" ? "belowBar" : "aboveBar",
+                shape: s.type === "failure" ? "circle" : s.kind === "buy" ? "arrowUp" : "arrowDown",
+                color: s.kind === "buy" ? theme.up : theme.down,
+              }),
+            )
+        : [],
+    );
+    arrange();
+    return () => {
+      removePaneSeries(handles, "rsi", series);
+      arrange();
+    };
+  }, [bars, rsiPeriod, rsiValues, showRsiSignals, theme, arrange]);
+
   // Exemplo do glossário: aproxima o gráfico da janela do padrão (uma vez por exemplo carregado).
   useEffect(() => {
     const handles = handlesRef.current;
@@ -1193,6 +1254,7 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
     obv: [{ label: t.chart.series.obv, color: theme.drawings.target }],
     openInterest: [{ label: t.chart.series.openInterest, color: theme.drawings.primary }],
     momentum: momentumPeriod ? [{ label: fmt(t.chart.series.momentum, { n: momentumPeriod }), color: theme.momentum }] : [],
+    rsi: rsiPeriod ? [{ label: fmt(t.chart.series.rsi, { n: rsiPeriod }), color: theme.rsi }] : [],
     maOscillator: maOscillator
       ? [
           {
@@ -1273,6 +1335,8 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
         onFourWeekChange={setFourWeek}
         momentum={momentumPeriod}
         onMomentumChange={setMomentumPeriod}
+        rsi={rsiPeriod}
+        onRsiChange={setRsiPeriod}
       />
 
       <DrawingToolbar
@@ -1304,7 +1368,7 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
       </div>
       <div
         ref={wrapperRef}
-        className={`relative mt-1 ${CHART_HEIGHT[(openInterest ? 1 : 0) + (momentumPeriod ? 1 : 0) + (showMaOscillator ? 1 : 0)]}`}
+        className={`relative mt-1 ${CHART_HEIGHT[(openInterest ? 1 : 0) + (momentumPeriod ? 1 : 0) + (showMaOscillator ? 1 : 0) + (rsiPeriod ? 1 : 0)]}`}
       >
         <div ref={containerRef} className={`h-full w-full ${tool ? "cursor-crosshair" : ""}`} />
         <PaneHandles
@@ -1373,6 +1437,16 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
           intraday={isIntraday(range)}
           show={maOscillatorVisible}
           onShowChange={setMaOscillatorVisible}
+        />
+      )}
+      {bars && bars.length > 0 && !loading && rsiPeriod && (
+        <RsiPanel
+          bars={bars}
+          period={rsiPeriod}
+          reading={rsiReading}
+          intraday={isIntraday(range)}
+          show={showRsiSignals}
+          onShowChange={setShowRsiSignals}
         />
       )}
       {bars && bars.length > 0 && !loading && momentumPeriod && (

@@ -105,7 +105,7 @@ export const enUS: Dictionary = {
     closeExample: "Close example",
     loading: "Loading price history…",
     confirmClear: "Delete all {count} drawings on {symbol}?",
-    series: { volume: "Volume", obv: "OBV", openInterest: "Open int.", divergence: "Div.", momentum: "Momentum {n}", maOscillator: "{fast} − {slow}" },
+    series: { volume: "Volume", obv: "OBV", openInterest: "Open int.", divergence: "Div.", momentum: "Momentum {n}", maOscillator: "{fast} − {slow}", rsi: "RSI {n}" },
     markers: {
       buy: "Buy",
       sell: "Sell",
@@ -121,7 +121,7 @@ export const enUS: Dictionary = {
     hint: "Drag ⋮⋮ to change the order of the panes.",
     reset: "Default order",
     move: "Move the {name} pane: drag or use ↑ and ↓",
-    names: { price: "Price", volume: "Volume", obv: "OBV", openInterest: "Open interest", momentum: "Momentum", maOscillator: "Average difference" },
+    names: { price: "Price", volume: "Volume", obv: "OBV", openInterest: "Open interest", momentum: "Momentum", maOscillator: "Average difference", rsi: "RSI" },
   },
   customRange: {
     label: "Number of days (sessions)",
@@ -192,6 +192,9 @@ export const enUS: Dictionary = {
     momentum: "Momentum line",
     momentumHint: "Today's close minus the close N candles ago: it measures the speed of the move and oscillates around zero (Murphy, ch. 10).",
     momentumPeriod: "{n}-candle momentum. Click to {action}.",
+    rsi: "Wilder's RSI",
+    rsiHint: "Relative Strength Index: from 0 to 100, with 70 (overbought) and 30 (oversold) (Murphy, ch. 10).",
+    rsiPeriod: "{n}-candle RSI. Click to {action}.",
     entryOption: { "2": "2 weeks (sensitive)", "4": "4 weeks (original)", "8": "8 weeks (filters ranges)" },
     continuous: "Continuous (reverses on the entry channel)",
     exitOption: { "1": "Non-continuous: 1 week", "2": "Non-continuous: 2 weeks" },
@@ -307,6 +310,30 @@ export const enUS: Dictionary = {
     crossOpen: " The crossing is on the last candle: if it is still forming, it may disappear by the close.",
     footer:
       "Two-average oscillator (Murphy, ch. 10): the histogram crosses zero when the averages cross, but before that the bars shrink, warning that they are converging. Light bars mean a narrowing difference. Very high or very low values show price stretched relative to the long average, and divergences between the bars and price warn of wear. It is the idea behind MACD.",
+  },
+  rsi: {
+    title: "Wilder's RSI",
+    params: "· {n} candles · 70/30",
+    insufficient: "There are not enough candles yet for the RSI on this range.",
+    now: "Now:",
+    value: "RSI at {value}",
+    zones: {
+      overbought: ", in the overbought zone (above 70). The move is stretched: watch for a pullback, but in a strong rally the RSI can stay above 70 for a long time.",
+      oversold: ", in the oversold zone (below 30). The move is stretched: watch for a bounce, but in a strong decline the RSI can stay below 30 for a long time.",
+      upper: ", above 50: recent gains outweigh losses.",
+      lower: ", below 50: recent losses outweigh gains.",
+    },
+    exit: "Zones:",
+    exitSell: "moved back below 70 on {date} (close {price}): a sell signal.",
+    exitBuy: "moved back above 30 on {date} (close {price}): a buy signal.",
+    noExit: "the RSI didn't leave the 70 or 30 zones in the range.",
+    failure: "Failure swing:",
+    failureSell: "top, confirmed on {date} (close {price}): the RSI went above 70, bounced without exceeding the peak and broke the intervening low. It is Wilder's strongest sell signal.",
+    failureBuy: "bottom, confirmed on {date} (close {price}): the RSI fell below 30, pulled back without breaking the low and exceeded the intervening high. It is Wilder's strongest buy signal.",
+    noFailure: "none in the range.",
+    open: " The signal is on the last candle: if it is still forming, it may disappear by the close.",
+    footer:
+      "Murphy's rules (ch. 10): trade the move back inside the band, not the touch of 70 or 30. In a strong trend, use 80 and 20. The first move into a zone is usually just a warning; divergence between the RSI and price, with the RSI above 70 or below 30, is the most important warning. The arrows on the RSI pane mark zone exits and failure swings (with a circle).",
   },
   bollinger: {
     title: "Bollinger Bands",

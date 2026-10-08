@@ -106,7 +106,7 @@ export const ptBR = {
     closeExample: "Fechar exemplo",
     loading: "Carregando histórico…",
     confirmClear: "Apagar todos os {count} desenhos de {symbol}?",
-    series: { volume: "Volume", obv: "OBV", openInterest: "Int. aberto", divergence: "Div.", momentum: "Momentum {n}", maOscillator: "{fast} − {slow}" },
+    series: { volume: "Volume", obv: "OBV", openInterest: "Int. aberto", divergence: "Div.", momentum: "Momentum {n}", maOscillator: "{fast} − {slow}", rsi: "IFR {n}" },
     markers: {
       buy: "Compra",
       sell: "Venda",
@@ -122,7 +122,7 @@ export const ptBR = {
     hint: "Arraste ⋮⋮ para mudar a ordem dos painéis.",
     reset: "Ordem padrão",
     move: "Mover o painel {name}: arraste ou use ↑ e ↓",
-    names: { price: "Preço", volume: "Volume", obv: "OBV", openInterest: "Interesse aberto", momentum: "Momentum", maOscillator: "Diferença das médias" },
+    names: { price: "Preço", volume: "Volume", obv: "OBV", openInterest: "Interesse aberto", momentum: "Momentum", maOscillator: "Diferença das médias", rsi: "IFR" },
   },
   customRange: {
     label: "Quantidade de dias (pregões)",
@@ -193,6 +193,9 @@ export const ptBR = {
     momentum: "Linha de momentum",
     momentumHint: "Fechamento de hoje menos o de N candles atrás: mede a velocidade do movimento e oscila em torno de zero (Murphy, cap. 10).",
     momentumPeriod: "Momentum de {n} candles. Clique para {action}.",
+    rsi: "IFR de Wilder",
+    rsiHint: "Índice de Força Relativa: de 0 a 100, com 70 (sobrecompra) e 30 (sobrevenda) (Murphy, cap. 10).",
+    rsiPeriod: "IFR de {n} candles. Clique para {action}.",
     entryOption: { "2": "2 semanas (sensível)", "4": "4 semanas (original)", "8": "8 semanas (filtra lateral)" },
     continuous: "Contínua (inverte no canal de entrada)",
     exitOption: { "1": "Não contínua: 1 semana", "2": "Não contínua: 2 semanas" },
@@ -309,6 +312,30 @@ export const ptBR = {
     crossOpen: " O cruzamento está no último candle: se ele ainda estiver em formação, pode se desfazer até o fechamento.",
     footer:
       "Oscilador de duas médias (Murphy, cap. 10): o histograma cruza o zero quando as médias se cruzam, mas antes disso as barras encolhem, avisando que elas estão se aproximando. Barras claras indicam diferença diminuindo. Valores muito altos ou muito baixos mostram o preço esticado em relação à média longa, e divergências entre as barras e o preço avisam de desgaste. É a ideia por trás do MACD.",
+  },
+  rsi: {
+    title: "IFR de Wilder",
+    params: "· {n} candles · 70/30",
+    insufficient: "Ainda não há candles suficientes para o IFR deste período.",
+    now: "Agora:",
+    value: "IFR em {value}",
+    zones: {
+      overbought: ", na zona de sobrecompra (acima de 70). O movimento esticou: fique atento a um recuo, mas, numa alta forte, o IFR pode ficar acima de 70 por muito tempo.",
+      oversold: ", na zona de sobrevenda (abaixo de 30). O movimento esticou: fique atento a um repique, mas, numa queda forte, o IFR pode ficar abaixo de 30 por muito tempo.",
+      upper: ", acima de 50: os ganhos recentes superam as perdas.",
+      lower: ", abaixo de 50: as perdas recentes superam os ganhos.",
+    },
+    exit: "Zonas:",
+    exitSell: "voltou para baixo de 70 em {date} (fechamento {price}): sinal de venda.",
+    exitBuy: "voltou para cima de 30 em {date} (fechamento {price}): sinal de compra.",
+    noExit: "o IFR não saiu das zonas de 70 ou 30 no período.",
+    failure: "Failure swing:",
+    failureSell: "de topo, confirmado em {date} (fechamento {price}): o IFR passou de 70, repicou sem superar o topo e perdeu o fundo intermediário. É o sinal de venda mais forte de Wilder.",
+    failureBuy: "de fundo, confirmado em {date} (fechamento {price}): o IFR caiu abaixo de 30, recuou sem perder o fundo e superou o topo intermediário. É o sinal de compra mais forte de Wilder.",
+    noFailure: "nenhum no período.",
+    open: " O sinal está no último candle: se ele ainda estiver em formação, pode se desfazer até o fechamento.",
+    footer:
+      "Regras de Murphy (cap. 10): opere a volta para dentro da faixa, não o toque em 70 ou 30. Em tendência forte, use 80 e 20. A primeira entrada na zona costuma ser só um alerta; a divergência entre o IFR e o preço, com o IFR acima de 70 ou abaixo de 30, é o aviso mais importante. As setas no painel do IFR marcam as saídas das zonas e os failure swings (com um círculo).",
   },
   bollinger: {
     title: "Bandas de Bollinger",
