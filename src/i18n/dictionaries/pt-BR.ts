@@ -106,7 +106,7 @@ export const ptBR = {
     closeExample: "Fechar exemplo",
     loading: "Carregando histórico…",
     confirmClear: "Apagar todos os {count} desenhos de {symbol}?",
-    series: { volume: "Volume", obv: "OBV", openInterest: "Int. aberto", divergence: "Div.", momentum: "Momentum {n}" },
+    series: { volume: "Volume", obv: "OBV", openInterest: "Int. aberto", divergence: "Div.", momentum: "Momentum {n}", maOscillator: "{fast} − {slow}" },
     markers: {
       buy: "Compra",
       sell: "Venda",
@@ -122,7 +122,7 @@ export const ptBR = {
     hint: "Arraste ⋮⋮ para mudar a ordem dos painéis.",
     reset: "Ordem padrão",
     move: "Mover o painel {name}: arraste ou use ↑ e ↓",
-    names: { price: "Preço", volume: "Volume", obv: "OBV", openInterest: "Interesse aberto", momentum: "Momentum" },
+    names: { price: "Preço", volume: "Volume", obv: "OBV", openInterest: "Interesse aberto", momentum: "Momentum", maOscillator: "Diferença das médias" },
   },
   customRange: {
     label: "Quantidade de dias (pregões)",
@@ -287,6 +287,28 @@ export const ptBR = {
     footer:
       "Regras de Murphy (cap. 10): cruzar a linha zero para cima é compra e para baixo é venda, mas opere só a favor da tendência principal. O momentum vira antes do preço: no topo de uma alta, a linha achata e cai enquanto o preço ainda sobe. As setas na linha de momentum, abaixo do OBV, marcam cada cruzamento: verde para cima, vermelha para baixo.",
     link: "Como operar com a linha de momentum",
+  },
+  maOscillator: {
+    title: "Diferença entre as médias",
+    params: "· {fast} − {slow}",
+    showHistogram: "Mostrar histograma no gráfico",
+    insufficient: "As duas médias ainda não existem no último candle deste período.",
+    now: "Agora:",
+    above: "a {fast} está {value} ({percent}) acima da {slow}.",
+    below: "a {fast} está {value} ({percent}) abaixo da {slow}.",
+    widening: "Aumentando:",
+    wideningText:
+      "a diferença cresce há {n} candle(s). As médias estão se afastando, e a tendência ganha força.",
+    narrowing: "Diminuindo:",
+    narrowingText:
+      "a diferença encolhe há {n} candle(s). As médias estão se aproximando: a tendência perde força e um cruzamento pode estar perto.",
+    cross: "Linha zero:",
+    crossUp: "cruzou para cima em {date}, quando a {fast} passou acima da {slow}: sinal de compra.",
+    crossDown: "cruzou para baixo em {date}, quando a {fast} passou abaixo da {slow}: sinal de venda.",
+    noCross: "as médias não se cruzaram no período.",
+    crossOpen: " O cruzamento está no último candle: se ele ainda estiver em formação, pode se desfazer até o fechamento.",
+    footer:
+      "Oscilador de duas médias (Murphy, cap. 10): o histograma cruza o zero quando as médias se cruzam, mas antes disso as barras encolhem, avisando que elas estão se aproximando. Barras claras indicam diferença diminuindo. Valores muito altos ou muito baixos mostram o preço esticado em relação à média longa, e divergências entre as barras e o preço avisam de desgaste. É a ideia por trás do MACD.",
   },
   bollinger: {
     title: "Bandas de Bollinger",

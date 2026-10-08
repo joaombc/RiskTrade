@@ -105,7 +105,7 @@ export const enUS: Dictionary = {
     closeExample: "Close example",
     loading: "Loading price history…",
     confirmClear: "Delete all {count} drawings on {symbol}?",
-    series: { volume: "Volume", obv: "OBV", openInterest: "Open int.", divergence: "Div.", momentum: "Momentum {n}" },
+    series: { volume: "Volume", obv: "OBV", openInterest: "Open int.", divergence: "Div.", momentum: "Momentum {n}", maOscillator: "{fast} − {slow}" },
     markers: {
       buy: "Buy",
       sell: "Sell",
@@ -121,7 +121,7 @@ export const enUS: Dictionary = {
     hint: "Drag ⋮⋮ to change the order of the panes.",
     reset: "Default order",
     move: "Move the {name} pane: drag or use ↑ and ↓",
-    names: { price: "Price", volume: "Volume", obv: "OBV", openInterest: "Open interest", momentum: "Momentum" },
+    names: { price: "Price", volume: "Volume", obv: "OBV", openInterest: "Open interest", momentum: "Momentum", maOscillator: "Average difference" },
   },
   customRange: {
     label: "Number of days (sessions)",
@@ -286,6 +286,27 @@ export const enUS: Dictionary = {
     footer:
       "Murphy's rules (ch. 10): crossing above the zero line is a buy and below is a sell, but trade only in the direction of the major trend. Momentum turns before price: at the top of a rally, the line flattens and falls while price is still rising. The arrows on the momentum line, below OBV, mark each crossing: green upward, red downward.",
     link: "How to trade the momentum line",
+  },
+  maOscillator: {
+    title: "Difference between the averages",
+    params: "· {fast} − {slow}",
+    showHistogram: "Show histogram on the chart",
+    insufficient: "The two averages don't exist yet on the last candle of this range.",
+    now: "Now:",
+    above: "the {fast} is {value} ({percent}) above the {slow}.",
+    below: "the {fast} is {value} ({percent}) below the {slow}.",
+    widening: "Widening:",
+    wideningText: "the difference has grown for {n} candle(s). The averages are moving apart, and the trend is gaining strength.",
+    narrowing: "Narrowing:",
+    narrowingText:
+      "the difference has shrunk for {n} candle(s). The averages are converging: the trend is losing strength and a crossover may be near.",
+    cross: "Zero line:",
+    crossUp: "crossed above on {date}, when the {fast} moved above the {slow}: a buy signal.",
+    crossDown: "crossed below on {date}, when the {fast} moved below the {slow}: a sell signal.",
+    noCross: "the averages didn't cross in the range.",
+    crossOpen: " The crossing is on the last candle: if it is still forming, it may disappear by the close.",
+    footer:
+      "Two-average oscillator (Murphy, ch. 10): the histogram crosses zero when the averages cross, but before that the bars shrink, warning that they are converging. Light bars mean a narrowing difference. Very high or very low values show price stretched relative to the long average, and divergences between the bars and price warn of wear. It is the idea behind MACD.",
   },
   bollinger: {
     title: "Bollinger Bands",

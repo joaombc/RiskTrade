@@ -17,7 +17,9 @@ import {
   type ISeriesApi,
   type ISeriesMarkersPluginApi,
   type MouseEventParams,
+  type SeriesDefinition,
   type SeriesMarker,
+  type SeriesPartialOptionsMap,
   type SeriesType,
   type Time,
   type UTCTimestamp,
@@ -49,6 +51,7 @@ import {
   visiblePanes,
   type PaneId,
 } from "@/lib/paneOrder";
+import { isWidening, loadMaOscillatorVisible, maDifference, readMaOscillator, saveMaOscillatorVisible } from "@/lib/maOscillator";
 import { loadMomentumPeriod, momentum, readMomentum, saveMomentumPeriod, zeroCrossings, type MomentumPeriod } from "@/lib/momentum";
 import {
   HISTORY_RANGES,
@@ -81,12 +84,13 @@ import { CustomRangeInput } from "./CustomRangeInput";
 import { DivergencePanel } from "./DivergencePanel";
 import { EnvelopeSignalPanel } from "./EnvelopeSignalPanel";
 import { FourWeekPanel } from "./FourWeekPanel";
+import { MaOscillatorPanel } from "./MaOscillatorPanel";
 import { MomentumPanel } from "./MomentumPanel";
 import { DrawingsPrimitive } from "./DrawingsPrimitive";
 import { DrawingToolbar } from "./DrawingToolbar";
 import { MovingAverageBar } from "./MovingAverageBar";
 import { OpenInterestNote } from "./OpenInterestNote";
-import { PaneHandles, type PaneBox } from "./PaneHandles";
+import { PaneHandles, type LegendItem, type PaneBox } from "./PaneHandles";
 import { CHART_THEMES } from "./theme";
 
 /** Distância máxima (px) para o clique "grudar" na máxima/mínima/abertura/fechamento do candle. */
@@ -138,8 +142,13 @@ const ENVELOPE_STYLE: Record<EnvelopePercent, LineStyle> = {
   10: LineStyle.LargeDashed,
 };
 const NO_EXAMPLE: ResolvedExample = { drawings: [], markers: [] };
-/** Altura do gráfico conforme o número de painéis opcionais abertos (0, 1 ou 2). */
-const CHART_HEIGHT = ["h-[560px] sm:h-[640px]", "h-[680px] sm:h-[780px]", "h-[800px] sm:h-[920px]"];
+/** Altura do gráfico conforme o número de painéis opcionais abertos (0 a 3). */
+const CHART_HEIGHT = [
+  "h-[560px] sm:h-[640px]",
+  "h-[680px] sm:h-[780px]",
+  "h-[800px] sm:h-[920px]",
+  "h-[920px] sm:h-[1060px]",
+];
 
 /**
  * Painéis do gráfico na criação. Depois disso a ordem é do usuário (alças ⋮⋮), então o índice de
@@ -161,26 +170,40 @@ const pricePaneIndex = (handles: ChartHandles) => handles.candles.getPane().pane
 const isAlive = (chart: IChartApi | undefined, series: ISeriesApi<SeriesType>) =>
   !!chart?.panes().some((pane) => pane.getSeries().includes(series));
 
-/** Põe os painéis abertos na ordem escolhida. */
-function arrangePanes(handles: ChartHandles, order: PaneId[]) {
-  const present = [...handles.paneSeries.keys()];
+/**
+ * Põe os painéis abertos na ordem escolhida e diz se terminou. A biblioteca só aceita mover para
+ * uma posição que já tem widget desenhado, e o widget de um painel novo só aparece no quadro
+ * seguinte; o que não puder ser feito agora fica para a próxima tentativa (ver `arrange`).
+ */
+function arrangePanes(handles: ChartHandles, order: PaneId[]): boolean {
+  // Só séries que ainda estão no gráfico: um Fast Refresh pode deixar o mapa desatualizado.
+  const present = [...handles.paneSeries].filter(([, series]) => isAlive(handles.chart, series)).map(([id]) => id);
+  const drawn = handles.chart.panes().filter((pane) => pane.getHTMLElement() !== null).length;
+  let done = true;
   visiblePanes(order, present).forEach((id, target) => {
-    const series = handles.paneSeries.get(id);
-    if (series && series.getPane().paneIndex() !== target) series.getPane().moveTo(target);
+    const pane = handles.paneSeries.get(id)!.getPane();
+    if (pane.paneIndex() === target) return;
+    if (target >= drawn || pane.paneIndex() >= drawn) done = false;
+    else pane.moveTo(target);
   });
+  return done;
 }
 
-/** Painéis opcionais (momentum, interesse aberto) entram no fim e depois vão para o lugar escolhido. */
-function addPaneSeries(handles: ChartHandles, id: PaneId, order: PaneId[], options: Parameters<IChartApi["addSeries"]>[1]) {
-  const series = handles.chart.addSeries(LineSeries, options, handles.chart.panes().length);
+/** Painéis opcionais (momentum, interesse aberto, diferença das médias) entram no fim; `arrange` os leva ao lugar escolhido. */
+function addPaneSeries<T extends SeriesType>(
+  handles: ChartHandles,
+  id: PaneId,
+  definition: SeriesDefinition<T>,
+  options: SeriesPartialOptionsMap[T],
+): ISeriesApi<T> {
+  const series = handles.chart.addSeries(definition, options, handles.chart.panes().length);
   series.getPane().setStretchFactor(1.5);
   handles.paneSeries.set(id, series);
-  arrangePanes(handles, order);
   return series;
 }
 
 /** Tira a série e o painel dela, se ele ficou vazio e a biblioteca não o removeu sozinha. */
-function removePaneSeries(handles: ChartHandles, id: PaneId, series: ISeriesApi<"Line">) {
+function removePaneSeries(handles: ChartHandles, id: PaneId, series: ISeriesApi<SeriesType>) {
   if (handles.paneSeries.get(id) === series) handles.paneSeries.delete(id);
   const { chart } = handles;
   if (!isAlive(chart, series)) return;
@@ -271,6 +294,28 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
   const [paneOrder, setPaneOrder] = useState<PaneId[]>(loadPaneOrder);
   const paneOrderRef = useRef(paneOrder);
   const [paneBoxes, setPaneBoxes] = useState<PaneBox[]>([]);
+  // Põe os painéis na ordem escolhida a partir do próximo quadro (tentando de novo enquanto a
+  // biblioteca não desenha os painéis novos) e mede as alças em seguida: a biblioteca reaproveita
+  // os elementos ao mover, e sem mudança de altura nenhum observer percebe a troca.
+  const measureRef = useRef<(() => void) | null>(null);
+  /** Painéis abertos agora, segundo o próprio gráfico (a medição das alças pode estar atrasada). */
+  const openPanes = () => {
+    const handles = handlesRef.current;
+    return handles ? [...handles.paneSeries].filter(([, series]) => isAlive(handles.chart, series)).map(([id]) => id) : [];
+  };
+  const arrange = useCallback(() => {
+    let frame = 0;
+    const step = () => {
+      const handles = handlesRef.current;
+      if (!handles) return;
+      const done = arrangePanes(handles, paneOrderRef.current);
+      measureRef.current?.();
+      // A biblioteca atualiza os widgets num quadro próprio: mede por pelo menos três quadros.
+      frame++;
+      if ((!done || frame < 3) && frame < 12) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  }, []);
   const cursorRef = useRef<Anchor | null>(null);
   const fittedKeyRef = useRef<string | null>(null);
   const zoomedExampleRef = useRef<string | null>(null);
@@ -304,6 +349,18 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
   );
   // Sinais de cruzamento (Murphy, cap. 9) entre as médias visíveis, da curta para a longa.
   const crossLines = useMemo(() => [...averageLines].sort((a, b) => a.ma.period - b.ma.period), [averageLines]);
+  // Oscilador de duas médias: só com exatamente duas visíveis (curta menos longa).
+  const [maOscillatorVisible, setMaOscillatorVisible] = useState(loadMaOscillatorVisible);
+  const maOscillator = useMemo(() => {
+    if (crossLines.length !== 2) return null;
+    const [fast, slow] = crossLines;
+    return { fast: fast.ma, slow: slow.ma, slowValues: slow.values, diff: maDifference(fast.values, slow.values) };
+  }, [crossLines]);
+  const maOscillatorReading = useMemo(
+    () => (maOscillator ? readMaOscillator(maOscillator.diff, maOscillator.slowValues) : null),
+    [maOscillator],
+  );
+  const showMaOscillator = !!maOscillator && maOscillatorVisible;
   const crossSignals = useMemo(
     () => findCrossSignals(crossLines.map(({ ma, values }) => ({ period: ma.period, values }))),
     [crossLines],
@@ -392,12 +449,12 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
     candles.priceScale().applyOptions({ scaleMargins: { top: 0.08, bottom: 0.08 } });
     const volume = chart.addSeries(
       HistogramSeries,
-      { priceFormat: { type: "volume" }, lastValueVisible: false, priceLineVisible: false, title: "Volume" },
+      { priceFormat: { type: "volume" }, lastValueVisible: false, priceLineVisible: false },
       INITIAL_PANES.indexOf("volume"),
     );
     const obv = chart.addSeries(
       LineSeries,
-      { priceFormat: { type: "volume" }, lineWidth: 2, priceLineVisible: false, title: "OBV" },
+      { priceFormat: { type: "volume" }, lineWidth: 2, priceLineVisible: false },
       INITIAL_PANES.indexOf("obv"),
     );
     const [pricePane, volumePane, obvPane] = chart.panes();
@@ -422,7 +479,7 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
       ]),
     };
     handlesRef.current = handles;
-    arrangePanes(handles, paneOrderRef.current);
+    arrange();
 
     const onMove = (param: MouseEventParams<Time>) => {
       if (!liveRef.current.tool) return;
@@ -491,7 +548,7 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
       chart.remove();
       handlesRef.current = null;
     };
-  }, [pushToChart]);
+  }, [pushToChart, arrange]);
 
   useEffect(() => {
     const handles = handlesRef.current;
@@ -516,14 +573,13 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
     handles.drawings.setPalette(theme.drawings);
   }, [theme]);
 
-  // Textos do idioma: títulos das séries e rótulos escritos pelos desenhos.
+  // Textos do idioma: rótulos escritos pelos desenhos. (Os nomes das séries ficam na legenda de
+  // cada painel, e não no eixo, onde a etiqueta avançava sobre os candles.)
   useEffect(() => {
     const handles = handlesRef.current;
     if (!handles) return;
-    handles.volume.applyOptions({ title: t.chart.series.volume });
-    handles.obv.applyOptions({ title: t.chart.series.obv });
     handles.drawings.setLabels(canvasLabels);
-  }, [t, canvasLabels]);
+  }, [canvasLabels]);
 
   useEffect(() => {
     const handles = handlesRef.current;
@@ -664,7 +720,6 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
           lineWidth: 2,
           priceLineVisible: false,
           crosshairMarkerVisible: false,
-          title: maLabel(ma),
         },
         pricePaneIndex(handles),
       );
@@ -717,10 +772,14 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
   }, [momentumPeriod]);
 
   useEffect(() => {
+    saveMaOscillatorVisible(maOscillatorVisible);
+  }, [maOscillatorVisible]);
+
+  useEffect(() => {
     paneOrderRef.current = paneOrder;
     savePaneOrder(paneOrder);
-    if (handlesRef.current) arrangePanes(handlesRef.current, paneOrder);
-  }, [paneOrder]);
+    arrange();
+  }, [paneOrder, arrange]);
 
   // Posição de cada painel, para as alças ⋮⋮. Medida sempre que o gráfico muda de verdade:
   // painel entrando, saindo ou trocando de lugar (DOM) e redimensionamento.
@@ -741,6 +800,7 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
       boxes.sort((a, b) => a.index - b.index);
       setPaneBoxes((prev) => (sameBoxes(prev, boxes) ? prev : boxes));
     };
+    measureRef.current = measure;
     const resize = new ResizeObserver(measure);
     resize.observe(container);
     const mutation = new MutationObserver(() => {
@@ -754,6 +814,7 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
       cancelAnimationFrame(frame);
       resize.disconnect();
       mutation.disconnect();
+      measureRef.current = null;
     };
   }, []);
 
@@ -763,14 +824,15 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
     const handles = handlesRef.current;
     if (!handles || !bars || !fourWeekSystem) return;
     const { entry, exit } = fourWeekSystem;
-    const specs: [(number | null)[], string, LineStyle, string][] = [
-      [entry.upper, theme.down, LineStyle.Solid, fmt(t.chart.markers.channelHigh, { n: fourWeek.entryWeeks })],
-      [entry.lower, theme.up, LineStyle.Solid, fmt(t.chart.markers.channelLow, { n: fourWeek.entryWeeks })],
+    // O último booleano diz se o valor aparece no eixo (só no canal de entrada).
+    const specs: [(number | null)[], string, LineStyle, boolean][] = [
+      [entry.upper, theme.down, LineStyle.Solid, true],
+      [entry.lower, theme.up, LineStyle.Solid, true],
     ];
     if (exit && fourWeek.exitWeeks !== null) {
-      specs.push([exit.upper, theme.drawings.muted, LineStyle.Dotted, ""], [exit.lower, theme.drawings.muted, LineStyle.Dotted, ""]);
+      specs.push([exit.upper, theme.drawings.muted, LineStyle.Dotted, false], [exit.lower, theme.drawings.muted, LineStyle.Dotted, false]);
     }
-    const lines = specs.map(([values, color, lineStyle, title]) => {
+    const lines = specs.map(([values, color, lineStyle, showValue]) => {
       const line = handles.chart.addSeries(
         LineSeries,
         {
@@ -779,9 +841,8 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
           lineStyle,
           lineType: LineType.WithSteps,
           priceLineVisible: false,
-          lastValueVisible: title !== "",
+          lastValueVisible: showValue,
           crosshairMarkerVisible: false,
-          title,
         },
         pricePaneIndex(handles),
       );
@@ -799,7 +860,7 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
         if (alive.includes(line)) handles.chart.removeSeries(line);
       });
     };
-  }, [bars, fourWeekSystem, fourWeek.entryWeeks, fourWeek.exitWeeks, theme, t]);
+  }, [bars, fourWeekSystem, fourWeek.exitWeeks, theme]);
 
   // Bandas de Bollinger: bandas de cima e de baixo e a média central tracejada, numa cor neutra.
   useEffect(() => {
@@ -807,11 +868,11 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
     if (!handles || !bars || !bands) return;
     const lines = (
       [
-        [bands.upper, LineStyle.Solid, "BB +2σ"],
-        [bands.middle, LineStyle.Dashed, ""],
-        [bands.lower, LineStyle.Solid, "BB −2σ"],
+        [bands.upper, LineStyle.Solid, true],
+        [bands.middle, LineStyle.Dashed, false],
+        [bands.lower, LineStyle.Solid, true],
       ] as const
-    ).map(([values, lineStyle, title]) => {
+    ).map(([values, lineStyle, showValue]) => {
       const line = handles.chart.addSeries(
         LineSeries,
         {
@@ -819,9 +880,8 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
           lineWidth: 1,
           lineStyle,
           priceLineVisible: false,
-          lastValueVisible: title !== "",
+          lastValueVisible: showValue,
           crosshairMarkerVisible: false,
-          title,
         },
         pricePaneIndex(handles),
       );
@@ -846,13 +906,12 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
   useEffect(() => {
     const handles = handlesRef.current;
     if (!handles || !bars || !openInterest || openInterest.values.length !== bars.length) return;
-    const series = addPaneSeries(handles, "openInterest", paneOrderRef.current, {
+    const series = addPaneSeries(handles, "openInterest", LineSeries, {
       color: theme.drawings.primary,
       lineWidth: 2,
       lineType: LineType.WithSteps,
       priceFormat: { type: "volume" },
       priceLineVisible: false,
-      title: t.chart.series.openInterest,
     });
     series.setData(
       bars.map((b, i) => {
@@ -860,18 +919,21 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
         return value === null ? { time: b.time as UTCTimestamp } : { time: b.time as UTCTimestamp, value };
       }),
     );
-    return () => removePaneSeries(handles, "openInterest", series);
-  }, [bars, openInterest, theme, t.chart.series.openInterest]);
+    arrange();
+    return () => {
+      removePaneSeries(handles, "openInterest", series);
+      arrange();
+    };
+  }, [bars, openInterest, theme, arrange]);
 
   // Linha de momentum: painel próprio, com a linha zero e os cruzamentos dela (Murphy, cap. 10).
   useEffect(() => {
     const handles = handlesRef.current;
     if (!handles || !bars || !momentumPeriod || !momentumValues) return;
-    const series = addPaneSeries(handles, "momentum", paneOrderRef.current, {
+    const series = addPaneSeries(handles, "momentum", LineSeries, {
       color: theme.momentum,
       lineWidth: 2,
       priceLineVisible: false,
-      title: fmt(t.chart.series.momentum, { n: momentumPeriod }),
     });
     series.createPriceLine({ price: 0, color: theme.drawings.muted, lineWidth: 1, lineStyle: LineStyle.Dashed, axisLabelVisible: false });
     series.setData(
@@ -894,8 +956,39 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
           )
         : [],
     );
-    return () => removePaneSeries(handles, "momentum", series);
-  }, [bars, momentumPeriod, momentumValues, showMomentumSignals, theme, t]);
+    arrange();
+    return () => {
+      removePaneSeries(handles, "momentum", series);
+      arrange();
+    };
+  }, [bars, momentumPeriod, momentumValues, showMomentumSignals, theme, t, arrange]);
+
+  // Histograma da diferença entre duas médias: verde acima de zero, vermelho abaixo, e mais
+  // claro quando a diferença encolhe (médias se aproximando).
+  useEffect(() => {
+    const handles = handlesRef.current;
+    if (!handles || !bars || !maOscillator || !maOscillatorVisible) return;
+    const { diff } = maOscillator;
+    const series = addPaneSeries(handles, "maOscillator", HistogramSeries, {
+      priceLineVisible: false,
+    });
+    series.createPriceLine({ price: 0, color: theme.drawings.muted, lineWidth: 1, lineStyle: LineStyle.Dashed, axisLabelVisible: false });
+    series.setData(
+      bars.map((b, i) => {
+        const value = diff[i];
+        const time = b.time as UTCTimestamp;
+        if (value === null) return { time };
+        const color = value >= 0 ? theme.up : theme.down;
+        // Sufixo de opacidade no hex: barras de diferença diminuindo ficam claras.
+        return { time, value, color: isWidening(diff, i) === false ? `${color}66` : color };
+      }),
+    );
+    arrange();
+    return () => {
+      removePaneSeries(handles, "maOscillator", series);
+      arrange();
+    };
+  }, [bars, maOscillator, maOscillatorVisible, theme, t, arrange]);
 
   // Exemplo do glossário: aproxima o gráfico da janela do padrão (uma vez por exemplo carregado).
   useEffect(() => {
@@ -1084,6 +1177,35 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
 
   const selected = drawings.find((d) => d.id === selectedId) ?? null;
 
+  // Nome das séries de cada painel, na cor da linha (legenda no canto do painel).
+  const legends: Partial<Record<PaneId, LegendItem[]>> = {
+    price: [
+      ...averageLines.map(({ ma }) => ({ label: maLabel(ma, t.ma.short), color: theme.movingAverages[ma.slot] })),
+      ...(bands ? [{ label: t.ma.bollinger, color: theme.drawings.muted }] : []),
+      ...(fourWeekSystem
+        ? [
+            { label: fmt(t.chart.markers.channelHigh, { n: fourWeek.entryWeeks }), color: theme.down },
+            { label: fmt(t.chart.markers.channelLow, { n: fourWeek.entryWeeks }), color: theme.up },
+          ]
+        : []),
+    ],
+    volume: [{ label: t.chart.series.volume, color: theme.text }],
+    obv: [{ label: t.chart.series.obv, color: theme.drawings.target }],
+    openInterest: [{ label: t.chart.series.openInterest, color: theme.drawings.primary }],
+    momentum: momentumPeriod ? [{ label: fmt(t.chart.series.momentum, { n: momentumPeriod }), color: theme.momentum }] : [],
+    maOscillator: maOscillator
+      ? [
+          {
+            label: fmt(t.chart.series.maOscillator, {
+              fast: maLabel(maOscillator.fast, t.ma.short),
+              slow: maLabel(maOscillator.slow, t.ma.short),
+            }),
+            color: theme.up,
+          },
+        ]
+      : [],
+  };
+
   return (
     <section aria-label={fmt(t.chart.label, { symbol })} className="rounded-2xl border border-border bg-surface p-4 shadow-sm sm:p-5">
       <header className="mb-3 flex flex-wrap items-center justify-between gap-2">
@@ -1180,11 +1302,21 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
           </button>
         )}
       </div>
-      <div ref={wrapperRef} className={`relative mt-1 ${CHART_HEIGHT[(openInterest ? 1 : 0) + (momentumPeriod ? 1 : 0)]}`}>
+      <div
+        ref={wrapperRef}
+        className={`relative mt-1 ${CHART_HEIGHT[(openInterest ? 1 : 0) + (momentumPeriod ? 1 : 0) + (showMaOscillator ? 1 : 0)]}`}
+      >
         <div ref={containerRef} className={`h-full w-full ${tool ? "cursor-crosshair" : ""}`} />
         <PaneHandles
           boxes={paneBoxes}
-          onMove={(id, to) => setPaneOrder((order) => movePane(order, paneBoxes.map((b) => b.id), id, to))}
+          legends={legends}
+          onMove={(id, to) => setPaneOrder((order) => movePane(order, openPanes(), id, to))}
+          onStep={(id, delta) =>
+            setPaneOrder((order) => {
+              const present = openPanes();
+              return movePane(order, present, id, visiblePanes(order, present).indexOf(id) + delta);
+            })
+          }
         />
         {loading && (
           <div role="status" className="absolute inset-0 flex items-center justify-center bg-surface/60 text-sm text-muted">
@@ -1231,6 +1363,17 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
       )}
       {bars && bars.length > 0 && !loading && bollingerOn && (
         <BollingerPanel bars={bars} reading={bollingerReading} intraday={isIntraday(range)} />
+      )}
+      {bars && bars.length > 0 && !loading && maOscillator && (
+        <MaOscillatorPanel
+          bars={bars}
+          fast={maLabel(maOscillator.fast, t.ma.short)}
+          slow={maLabel(maOscillator.slow, t.ma.short)}
+          reading={maOscillatorReading}
+          intraday={isIntraday(range)}
+          show={maOscillatorVisible}
+          onShowChange={setMaOscillatorVisible}
+        />
       )}
       {bars && bars.length > 0 && !loading && momentumPeriod && (
         <MomentumPanel
