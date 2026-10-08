@@ -117,6 +117,12 @@ export const enUS: Dictionary = {
       channelLow: "Low {n}W",
     },
   },
+  panes: {
+    hint: "Drag ⋮⋮ to change the order of the panes.",
+    reset: "Default order",
+    move: "Move the {name} pane: drag or use ↑ and ↓",
+    names: { price: "Price", volume: "Volume", obv: "OBV", openInterest: "Open interest", momentum: "Momentum" },
+  },
   customRange: {
     label: "Number of days (sessions)",
     placeholder: "Days",

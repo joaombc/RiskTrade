@@ -18,6 +18,7 @@ import {
   type ISeriesMarkersPluginApi,
   type MouseEventParams,
   type SeriesMarker,
+  type SeriesType,
   type Time,
   type UTCTimestamp,
 } from "lightweight-charts";
@@ -39,6 +40,15 @@ import { TOOLS, type Anchor, type Bar, type Drawing, type DrawingKind, type Draw
 import { resolveExample, type ResolvedExample } from "@/lib/glossary/examples";
 import type { TermExample } from "@/lib/glossary/types";
 import { computeOBV, findDivergences, type Divergence } from "@/lib/indicators";
+import {
+  DEFAULT_PANE_ORDER,
+  isDefaultPaneOrder,
+  loadPaneOrder,
+  movePane,
+  savePaneOrder,
+  visiblePanes,
+  type PaneId,
+} from "@/lib/paneOrder";
 import { loadMomentumPeriod, momentum, readMomentum, saveMomentumPeriod, zeroCrossings, type MomentumPeriod } from "@/lib/momentum";
 import {
   HISTORY_RANGES,
@@ -76,6 +86,7 @@ import { DrawingsPrimitive } from "./DrawingsPrimitive";
 import { DrawingToolbar } from "./DrawingToolbar";
 import { MovingAverageBar } from "./MovingAverageBar";
 import { OpenInterestNote } from "./OpenInterestNote";
+import { PaneHandles, type PaneBox } from "./PaneHandles";
 import { CHART_THEMES } from "./theme";
 
 /** Distância máxima (px) para o clique "grudar" na máxima/mínima/abertura/fechamento do candle. */
@@ -130,27 +141,53 @@ const NO_EXAMPLE: ResolvedExample = { drawings: [], markers: [] };
 /** Altura do gráfico conforme o número de painéis opcionais abertos (0, 1 ou 2). */
 const CHART_HEIGHT = ["h-[560px] sm:h-[640px]", "h-[680px] sm:h-[780px]", "h-[800px] sm:h-[920px]"];
 
-/** Painéis do gráfico, de cima para baixo. */
-const PRICE_PANE = 0;
-const VOLUME_PANE = 1;
-const OBV_PANE = 2;
-
 /**
- * Painéis opcionais (momentum, interesse aberto) entram no fim da lista, para não disputarem o
- * mesmo índice, e saem levando o próprio painel.
+ * Painéis do gráfico na criação. Depois disso a ordem é do usuário (alças ⋮⋮), então o índice de
+ * cada painel é sempre perguntado à série principal dele (ver paneIndexOf).
  */
-function addPaneSeries(chart: IChartApi, options: Parameters<IChartApi["addSeries"]>[1]): ISeriesApi<"Line"> {
-  const series = chart.addSeries(LineSeries, options, chart.panes().length);
+const INITIAL_PANES: PaneId[] = ["price", "volume", "obv"];
+
+const sameBoxes = (a: PaneBox[], b: PaneBox[]) =>
+  a.length === b.length && a.every((box, i) => box.id === b[i].id && box.top === b[i].top && box.height === b[i].height);
+
+/** Índice atual do painel; -1 se ele não está aberto. */
+function paneIndexOf(handles: ChartHandles, id: PaneId): number {
+  return handles.paneSeries.get(id)?.getPane().paneIndex() ?? -1;
+}
+
+const pricePaneIndex = (handles: ChartHandles) => handles.candles.getPane().paneIndex();
+
+/** A série ainda está no gráfico atual (ele pode ter sido recriado por desmontagem ou Fast Refresh). */
+const isAlive = (chart: IChartApi | undefined, series: ISeriesApi<SeriesType>) =>
+  !!chart?.panes().some((pane) => pane.getSeries().includes(series));
+
+/** Põe os painéis abertos na ordem escolhida. */
+function arrangePanes(handles: ChartHandles, order: PaneId[]) {
+  const present = [...handles.paneSeries.keys()];
+  visiblePanes(order, present).forEach((id, target) => {
+    const series = handles.paneSeries.get(id);
+    if (series && series.getPane().paneIndex() !== target) series.getPane().moveTo(target);
+  });
+}
+
+/** Painéis opcionais (momentum, interesse aberto) entram no fim e depois vão para o lugar escolhido. */
+function addPaneSeries(handles: ChartHandles, id: PaneId, order: PaneId[], options: Parameters<IChartApi["addSeries"]>[1]) {
+  const series = handles.chart.addSeries(LineSeries, options, handles.chart.panes().length);
   series.getPane().setStretchFactor(1.5);
+  handles.paneSeries.set(id, series);
+  arrangePanes(handles, order);
   return series;
 }
 
-function removePaneSeries(chart: IChartApi, series: ISeriesApi<"Line">) {
-  // O gráfico pode ter sido recriado (desmontagem ou Fast Refresh) e levado a série junto.
-  if (!chart.panes().some((pane) => pane.getSeries().includes(series))) return;
+/** Tira a série e o painel dela, se ele ficou vazio e a biblioteca não o removeu sozinha. */
+function removePaneSeries(handles: ChartHandles, id: PaneId, series: ISeriesApi<"Line">) {
+  if (handles.paneSeries.get(id) === series) handles.paneSeries.delete(id);
+  const { chart } = handles;
+  if (!isAlive(chart, series)) return;
   const index = series.getPane().paneIndex();
+  const count = chart.panes().length;
   chart.removeSeries(series);
-  if (chart.panes()[index]?.getSeries().length === 0) chart.removePane(index);
+  if (chart.panes().length === count && chart.panes()[index]?.getSeries().length === 0) chart.removePane(index);
 }
 
 interface ChartHandles {
@@ -161,6 +198,8 @@ interface ChartHandles {
   priceMarkers: ISeriesMarkersPluginApi<Time>;
   obvMarkers: ISeriesMarkersPluginApi<Time>;
   drawings: DrawingsPrimitive;
+  /** Série principal de cada painel aberto: é por ela que se descobre onde o painel está. */
+  paneSeries: Map<PaneId, ISeriesApi<SeriesType>>;
 }
 
 interface History {
@@ -226,7 +265,12 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
   const { t, locale } = useI18n();
   const canvasLabels = useMemo(() => ({ locale, ...t.drawings.canvas }), [locale, t]);
   const containerRef = useRef<HTMLDivElement>(null);
+  const wrapperRef = useRef<HTMLDivElement>(null);
   const handlesRef = useRef<ChartHandles | null>(null);
+  // Ordem dos painéis escolhida pelo usuário; a ref serve aos efeitos que criam painéis.
+  const [paneOrder, setPaneOrder] = useState<PaneId[]>(loadPaneOrder);
+  const paneOrderRef = useRef(paneOrder);
+  const [paneBoxes, setPaneBoxes] = useState<PaneBox[]>([]);
   const cursorRef = useRef<Anchor | null>(null);
   const fittedKeyRef = useRef<string | null>(null);
   const zoomedExampleRef = useRef<string | null>(null);
@@ -344,17 +388,17 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
       timeScale: { rightOffset: 12, borderVisible: false },
       rightPriceScale: { borderVisible: false },
     });
-    const candles = chart.addSeries(CandlestickSeries, {}, PRICE_PANE);
+    const candles = chart.addSeries(CandlestickSeries, {}, INITIAL_PANES.indexOf("price"));
     candles.priceScale().applyOptions({ scaleMargins: { top: 0.08, bottom: 0.08 } });
     const volume = chart.addSeries(
       HistogramSeries,
       { priceFormat: { type: "volume" }, lastValueVisible: false, priceLineVisible: false, title: "Volume" },
-      VOLUME_PANE,
+      INITIAL_PANES.indexOf("volume"),
     );
     const obv = chart.addSeries(
       LineSeries,
       { priceFormat: { type: "volume" }, lineWidth: 2, priceLineVisible: false, title: "OBV" },
-      OBV_PANE,
+      INITIAL_PANES.indexOf("obv"),
     );
     const [pricePane, volumePane, obvPane] = chart.panes();
     pricePane.setStretchFactor(5);
@@ -371,13 +415,19 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
       priceMarkers: createSeriesMarkers(candles, []),
       obvMarkers: createSeriesMarkers(obv, []),
       drawings: drawingsPrimitive,
+      paneSeries: new Map<PaneId, ISeriesApi<SeriesType>>([
+        ["price", candles],
+        ["volume", volume],
+        ["obv", obv],
+      ]),
     };
     handlesRef.current = handles;
+    arrangePanes(handles, paneOrderRef.current);
 
     const onMove = (param: MouseEventParams<Time>) => {
       if (!liveRef.current.tool) return;
       // Desenhos só existem no painel de preço; fora dele não há pré-visualização.
-      const inPricePane = (param.paneIndex ?? PRICE_PANE) === PRICE_PANE;
+      const inPricePane = (param.paneIndex ?? pricePaneIndex(handles)) === pricePaneIndex(handles);
       cursorRef.current =
         param.point && inPricePane ? toAnchor(param.point.x, param.point.y, handles, liveRef.current.bars) : null;
       pushToChart();
@@ -385,7 +435,7 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
 
     const onClick = (x: number, y: number) => {
       const live = liveRef.current;
-      const pane = chart.paneSize(PRICE_PANE);
+      const pane = chart.paneSize(pricePaneIndex(handles));
       if (x < 0 || y < 0 || x > pane.width || y > pane.height) return;
 
       if (!live.tool) {
@@ -426,7 +476,8 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
       const moved = Math.abs(e.clientX - pressed.x) + Math.abs(e.clientY - pressed.y);
       pressed = null;
       if (moved >= CLICK_TOLERANCE_PX) return;
-      const rect = container.getBoundingClientRect();
+      // Coordenadas no painel de preço, que pode não estar no topo (ordem escolhida pelo usuário).
+      const rect = candles.getPane().getHTMLElement()?.getBoundingClientRect() ?? container.getBoundingClientRect();
       onClick(e.clientX - rect.left, e.clientY - rect.top);
     };
 
@@ -615,7 +666,7 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
           crosshairMarkerVisible: false,
           title: maLabel(ma),
         },
-        PRICE_PANE,
+        pricePaneIndex(handles),
       );
       const toData = (points: (number | null)[]) =>
         bars.map((b, i) => {
@@ -636,7 +687,7 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
               lastValueVisible: false,
               crosshairMarkerVisible: false,
             },
-            PRICE_PANE,
+            pricePaneIndex(handles),
           );
           envelope.setData(toData(envelopeLine(values, percent, side)));
           return envelope;
@@ -646,7 +697,7 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
     });
     return () => {
       // O gráfico pode ter sido recriado (desmontagem ou Fast Refresh) e levado as séries junto.
-      const alive = handlesRef.current?.chart.panes()[PRICE_PANE]?.getSeries() ?? [];
+      const alive = handlesRef.current?.candles.getPane().getSeries() ?? [];
       series.flat().forEach((line) => {
         if (alive.includes(line)) handles.chart.removeSeries(line);
       });
@@ -664,6 +715,47 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
   useEffect(() => {
     saveMomentumPeriod(momentumPeriod);
   }, [momentumPeriod]);
+
+  useEffect(() => {
+    paneOrderRef.current = paneOrder;
+    savePaneOrder(paneOrder);
+    if (handlesRef.current) arrangePanes(handlesRef.current, paneOrder);
+  }, [paneOrder]);
+
+  // Posição de cada painel, para as alças ⋮⋮. Medida sempre que o gráfico muda de verdade:
+  // painel entrando, saindo ou trocando de lugar (DOM) e redimensionamento.
+  useEffect(() => {
+    const wrapper = wrapperRef.current;
+    const container = containerRef.current;
+    if (!wrapper || !container) return;
+    const measure = () => {
+      const handles = handlesRef.current;
+      if (!handles) return;
+      const base = wrapper.getBoundingClientRect();
+      const boxes = [...handles.paneSeries].flatMap(([id, series]): PaneBox[] => {
+        const element = series.getPane().getHTMLElement();
+        if (!element) return [];
+        const rect = element.getBoundingClientRect();
+        return [{ id, index: series.getPane().paneIndex(), top: rect.top - base.top, height: rect.height }];
+      });
+      boxes.sort((a, b) => a.index - b.index);
+      setPaneBoxes((prev) => (sameBoxes(prev, boxes) ? prev : boxes));
+    };
+    const resize = new ResizeObserver(measure);
+    resize.observe(container);
+    const mutation = new MutationObserver(() => {
+      // Painéis novos também precisam ser observados (eles mudam de altura ao arrastar o separador).
+      container.querySelectorAll("td").forEach((cell) => resize.observe(cell));
+      measure();
+    });
+    mutation.observe(container, { childList: true, subtree: true });
+    const frame = requestAnimationFrame(measure);
+    return () => {
+      cancelAnimationFrame(frame);
+      resize.disconnect();
+      mutation.disconnect();
+    };
+  }, []);
 
   // Regra das 4 semanas: canal de entrada em degraus (máxima e mínima) e, na versão não
   // contínua, o canal de saída pontilhado.
@@ -691,7 +783,7 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
           crosshairMarkerVisible: false,
           title,
         },
-        PRICE_PANE,
+        pricePaneIndex(handles),
       );
       line.setData(
         bars.map((b, i) => {
@@ -702,7 +794,7 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
       return line;
     });
     return () => {
-      const alive = handlesRef.current?.chart.panes()[PRICE_PANE]?.getSeries() ?? [];
+      const alive = handlesRef.current?.candles.getPane().getSeries() ?? [];
       lines.forEach((line) => {
         if (alive.includes(line)) handles.chart.removeSeries(line);
       });
@@ -731,7 +823,7 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
           crosshairMarkerVisible: false,
           title,
         },
-        PRICE_PANE,
+        pricePaneIndex(handles),
       );
       line.setData(
         bars.map((b, i) => {
@@ -742,7 +834,7 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
       return line;
     });
     return () => {
-      const alive = handlesRef.current?.chart.panes()[PRICE_PANE]?.getSeries() ?? [];
+      const alive = handlesRef.current?.candles.getPane().getSeries() ?? [];
       lines.forEach((line) => {
         if (alive.includes(line)) handles.chart.removeSeries(line);
       });
@@ -754,7 +846,7 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
   useEffect(() => {
     const handles = handlesRef.current;
     if (!handles || !bars || !openInterest || openInterest.values.length !== bars.length) return;
-    const series = addPaneSeries(handles.chart, {
+    const series = addPaneSeries(handles, "openInterest", paneOrderRef.current, {
       color: theme.drawings.primary,
       lineWidth: 2,
       lineType: LineType.WithSteps,
@@ -768,14 +860,14 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
         return value === null ? { time: b.time as UTCTimestamp } : { time: b.time as UTCTimestamp, value };
       }),
     );
-    return () => removePaneSeries(handles.chart, series);
+    return () => removePaneSeries(handles, "openInterest", series);
   }, [bars, openInterest, theme, t.chart.series.openInterest]);
 
   // Linha de momentum: painel próprio, com a linha zero e os cruzamentos dela (Murphy, cap. 10).
   useEffect(() => {
     const handles = handlesRef.current;
     if (!handles || !bars || !momentumPeriod || !momentumValues) return;
-    const series = addPaneSeries(handles.chart, {
+    const series = addPaneSeries(handles, "momentum", paneOrderRef.current, {
       color: theme.momentum,
       lineWidth: 2,
       priceLineVisible: false,
@@ -802,7 +894,7 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
           )
         : [],
     );
-    return () => removePaneSeries(handles.chart, series);
+    return () => removePaneSeries(handles, "momentum", series);
   }, [bars, momentumPeriod, momentumValues, showMomentumSignals, theme, t]);
 
   // Exemplo do glossário: aproxima o gráfico da janela do padrão (uma vez por exemplo carregado).
@@ -930,8 +1022,8 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
       return series;
     };
     const segments = visible.flatMap((d) => [
-      segment(PRICE_PANE, colorOf(d), [d.from, d.priceFrom], [d.to, d.priceTo]),
-      segment(OBV_PANE, colorOf(d), [d.from, d.obvFrom], [d.to, d.obvTo]),
+      segment(pricePaneIndex(handles), colorOf(d), [d.from, d.priceFrom], [d.to, d.priceTo]),
+      segment(paneIndexOf(handles, "obv"), colorOf(d), [d.from, d.obvFrom], [d.to, d.obvTo]),
     ]);
     return () => {
       // Se o gráfico já foi desmontado, as séries foram junto.
@@ -1080,8 +1172,20 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
       />
 
       {/* Os painéis opcionais (interesse aberto, momentum) ganham altura própria, sem espremer o preço. */}
-      <div className={`relative mt-2 ${CHART_HEIGHT[(openInterest ? 1 : 0) + (momentumPeriod ? 1 : 0)]}`}>
+      <div className="mt-2 flex flex-wrap items-center justify-end gap-x-3 gap-y-1 text-[11px] text-muted">
+        <span>{t.panes.hint}</span>
+        {!isDefaultPaneOrder(paneOrder) && (
+          <button type="button" onClick={() => setPaneOrder(DEFAULT_PANE_ORDER)} className="font-medium text-accent hover:underline">
+            {t.panes.reset}
+          </button>
+        )}
+      </div>
+      <div ref={wrapperRef} className={`relative mt-1 ${CHART_HEIGHT[(openInterest ? 1 : 0) + (momentumPeriod ? 1 : 0)]}`}>
         <div ref={containerRef} className={`h-full w-full ${tool ? "cursor-crosshair" : ""}`} />
+        <PaneHandles
+          boxes={paneBoxes}
+          onMove={(id, to) => setPaneOrder((order) => movePane(order, paneBoxes.map((b) => b.id), id, to))}
+        />
         {loading && (
           <div role="status" className="absolute inset-0 flex items-center justify-center bg-surface/60 text-sm text-muted">
             {t.chart.loading}
