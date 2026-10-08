@@ -2,6 +2,7 @@ import { CHANNEL_DIAGRAMS } from "./channel-diagrams";
 import { MA_DIAGRAMS } from "./ma-diagrams";
 import { RSI_DIAGRAMS } from "./rsi-diagrams";
 import { STOCHASTIC_DIAGRAMS } from "./stochastic-diagrams";
+import { WILLIAMS_DIAGRAMS } from "./williams-diagrams";
 import type { Diagram, Lesson } from "./types";
 
 /**
@@ -817,6 +818,116 @@ export const LESSONS: Lesson[] = [
       "O sinal vem do %K cruzando o %D nas zonas extremas; o cruzamento à direita é mais confiável.",
       "A divergência entre o %D e o preço, com o %D acima de 80 ou abaixo de 20, é o sinal mais importante.",
       "Opere a favor da tendência principal; o estocástico semanal ajuda a defini-la.",
+    ],
+  },
+  {
+    slug: "r-de-williams",
+    title: "%R de Larry Williams",
+    subtitle: "Onde o fechamento está em relação à máxima recente",
+    summary:
+      "Como o %R mede a distância do fechamento até a máxima da faixa, por que a escala vai de 0 a −100, as zonas de −20 e −80, por que o sinal está na saída das zonas, as divergências e como ele se compara ao estocástico e ao IFR.",
+    readingMinutes: 7,
+    source:
+      "Murphy, Technical Analysis of the Financial Markets, cap. 10 (Osciladores e opinião contrária); Larry Williams, How I Made One Million Dollars Last Year Trading Commodities (1973)",
+    relatedTerms: ["linha-de-momentum", "divergencia-de-volume", "suporte-e-resistencia", "linha-de-tendencia", "bandas-de-bollinger"],
+    sections: [
+      {
+        heading: "Origem",
+        paragraphs: [
+          "O %R foi apresentado por Larry Williams em 1973, no livro How I Made One Million Dollars Last Year Trading Commodities. Murphy o descreve no capítulo dos osciladores, ao lado do estocástico, com o qual tem parentesco direto.",
+        ],
+      },
+      {
+        heading: "A ideia",
+        paragraphs: [
+          "O %R responde a uma pergunta: quão longe o fechamento de hoje está da máxima dos últimos N períodos, em proporção à faixa inteira? Fechando na máxima, o mercado mostra força total; fechando na mínima, fraqueza total.",
+        ],
+      },
+      {
+        heading: "Como é calculado",
+        paragraphs: [
+          "%R = −100 × (máxima de N − fechamento) ÷ (máxima de N − mínima de N). Williams usava N = 10.",
+        ],
+        bullets: [
+          "Exemplo: nos últimos 10 dias, a máxima foi 60 e a mínima 42. Fechando em 58, o %R é −100 × (60 − 58) ÷ (60 − 42) ≈ −11: perto do topo da faixa.",
+          "Fechando na máxima, o %R é 0; na mínima, −100.",
+          "É o %K rápido do estocástico deslocado: %R = %K − 100. O estocástico mede a distância até a mínima; o %R, até a máxima.",
+        ],
+        diagram: {
+          diagram: WILLIAMS_DIAGRAMS.range,
+          caption: "Dez candles com a máxima e a mínima da faixa: o último fecha perto da máxima, e o %R fica perto de 0.",
+        },
+      },
+      {
+        heading: "A escala invertida",
+        paragraphs: [
+          "Como o %R mede a distância até a máxima, a escala fica de cabeça para baixo: 0 é o topo e −100 o fundo. Murphy desenha o %R de 0 a 100 com o eixo invertido; a maioria dos programas atuais, inclusive o RiskTrade, usa valores negativos. A leitura é a mesma: quanto mais perto de 0, mais perto da máxima.",
+        ],
+      },
+      {
+        heading: "Zonas de −20 e −80",
+        paragraphs: [
+          "Acima de −20 (de 0 a −20), o mercado está sobrecomprado; abaixo de −80 (de −80 a −100), sobrevendido. Como o %R não é suavizado, ele é muito sensível e toca as zonas extremas com frequência, muito mais que o IFR.",
+        ],
+      },
+      {
+        heading: "O sinal está na saída das zonas",
+        paragraphs: [
+          "Por ser tão sensível, operar o simples toque nas zonas gera sinais demais. A leitura mais usada é esperar a saída: a venda vem quando o %R, depois de estar acima de −20, volta para baixo dele; a compra, quando volta para cima de −80.",
+        ],
+        diagram: {
+          diagram: WILLIAMS_DIAGRAMS.zones,
+          caption: "%R de 10 períodos: a venda vem quando ele sai de cima de −20, e a compra quando sai de baixo de −80.",
+        },
+      },
+      {
+        heading: "Divergências e falhas",
+        paragraphs: [
+          "Como nos outros osciladores, a divergência é um alerta importante: o preço faz um novo topo, mas o %R faz um topo mais baixo. Um caso típico é o %R que, numa alta, não consegue mais chegar à zona de sobrecompra, enquanto o preço ainda sobe: os fechamentos já não ficam tão perto das máximas.",
+          "A confirmação vem do preço, como o rompimento de uma linha de tendência, ou da saída das zonas.",
+        ],
+        diagram: {
+          diagram: WILLIAMS_DIAGRAMS.divergence,
+          caption: "O preço faz um topo mais alto, mas o %R de 10 períodos não volta acima de −20: a alta perdeu força.",
+        },
+      },
+      {
+        heading: "%R, estocástico e IFR",
+        paragraphs: [
+          "O %R é o estocástico rápido de cabeça para baixo, sem a suavização do %D: por isso é o mais sensível dos três. O estocástico lento suaviza a mesma informação e dá menos sinais. O IFR usa só fechamentos e é o mais estável. Usar o %R junto com um deles ajuda a filtrar os sinais.",
+        ],
+      },
+      {
+        heading: "Qual período usar",
+        paragraphs: [
+          "Williams usava 10 períodos. Uma regra prática ligada aos ciclos é usar cerca de metade do ciclo dominante: 10 dias para o ciclo mensal de cerca de 20 pregões. Períodos maiores, como 14 ou 20, deixam o %R mais lento e reduzem os sinais falsos.",
+        ],
+      },
+      {
+        heading: "A favor da tendência",
+        paragraphs: [
+          "Numa tendência forte, o %R pode passar dias colado em 0 ou em −100. A regra de Murphy vale aqui também: use o oscilador a favor da tendência principal. Numa alta, compre quando o %R sai da sobrevenda e use a sobrecompra só para realizar lucro; numa baixa, venda quando ele sai da sobrecompra.",
+        ],
+      },
+      {
+        heading: "No RiskTrade",
+        paragraphs: ["Use os botões %R de Williams na barra de médias do gráfico:"],
+        bullets: [
+          "Escolha 10 (Williams), 14 ou 20. Clicar de novo no botão ativo desliga o %R.",
+          "O painel tem escala fixa de 0 a −100, com as linhas de −20 e −80 tracejadas e a de −50 pontilhada.",
+          "Setas marcam as saídas das zonas: venda ao sair de cima de −20, compra ao sair de baixo de −80.",
+          "O painel de leitura diz o valor, a zona e a última saída.",
+          "Combine com o estocástico ou o IFR, e arraste o painel pela alça ⋮⋮ para perto do preço para ver as divergências.",
+        ],
+      },
+    ],
+    takeaways: [
+      "%R = −100 × (máxima de N − fechamento) ÷ (máxima de N − mínima de N); vai de 0 (na máxima) a −100 (na mínima).",
+      "É o estocástico rápido de cabeça para baixo: %R = %K − 100.",
+      "Acima de −20 é sobrecompra; abaixo de −80, sobrevenda.",
+      "O %R é muito sensível: o sinal está na saída das zonas, não no toque.",
+      "Na alta, o %R que não chega mais a −20 enquanto o preço sobe é um aviso de divergência.",
+      "Use a favor da tendência principal e combine com um oscilador mais lento.",
     ],
   },
   {

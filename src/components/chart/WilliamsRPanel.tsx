@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { fmt } from "@/i18n/format";
 import { useI18n } from "@/i18n/I18nProvider";
 import type { Bar } from "@/lib/drawings/types";
@@ -16,7 +17,7 @@ interface Props {
 
 /** Leitura do %R de Larry Williams no último candle, com as regras de Murphy (cap. 10). */
 export function WilliamsRPanel({ bars, period, reading, intraday, show, onShowChange }: Props) {
-  const { t, locale } = useI18n();
+  const { t, locale, href } = useI18n();
   const w = t.williamsR;
   const num = (v: number, digits = 2) => v.toLocaleString(locale, { minimumFractionDigits: digits, maximumFractionDigits: digits });
   const dateFormat = new Intl.DateTimeFormat(
@@ -69,7 +70,12 @@ export function WilliamsRPanel({ bars, period, reading, intraday, show, onShowCh
         </ul>
       )}
 
-      <p className="text-[11px] text-muted">{w.footer}</p>
+      <p className="text-[11px] text-muted">
+        {w.footer}{" "}
+        <Link href={href("/glossario/teorias/r-de-williams")} className="font-medium text-accent hover:underline">
+          {w.link}
+        </Link>
+      </p>
     </div>
   );
 }

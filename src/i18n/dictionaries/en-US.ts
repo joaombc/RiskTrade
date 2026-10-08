@@ -388,6 +388,7 @@ export const enUS: Dictionary = {
     open: " The signal is on the last candle: if it is still forming, it may disappear by the close.",
     footer:
       "Murphy's rules (ch. 10): %R is the fast stochastic upside down, and very sensitive. It reaches the extreme zones often, so trade the exit from the zones and only in the direction of the major trend. Divergences between %R and price warn that the move is losing strength. The arrows on the pane mark zone exits.",
+    link: "Williams %R lesson",
   },
   bollinger: {
     title: "Bollinger Bands",

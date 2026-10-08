@@ -390,6 +390,7 @@ export const ptBR = {
     open: " O sinal está no último candle: se ele ainda estiver em formação, pode se desfazer até o fechamento.",
     footer:
       "Regras de Murphy (cap. 10): o %R é o estocástico rápido de cabeça para baixo, muito sensível. Ele chega às zonas extremas com frequência, então opere a saída das zonas e só a favor da tendência principal. Divergências entre o %R e o preço avisam que o movimento perde força. As setas no painel marcam as saídas das zonas.",
+    link: "Aula do %R de Williams",
   },
   bollinger: {
     title: "Bandas de Bollinger",
