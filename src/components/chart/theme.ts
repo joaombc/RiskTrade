@@ -12,6 +12,8 @@ export interface ChartTheme {
   momentum: string;
   /** IFR: verde-azulado, longe do roxo do OBV, do laranja do momentum e do azul do interesse aberto. */
   rsi: string;
+  /** Estocástico: %K (linha principal) e %D (a média dele). */
+  stochastic: { k: string; d: string };
   drawings: Palette;
 }
 
@@ -25,6 +27,7 @@ export const CHART_THEMES: Record<"light" | "dark", ChartTheme> = {
     movingAverages: ["#d97706", "#0891b2", "#db2777", "#475569"],
     momentum: "#c2410c",
     rsi: "#0f766e",
+    stochastic: { k: "#4338ca", d: "#e11d48" },
     drawings: {
       primary: "#2563eb",
       support: "#059669",
@@ -44,6 +47,7 @@ export const CHART_THEMES: Record<"light" | "dark", ChartTheme> = {
     movingAverages: ["#fbbf24", "#22d3ee", "#f472b6", "#cbd5e1"],
     momentum: "#fb923c",
     rsi: "#2dd4bf",
+    stochastic: { k: "#818cf8", d: "#fb7185" },
     drawings: {
       primary: "#60a5fa",
       support: "#34d399",

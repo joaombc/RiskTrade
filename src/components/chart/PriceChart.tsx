@@ -53,6 +53,16 @@ import {
 } from "@/lib/paneOrder";
 import { isWidening, loadMaOscillatorVisible, maDifference, readMaOscillator, saveMaOscillatorVisible } from "@/lib/maOscillator";
 import { failureSwings, loadRsiPeriod, OVERBOUGHT, OVERSOLD, readRsi, rsi, saveRsiPeriod, zoneExits, type RsiPeriod } from "@/lib/rsi";
+import {
+  loadStochasticPeriod,
+  OVERBOUGHT as STOCH_OVERBOUGHT,
+  OVERSOLD as STOCH_OVERSOLD,
+  readStochastic,
+  saveStochasticPeriod,
+  stochastic,
+  stochasticCrosses,
+  type StochasticPeriod,
+} from "@/lib/stochastic";
 import { loadMomentumPeriod, momentum, readMomentum, saveMomentumPeriod, zeroCrossings, type MomentumPeriod } from "@/lib/momentum";
 import {
   HISTORY_RANGES,
@@ -88,6 +98,7 @@ import { FourWeekPanel } from "./FourWeekPanel";
 import { MaOscillatorPanel } from "./MaOscillatorPanel";
 import { MomentumPanel } from "./MomentumPanel";
 import { RsiPanel } from "./RsiPanel";
+import { StochasticPanel } from "./StochasticPanel";
 import { DrawingsPrimitive } from "./DrawingsPrimitive";
 import { DrawingToolbar } from "./DrawingToolbar";
 import { MovingAverageBar } from "./MovingAverageBar";
@@ -144,13 +155,14 @@ const ENVELOPE_STYLE: Record<EnvelopePercent, LineStyle> = {
   10: LineStyle.LargeDashed,
 };
 const NO_EXAMPLE: ResolvedExample = { drawings: [], markers: [] };
-/** Altura do gráfico conforme o número de painéis opcionais abertos (0 a 4). */
+/** Altura do gráfico conforme o número de painéis opcionais abertos (0 a 5). */
 const CHART_HEIGHT = [
   "h-[560px] sm:h-[640px]",
   "h-[680px] sm:h-[780px]",
   "h-[800px] sm:h-[920px]",
   "h-[920px] sm:h-[1060px]",
   "h-[1040px] sm:h-[1200px]",
+  "h-[1160px] sm:h-[1340px]",
 ];
 
 /**
@@ -404,6 +416,11 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
   const [showRsiSignals, setShowRsiSignals] = useState(true);
   const rsiValues = useMemo(() => (bars && rsiPeriod ? rsi(bars, rsiPeriod, warmup) : null), [bars, rsiPeriod, warmup]);
   const rsiReading = useMemo(() => (rsiValues ? readRsi(rsiValues) : null), [rsiValues]);
+
+  const [stochasticPeriod, setStochasticPeriod] = useState<StochasticPeriod | null>(loadStochasticPeriod);
+  const [showStochasticSignals, setShowStochasticSignals] = useState(true);
+  const stochasticLines = useMemo(() => (bars && stochasticPeriod ? stochastic(bars, stochasticPeriod) : null), [bars, stochasticPeriod]);
+  const stochasticReading = useMemo(() => (stochasticLines ? readStochastic(stochasticLines) : null), [stochasticLines]);
   const fourWeekSystem = useMemo(() => {
     if (!bars || !fourWeek.enabled || isIntraday(range)) return null;
     const entryBars = fourWeek.entryWeeks * WEEK_BARS;
@@ -809,6 +826,10 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
   }, [rsiPeriod]);
 
   useEffect(() => {
+    saveStochasticPeriod(stochasticPeriod);
+  }, [stochasticPeriod]);
+
+  useEffect(() => {
     paneOrderRef.current = paneOrder;
     savePaneOrder(paneOrder);
     arrange();
@@ -1072,6 +1093,65 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
     };
   }, [bars, rsiPeriod, rsiValues, showRsiSignals, theme, arrange]);
 
+  // Estocástico lento: %K e %D num painel de 0 a 100, linhas de 80, 50 e 20, e setas nos
+  // cruzamentos do %K com o %D nas zonas extremas (os sinais de Murphy).
+  useEffect(() => {
+    const handles = handlesRef.current;
+    if (!handles || !bars || !stochasticPeriod || !stochasticLines) return;
+    const fixedScale = () => ({ priceRange: { minValue: 0, maxValue: 100 } });
+    const k = addPaneSeries(handles, "stochastic", LineSeries, {
+      color: theme.stochastic.k,
+      lineWidth: 2,
+      priceLineVisible: false,
+      autoscaleInfoProvider: fixedScale,
+    });
+    const d = handles.chart.addSeries(
+      LineSeries,
+      { color: theme.stochastic.d, lineWidth: 1, priceLineVisible: false, crosshairMarkerVisible: false, autoscaleInfoProvider: fixedScale },
+      k.getPane().paneIndex(),
+    );
+    (
+      [
+        [STOCH_OVERBOUGHT, LineStyle.Dashed, true],
+        [50, LineStyle.Dotted, false],
+        [STOCH_OVERSOLD, LineStyle.Dashed, true],
+      ] as const
+    ).forEach(([price, lineStyle, axisLabelVisible]) =>
+      k.createPriceLine({ price, color: theme.drawings.muted, lineWidth: 1, lineStyle, axisLabelVisible }),
+    );
+    const toData = (values: (number | null)[]) =>
+      bars.map((b, i) => {
+        const value = values[i];
+        return value === null ? { time: b.time as UTCTimestamp } : { time: b.time as UTCTimestamp, value };
+      });
+    k.setData(toData(stochasticLines.k));
+    d.setData(toData(stochasticLines.d));
+    createSeriesMarkers(
+      k,
+      showStochasticSignals
+        ? stochasticCrosses(stochasticLines).flatMap((c): SeriesMarker<Time>[] =>
+            c.signal
+              ? [
+                  {
+                    time: bars[c.index].time as UTCTimestamp,
+                    position: c.signal === "buy" ? "belowBar" : "aboveBar",
+                    shape: c.signal === "buy" ? "arrowUp" : "arrowDown",
+                    color: c.signal === "buy" ? theme.up : theme.down,
+                  },
+                ]
+              : [],
+          )
+        : [],
+    );
+    arrange();
+    return () => {
+      // O %D sai primeiro: o painel só é removido quando fica vazio (junto com o %K).
+      if (isAlive(handles.chart, d)) handles.chart.removeSeries(d);
+      removePaneSeries(handles, "stochastic", k);
+      arrange();
+    };
+  }, [bars, stochasticPeriod, stochasticLines, showStochasticSignals, theme, arrange]);
+
   // Exemplo do glossário: aproxima o gráfico da janela do padrão (uma vez por exemplo carregado).
   useEffect(() => {
     const handles = handlesRef.current;
@@ -1276,6 +1356,12 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
     openInterest: [{ label: t.chart.series.openInterest, color: theme.drawings.primary }],
     momentum: momentumPeriod ? [{ label: fmt(t.chart.series.momentum, { n: momentumPeriod }), color: theme.momentum }] : [],
     rsi: rsiPeriod ? [{ label: fmt(t.chart.series.rsi, { n: rsiPeriod }), color: theme.rsi }] : [],
+    stochastic: stochasticPeriod
+      ? [
+          { label: fmt(t.chart.series.stochK, { n: stochasticPeriod }), color: theme.stochastic.k },
+          { label: t.chart.series.stochD, color: theme.stochastic.d },
+        ]
+      : [],
     maOscillator: maOscillator
       ? [
           {
@@ -1358,6 +1444,8 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
         onMomentumChange={setMomentumPeriod}
         rsi={rsiPeriod}
         onRsiChange={setRsiPeriod}
+        stochastic={stochasticPeriod}
+        onStochasticChange={setStochasticPeriod}
       />
 
       <DrawingToolbar
@@ -1395,7 +1483,7 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
       </div>
       <div
         ref={wrapperRef}
-        className={`relative ${CHART_HEIGHT[(openInterest ? 1 : 0) + (momentumPeriod ? 1 : 0) + (showMaOscillator ? 1 : 0) + (rsiPeriod ? 1 : 0)]}`}
+        className={`relative ${CHART_HEIGHT[(openInterest ? 1 : 0) + (momentumPeriod ? 1 : 0) + (showMaOscillator ? 1 : 0) + (rsiPeriod ? 1 : 0) + (stochasticPeriod ? 1 : 0)]}`}
       >
         <div ref={containerRef} className={`h-full w-full ${tool ? "cursor-crosshair" : ""}`} />
         <PaneHandles
@@ -1464,6 +1552,16 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
           intraday={isIntraday(range)}
           show={maOscillatorVisible}
           onShowChange={setMaOscillatorVisible}
+        />
+      )}
+      {bars && bars.length > 0 && !loading && stochasticPeriod && (
+        <StochasticPanel
+          bars={bars}
+          period={stochasticPeriod}
+          reading={stochasticReading}
+          intraday={isIntraday(range)}
+          show={showStochasticSignals}
+          onShowChange={setShowStochasticSignals}
         />
       )}
       {bars && bars.length > 0 && !loading && rsiPeriod && (
