@@ -78,6 +78,14 @@ export const LESSON_LABELS_EN: Record<string, string> = {
   "−20 sobrecompra": "−20 overbought",
   "−80 sobrevenda": "−80 oversold",
   "%R mais baixo": "lower %R",
+  // MACD
+  MACD: "MACD",
+  sinal: "signal",
+  zero: "zero",
+  histograma: "histogram",
+  "histograma vira": "histogram turns",
+  cruzamento: "crossover",
+  "MACD mais baixo": "lower MACD",
 };
 
 export const LESSONS_EN: Record<string, LessonTranslation> = {
@@ -731,6 +739,103 @@ export const LESSONS_EN: Record<string, LessonTranslation> = {
       "%R is very sensitive: the signal is the exit from the zones, not the touch.",
       "In an uptrend, a %R that no longer reaches −20 while price rises is a divergence warning.",
       "Use it in the direction of the major trend and combine it with a slower oscillator.",
+    ],
+  },
+  macd: {
+    title: "MACD and the MACD Histogram",
+    subtitle: "Two exponential averages, a signal line and the histogram that turns first",
+    summary:
+      "How Gerald Appel's MACD is built, crossovers with the signal line, the zero line, extremes and divergences, and how Thomas Aspray's histogram warns of crossovers before they happen.",
+    source: "Murphy, Technical Analysis of the Financial Markets, ch. 10 (Oscillators and Contrary Opinion)",
+    sections: [
+      {
+        heading: "Origins",
+        paragraphs: [
+          "The MACD (Moving Average Convergence/Divergence) was developed by Gerald Appel. It combines two ideas Murphy covers in the moving averages chapter, the crossover of two averages and the oscillator of the difference between them, into a single indicator. The MACD histogram was proposed later by Thomas Aspray.",
+        ],
+      },
+      {
+        heading: "The two lines",
+        paragraphs: [
+          "The main line, the MACD, is the difference between two exponential moving averages of closes: the 12-period minus the 26-period. The second, the signal line, is a 9-period exponential average of the MACD itself. The (12, 26, 9) parameters are the standard.",
+        ],
+        bullets: [
+          "Positive MACD: the 12-period average is above the 26, meaning recent prices are above older ones.",
+          "Rising MACD: the short average is pulling away from the long one upward, and the rally is gaining strength.",
+          "The signal line is a slower version of the MACD: the crossing of the two shows a change in pace.",
+        ],
+      },
+      {
+        heading: "Crossovers with the signal line",
+        paragraphs: [
+          "The main signal is the crossing of the two lines. When the MACD crosses above the signal line, it is a buy; when it crosses below, a sell. It is the same logic as the crossover of two averages, applied to an indicator that already measures the distance between two averages.",
+        ],
+        caption: "MACD (12, 26, 9) on an oscillating price: buy when the MACD crosses above the signal, sell when it crosses below.",
+      },
+      {
+        heading: "The zero line",
+        paragraphs: [
+          "The MACD crossing zero is the same as the 12-period average crossing the 26. Above zero, the picture is bullish; below, bearish. Some analysts use the zero line as a filter: they only buy on crossovers with the MACD above zero, in the direction of the trend.",
+        ],
+      },
+      {
+        heading: "Overbought and oversold",
+        paragraphs: [
+          "The MACD has no fixed bounds like the RSI, but it works as an oscillator: when the lines are far above zero, the market is overbought; far below, oversold. That is why Murphy gives more weight to sells that happen well above zero and buys well below it.",
+        ],
+      },
+      {
+        heading: "Divergences",
+        paragraphs: [
+          "When price makes a new high and the MACD makes a lower high, there is a bearish divergence: the short average no longer pulls as far away from the long one, and the rally is running out of steam. The mirror image, price at a lower low and the MACD at a higher low, is a bullish divergence. As with other oscillators, it is a warning that needs confirmation.",
+        ],
+        caption: "Price makes a higher high, but the MACD makes a lower high: the rally has lost strength.",
+      },
+      {
+        heading: "The MACD histogram",
+        paragraphs: [
+          "The histogram is the difference between the MACD and the signal line, drawn as bars around zero. It is positive when the MACD is above the signal and negative when it is below. The histogram crosses zero exactly when the two lines cross.",
+          "What it adds is the distance between the lines: growing bars show the MACD pulling away from the signal, and the move gaining strength; shrinking bars show the lines converging.",
+        ],
+      },
+      {
+        heading: "The histogram turns first",
+        paragraphs: [
+          "Because the histogram measures the distance between the lines, it starts shrinking as soon as the MACD loses speed, well before the lines cross. That turn in the histogram is an early warning that a crossover is coming.",
+          "Murphy recommends using the histogram's turn as a warning to protect profits or get ready, not as an entry signal on its own: the signal is still the crossover of the lines.",
+        ],
+        caption: "The histogram peaks and starts shrinking well before the MACD crosses the signal.",
+      },
+      {
+        heading: "Weekly and daily",
+        paragraphs: [
+          "The MACD works on any time frame. A classic way to use it is to let the weekly MACD give the direction and the daily give the timing: daily buys only when the weekly is on a buy signal, and sells only when it is on a sell signal.",
+        ],
+      },
+      {
+        heading: "MACD and the averages histogram",
+        paragraphs: [
+          "The MACD is related to the histogram of the difference between two averages, which RiskTrade shows when you keep two averages visible. The difference is that the MACD uses fixed exponential averages (12 and 26) and adds the signal line, which gives the crossovers.",
+        ],
+      },
+      {
+        heading: "In RiskTrade",
+        paragraphs: ["Check the MACD (12, 26, 9) box in the chart's averages bar:"],
+        bullets: [
+          "The pane shows the histogram as bars (green above zero, red below, light when shrinking), the MACD line, the signal line and the zero line.",
+          "Arrows mark the MACD crossing the signal: buy upward, sell downward.",
+          "The reading panel shows the values, whether the histogram is widening or narrowing, the last crossover (above or below zero) and the last zero-line crossing.",
+          "Drag the pane by its ⋮⋮ handle close to price and compare divergences.",
+        ],
+      },
+    ],
+    takeaways: [
+      "MACD = 12 EMA − 26 EMA; signal line = 9 EMA of the MACD; histogram = MACD − signal.",
+      "The main signal is the MACD crossing the signal line.",
+      "MACD above zero is a bullish picture; sells well above zero and buys well below carry more weight.",
+      "Divergences between the MACD and price warn that the move is losing strength.",
+      "The histogram turns before the crossover: use it as a warning, not as a signal on its own.",
+      "The weekly MACD gives the direction; the daily, the moment to enter.",
     ],
   },
   "ondas-de-elliott": {

@@ -1,5 +1,6 @@
 import { CHANNEL_DIAGRAMS } from "./channel-diagrams";
 import { MA_DIAGRAMS } from "./ma-diagrams";
+import { MACD_DIAGRAMS } from "./macd-diagrams";
 import { RSI_DIAGRAMS } from "./rsi-diagrams";
 import { STOCHASTIC_DIAGRAMS } from "./stochastic-diagrams";
 import { WILLIAMS_DIAGRAMS } from "./williams-diagrams";
@@ -928,6 +929,115 @@ export const LESSONS: Lesson[] = [
       "O %R é muito sensível: o sinal está na saída das zonas, não no toque.",
       "Na alta, o %R que não chega mais a −20 enquanto o preço sobe é um aviso de divergência.",
       "Use a favor da tendência principal e combine com um oscilador mais lento.",
+    ],
+  },
+  {
+    slug: "macd",
+    title: "MACD e histograma do MACD",
+    subtitle: "Duas médias exponenciais, uma linha de sinal e o histograma que vira antes",
+    summary:
+      "Como o MACD de Gerald Appel é montado, os cruzamentos com a linha de sinal, a linha zero, os extremos e as divergências, e como o histograma de Thomas Aspray avisa dos cruzamentos antes que eles aconteçam.",
+    readingMinutes: 9,
+    source: "Murphy, Technical Analysis of the Financial Markets, cap. 10 (Osciladores e opinião contrária)",
+    relatedTerms: ["linha-de-momentum", "linha-de-tendencia", "divergencia-de-volume", "suporte-e-resistencia", "bandas-de-bollinger"],
+    sections: [
+      {
+        heading: "Origem",
+        paragraphs: [
+          "O MACD (Moving Average Convergence/Divergence, convergência e divergência de médias móveis) foi criado por Gerald Appel. Ele junta duas ideias que Murphy trata no capítulo das médias móveis, o cruzamento de duas médias e o oscilador da diferença entre elas, num indicador só. O histograma do MACD foi proposto depois por Thomas Aspray.",
+        ],
+      },
+      {
+        heading: "As duas linhas",
+        paragraphs: [
+          "A linha principal, o MACD, é a diferença entre duas médias móveis exponenciais dos fechamentos: a de 12 períodos menos a de 26. A segunda, a linha de sinal, é uma média exponencial de 9 períodos do próprio MACD. Os parâmetros (12, 26, 9) são o padrão.",
+        ],
+        bullets: [
+          "MACD positivo: a média de 12 está acima da de 26, ou seja, os preços recentes estão acima dos mais antigos.",
+          "MACD subindo: a média curta está se afastando da longa para cima, e o movimento de alta ganha força.",
+          "A linha de sinal é uma versão mais lenta do MACD: o cruzamento das duas mostra uma mudança de ritmo.",
+        ],
+      },
+      {
+        heading: "Cruzamentos com a linha de sinal",
+        paragraphs: [
+          "O sinal principal é o cruzamento das duas linhas. Quando o MACD cruza a linha de sinal para cima, é compra; quando cruza para baixo, é venda. É a mesma lógica do cruzamento de duas médias, aplicada a um indicador que já mede a distância entre duas médias.",
+        ],
+        diagram: {
+          diagram: MACD_DIAGRAMS.lines,
+          caption: "MACD (12, 26, 9) sobre um preço que oscila: compra quando o MACD cruza o sinal para cima, venda quando cruza para baixo.",
+        },
+      },
+      {
+        heading: "A linha zero",
+        paragraphs: [
+          "O MACD cruzar o zero é o mesmo que a média de 12 cruzar a de 26. Acima de zero, o quadro é de alta; abaixo, de baixa. Alguns analistas usam a linha zero como filtro: só compram nos cruzamentos com o MACD acima de zero, a favor da tendência.",
+        ],
+      },
+      {
+        heading: "Sobrecompra e sobrevenda",
+        paragraphs: [
+          "O MACD não tem limites fixos como o IFR, mas funciona como oscilador: quando as linhas ficam muito acima de zero, o mercado está sobrecomprado; muito abaixo, sobrevendido. Por isso Murphy dá mais peso às vendas que acontecem bem acima de zero e às compras bem abaixo dele.",
+        ],
+      },
+      {
+        heading: "Divergências",
+        paragraphs: [
+          "Quando o preço faz um novo topo e o MACD faz um topo mais baixo, há uma divergência de baixa: a média curta já não se afasta tanto da longa, e a alta perde fôlego. O espelho, preço num fundo mais baixo e MACD num fundo mais alto, é a divergência de alta. Como nos outros osciladores, é um alerta que pede confirmação.",
+        ],
+        diagram: {
+          diagram: MACD_DIAGRAMS.divergence,
+          caption: "O preço faz um topo mais alto, mas o MACD faz um topo mais baixo: a alta perdeu força.",
+        },
+      },
+      {
+        heading: "O histograma do MACD",
+        paragraphs: [
+          "O histograma é a diferença entre o MACD e a linha de sinal, desenhada em barras em volta de zero. Ele é positivo quando o MACD está acima do sinal e negativo quando está abaixo. O histograma cruza o zero exatamente quando as duas linhas se cruzam.",
+          "O que ele acrescenta é a distância entre as linhas: barras crescendo mostram o MACD se afastando do sinal, e o movimento ganhando força; barras encolhendo mostram as linhas se aproximando.",
+        ],
+      },
+      {
+        heading: "O histograma vira antes",
+        paragraphs: [
+          "Como o histograma mede a distância entre as linhas, ele começa a encolher assim que o MACD perde velocidade, bem antes de as linhas se cruzarem. Essa virada do histograma é um aviso antecipado de que o cruzamento está chegando.",
+          "Murphy recomenda usar a virada do histograma como alerta para proteger lucros ou se preparar, e não como sinal de entrada por si só: o sinal continua sendo o cruzamento das linhas.",
+        ],
+        diagram: {
+          diagram: MACD_DIAGRAMS.histogram,
+          caption: "O histograma faz o pico e começa a encolher bem antes do cruzamento do MACD com o sinal.",
+        },
+      },
+      {
+        heading: "Semanal e diário",
+        paragraphs: [
+          "O MACD funciona em qualquer prazo. Uma forma clássica de usá-lo é deixar o MACD semanal dar a direção e o diário dar o momento: compras no diário só quando o semanal está em sinal de compra, e vendas só quando ele está em sinal de venda.",
+        ],
+      },
+      {
+        heading: "MACD e o histograma das médias",
+        paragraphs: [
+          "O MACD é parente do histograma da diferença entre duas médias, que o RiskTrade mostra quando você deixa duas médias visíveis. A diferença é que o MACD usa médias exponenciais fixas (12 e 26) e acrescenta a linha de sinal, que dá os cruzamentos.",
+        ],
+      },
+      {
+        heading: "No RiskTrade",
+        paragraphs: ["Marque a caixa MACD (12, 26, 9) na barra de médias do gráfico:"],
+        bullets: [
+          "O painel mostra o histograma em barras (verde acima de zero, vermelho abaixo, claro quando encolhe), a linha do MACD, a linha de sinal e a linha zero.",
+          "Setas marcam os cruzamentos do MACD com o sinal: compra para cima, venda para baixo.",
+          "O painel de leitura diz os valores, se o histograma está aumentando ou diminuindo, o último cruzamento (acima ou abaixo de zero) e o último cruzamento da linha zero.",
+          "Arraste o painel pela alça ⋮⋮ para perto do preço e compare as divergências.",
+        ],
+      },
+    ],
+    takeaways: [
+      "MACD = MME 12 − MME 26; linha de sinal = MME 9 do MACD; histograma = MACD − sinal.",
+      "O sinal principal é o cruzamento do MACD com a linha de sinal.",
+      "MACD acima de zero é quadro de alta; vendas bem acima de zero e compras bem abaixo pesam mais.",
+      "Divergências entre o MACD e o preço avisam que o movimento perde força.",
+      "O histograma vira antes do cruzamento: use como alerta, não como sinal sozinho.",
+      "O MACD semanal dá a direção; o diário, o momento de entrar.",
     ],
   },
   {
