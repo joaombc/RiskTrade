@@ -14,6 +14,8 @@ export interface ChartTheme {
   rsi: string;
   /** Estocástico: %K (linha principal) e %D (a média dele). */
   stochastic: { k: string; d: string };
+  /** %R de Williams: oliva, diferente dos outros osciladores. */
+  williamsR: string;
   drawings: Palette;
 }
 
@@ -28,6 +30,7 @@ export const CHART_THEMES: Record<"light" | "dark", ChartTheme> = {
     momentum: "#c2410c",
     rsi: "#0f766e",
     stochastic: { k: "#4338ca", d: "#e11d48" },
+    williamsR: "#4d7c0f",
     drawings: {
       primary: "#2563eb",
       support: "#059669",
@@ -48,6 +51,7 @@ export const CHART_THEMES: Record<"light" | "dark", ChartTheme> = {
     momentum: "#fb923c",
     rsi: "#2dd4bf",
     stochastic: { k: "#818cf8", d: "#fb7185" },
+    williamsR: "#a3e635",
     drawings: {
       primary: "#60a5fa",
       support: "#34d399",

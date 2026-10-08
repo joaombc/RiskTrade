@@ -105,7 +105,7 @@ export const enUS: Dictionary = {
     closeExample: "Close example",
     loading: "Loading price history…",
     confirmClear: "Delete all {count} drawings on {symbol}?",
-    series: { volume: "Volume", obv: "OBV", openInterest: "Open int.", divergence: "Div.", momentum: "Momentum {n}", maOscillator: "{fast} − {slow}", rsi: "RSI {n}", stochK: "%K {n}", stochD: "%D 3" },
+    series: { volume: "Volume", obv: "OBV", openInterest: "Open int.", divergence: "Div.", momentum: "Momentum {n}", maOscillator: "{fast} − {slow}", rsi: "RSI {n}", stochK: "%K {n}", stochD: "%D 3", williamsR: "%R {n}" },
     markers: {
       buy: "Buy",
       sell: "Sell",
@@ -121,7 +121,7 @@ export const enUS: Dictionary = {
     hint: "Drag ⋮⋮ to change the order of the panes.",
     reset: "Default order",
     move: "Move the {name} pane: drag or use ↑ and ↓",
-    names: { price: "Price", volume: "Volume", obv: "OBV", openInterest: "Open interest", momentum: "Momentum", maOscillator: "Average difference", rsi: "RSI", stochastic: "Stochastic" },
+    names: { price: "Price", volume: "Volume", obv: "OBV", openInterest: "Open interest", momentum: "Momentum", maOscillator: "Average difference", rsi: "RSI", stochastic: "Stochastic", williamsR: "%R" },
   },
   customRange: {
     label: "Number of days (sessions)",
@@ -198,6 +198,9 @@ export const enUS: Dictionary = {
     stochastic: "Stochastic",
     stochasticHint: "Lane's slow stochastic (N, 3, 3): where the close sits within the range of the last N candles, with 80 and 20 as zones (Murphy, ch. 10).",
     stochasticPeriod: "{n}-candle slow stochastic (%K {n}, 3; %D 3). Click to {action}.",
+    williamsR: "Williams %R",
+    williamsRHint: "Larry Williams' %R: where the close sits relative to the high of the last N candles, from 0 to −100, with −20 (overbought) and −80 (oversold) (Murphy, ch. 10).",
+    williamsRPeriod: "{n}-candle %R. Click to {action}.",
     entryOption: { "2": "2 weeks (sensitive)", "4": "4 weeks (original)", "8": "8 weeks (filters ranges)" },
     continuous: "Continuous (reverses on the entry channel)",
     exitOption: { "1": "Non-continuous: 1 week", "2": "Non-continuous: 2 weeks" },
@@ -365,6 +368,26 @@ export const enUS: Dictionary = {
     footer:
       "Murphy's rules (ch. 10): the most important signal is divergence between %D and price with %D above 80 or below 20. The %K crossing %D in the extreme zones gives the moment to act. In a strong trend, the stochastic can stay in a zone for a long time: trade in the direction of the major trend. The arrows on the pane mark crossovers in the zones.",
     link: "Stochastic lesson",
+  },
+  williamsR: {
+    title: "Williams %R",
+    params: "· {n} candles · −20/−80",
+    insufficient: "There are not enough candles yet for %R on this range.",
+    now: "Now:",
+    value: "%R at {value}",
+    zones: {
+      overbought: ", in the overbought zone (above −20): the close is near the high of the last candles. %R gets here often; the signal comes when it leaves the zone.",
+      oversold: ", in the oversold zone (below −80): the close is near the low of the last candles. %R gets here often; the signal comes when it leaves the zone.",
+      upper: ", in the upper half of the range (above −50): the close is closer to the high.",
+      lower: ", in the lower half of the range (below −50): the close is closer to the low.",
+    },
+    exit: "Zones:",
+    exitSell: "left the area above −20 on {date} (close {price}): a sell signal.",
+    exitBuy: "left the area below −80 on {date} (close {price}): a buy signal.",
+    noExit: "%R didn't leave the −20 or −80 zones in the range.",
+    open: " The signal is on the last candle: if it is still forming, it may disappear by the close.",
+    footer:
+      "Murphy's rules (ch. 10): %R is the fast stochastic upside down, and very sensitive. It reaches the extreme zones often, so trade the exit from the zones and only in the direction of the major trend. Divergences between %R and price warn that the move is losing strength. The arrows on the pane mark zone exits.",
   },
   bollinger: {
     title: "Bollinger Bands",
