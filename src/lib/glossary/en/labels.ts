@@ -82,4 +82,10 @@ export const LABELS_EN: Record<string, string> = {
   "cada cruzamento é um sinal falso (violinada)": "each crossing is a false signal (whipsaw)",
   "aperto: volatilidade baixa": "squeeze: low volatility",
   "expansão no rompimento": "expansion on the breakout",
+
+  // Momentum
+  "Momentum 10": "Momentum 10",
+  "topo do preço": "price top",
+  "pico do momentum": "momentum peak",
+  "o momentum vira antes do preço": "momentum turns before price",
 };

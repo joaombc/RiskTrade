@@ -68,6 +68,8 @@ describe("glossário em inglês", () => {
     expect(first("ascending triangle")).toBe("triangulo-ascendente");
     expect(first("exhaustion gap")).toBe("gap-de-exaustao");
     expect(first("OCO")).toBe("oco");
+    expect(first("momentum")).toBe("linha-de-momentum");
+    expect(first("rate of change")).toBe("linha-de-momentum");
   });
 });
 

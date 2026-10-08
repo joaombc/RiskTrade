@@ -21,6 +21,7 @@ const CH5 = `${MURPHY}, ch. 5 (Major Reversal Patterns)`;
 const CH6 = `${MURPHY}, ch. 6 (Continuation Patterns)`;
 const CH7 = `${MURPHY}, ch. 7 (Volume and Open Interest)`;
 const CH9 = `${MURPHY}, ch. 9 (Moving Averages)`;
+const CH10 = `${MURPHY}, ch. 10 (Oscillators and Contrary Opinion)`;
 
 export const TERMS_EN: Record<string, TermTranslation> = {
   // Lines
@@ -561,6 +562,25 @@ export const TERMS_EN: Record<string, TermTranslation> = {
       pitfalls:
         "In a strong trend, price walks along the band: selling every touch of the upper band is fighting the trend. A squeeze warns that a move is coming, but not in which direction; wait for the breakout. And in a sideways market, the bands alone generate many signals: Murphy recommends combining them with oscillators.",
       source: CH9,
+    },
+  },
+  "linha-de-momentum": {
+    name: "Momentum Line",
+    aliases: ["momentum", "oscillator", "zero line", "velocity", "ROC", "rate of change"],
+    definition:
+      "The simplest oscillator of all: today's close minus the close N periods ago (10 is the most common). It oscillates around a zero line and measures the speed of the move, not its direction. That is why it usually turns before price.",
+    validation:
+      "Above zero, price is higher than N periods ago; below, lower. Crossing above the zero line is a buy signal and crossing below a sell signal, but they only count in the direction of the major trend. A rising line means an accelerating rally; a line that flattens or falls while price is still rising means the rally is losing strength.",
+    details: {
+      market:
+        "The line compares today's price with the price N periods ago, so it measures how fast price is rising or falling. In a healthy rally, price rises faster and faster and the line rises with it. When the rally continues but more slowly, the line starts to fall, still above zero. Price is still making highs, but the move has lost strength. That is why momentum usually turns before price: it warns that the trend is slowing down before it reverses.",
+      volume:
+        "Momentum doesn't use volume. Use volume (or OBV) to confirm: a rally with falling momentum and falling volume is doubly weak. A crossing above the zero line on rising volume is more reliable.",
+      trading:
+        "Murphy gives three uses. Zero line: crossing above is a buy and below is a sell, but trade only in the direction of the major trend. In an uptrend, use upward crossings as entries and ignore downward ones, or use them only to take profits. Extremes: very high values signal overbought, and very low ones oversold. Since momentum has no fixed bounds, compare it with its own past extremes. Divergence: price making a new high with momentum lower than at the prior high warns that the rally is losing strength. The period sets the sensitivity: 10 is the most used; short periods (5) give more signals and more noise, and long ones (20, 40) give a smoother, slower line. In RiskTrade, the 10, 20 and 40 buttons in the averages bar draw the line in a pane below OBV, with arrows at the zero-line crossings. A reading panel tells whether momentum is accelerating, whether it is at an extreme and when it last crossed the zero line.",
+      pitfalls:
+        "Selling just because momentum fell: in a strong rally, it can pull back many times without the trend turning. The signal only counts with confirmation from price, such as the break of a trendline. Trading every zero-line crossing in a sideways market, where they repeat and produce whipsaws. And forgetting that the value depends on the asset's price: compare assets by the % change, not the absolute value.",
+      source: CH10,
     },
   },
 };

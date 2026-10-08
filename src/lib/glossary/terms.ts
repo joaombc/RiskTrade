@@ -1,6 +1,7 @@
 import { DETAILS } from "./details-data";
 import { EXAMPLES } from "./examples-data";
 import { MA_DIAGRAMS } from "./ma-diagrams";
+import { MOMENTUM_DIAGRAM } from "./momentum-diagram";
 import type { Diagram, DiagramCandle, DiagramPoint, GlossaryTerm, Pt } from "./types";
 
 // ─── Helpers de diagrama ───────────────────────────────────────────────────────
@@ -696,6 +697,17 @@ const TERMS: GlossaryTerm[] = [
     validation:
       "Tocar a banda de cima indica sobrecompra; a de baixo, sobrevenda: o preço costuma achar resistência e suporte nelas. Se quicar na banda de baixo e cruzar a média de 20 para cima, o alvo é a banda de cima (e vice-versa). Confirme com um oscilador.",
     diagram: MA_DIAGRAMS.bollinger,
+  },
+  {
+    slug: "linha-de-momentum",
+    name: "Linha de Momentum",
+    aliases: ["momentum", "momento", "oscilador", "linha zero", "velocidade", "ROC", "taxa de variação", "rate of change"],
+    category: "Indicadores",
+    definition:
+      "Oscilador mais simples de todos: o fechamento de hoje menos o de N períodos atrás (o mais comum é 10). Oscila em torno de uma linha zero e mede a velocidade do movimento, não a direção. Por isso costuma virar antes do preço.",
+    validation:
+      "Acima de zero, o preço está mais alto que há N períodos; abaixo, mais baixo. Cruzar a linha zero para cima é sinal de compra e para baixo, de venda, mas só valem a favor da tendência principal. Linha subindo indica alta acelerando; achatando ou caindo com o preço ainda em alta, a alta está perdendo força.",
+    diagram: MOMENTUM_DIAGRAM,
   },
 ];
 

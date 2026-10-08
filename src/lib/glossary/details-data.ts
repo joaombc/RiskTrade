@@ -11,6 +11,7 @@ const CH5 = `${MURPHY}, cap. 5 (Padrões de reversão)`;
 const CH6 = `${MURPHY}, cap. 6 (Padrões de continuação)`;
 const CH7 = `${MURPHY}, cap. 7 (Volume e contratos em aberto)`;
 const CH9 = `${MURPHY}, cap. 9 (Médias móveis)`;
+const CH10 = `${MURPHY}, cap. 10 (Osciladores e opinião contrária)`;
 
 export const DETAILS: Record<string, TermDetails> = {
   "linha-de-tendencia": {
@@ -296,6 +297,17 @@ export const DETAILS: Record<string, TermDetails> = {
     pitfalls:
       "Em tendência forte, o preço anda colado na banda: vender cada toque na banda de cima é brigar com a tendência. O aperto avisa que um movimento vem, mas não diz para que lado; espere o rompimento. E, num mercado lateral, as bandas sozinhas geram muitos sinais: Murphy recomenda combiná-las com osciladores.",
     source: CH9,
+  },
+  "linha-de-momentum": {
+    market:
+      "A linha compara o preço de hoje com o de N períodos atrás, então mede a velocidade da alta ou da queda. Numa alta saudável, o preço sobe cada vez mais rápido e a linha sobe junto. Quando a alta continua, mas mais devagar, a linha passa a cair, ainda acima de zero. O preço ainda faz topos, mas o movimento já perdeu força. Por isso o momentum costuma virar antes do preço: ele avisa que a tendência está desacelerando antes que ela vire.",
+    volume:
+      "O momentum não usa volume. Use o volume (ou o OBV) para confirmar: uma alta com momentum caindo e volume também caindo é duplamente fraca. Um cruzamento da linha zero para cima com volume crescente é mais confiável.",
+    trading:
+      "Murphy dá três usos. Linha zero: cruzar para cima é compra e para baixo é venda, mas opere só a favor da tendência principal. Numa alta, use os cruzamentos para cima como entrada e ignore os para baixo, ou use-os só para realizar lucro. Extremos: valores muito altos indicam sobrecompra, e muito baixos, sobrevenda. Como o momentum não tem limites fixos, compare com os extremos do próprio passado. Divergência: preço fazendo um novo topo com o momentum mais baixo que no topo anterior avisa que a alta está perdendo força. O período define a sensibilidade: 10 é o mais usado; períodos curtos (5) dão mais sinais e mais ruído, e longos (20, 40) dão uma linha mais suave e lenta. No RiskTrade, os botões 10, 20 e 40 da barra de médias desenham a linha num painel abaixo do OBV, com setas nos cruzamentos da linha zero. Um painel de leitura diz se o momentum está acelerando, se está num extremo e quando cruzou a linha zero pela última vez.",
+    pitfalls:
+      "Vender só porque o momentum caiu: numa alta forte, ele pode recuar muitas vezes sem que a tendência vire. O sinal só vale com confirmação pelo preço, como o rompimento de uma linha de tendência. Operar todos os cruzamentos da linha zero num mercado lateral, onde eles se repetem e geram violinadas. E esquecer que o valor depende do preço do ativo: compare ativos pela variação em %, não pelo valor absoluto.",
+    source: CH10,
   },
   obv: {
     market:
