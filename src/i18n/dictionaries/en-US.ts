@@ -420,6 +420,7 @@ export const enUS: Dictionary = {
     open: " The crossover is on the last candle: if it is still forming, it may disappear by the close.",
     footer:
       "Murphy's rules (ch. 10): the main signal is the MACD crossing its signal line. Buys well below zero and sells well above carry more weight. The histogram shows the distance between the two lines: when it shrinks, a crossover is coming. Divergences between the MACD and price warn of wear. The arrows on the pane mark the crossovers.",
+    link: "MACD lesson",
   },
   bollinger: {
     title: "Bollinger Bands",

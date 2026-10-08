@@ -422,6 +422,7 @@ export const ptBR = {
     open: " O cruzamento está no último candle: se ele ainda estiver em formação, pode se desfazer até o fechamento.",
     footer:
       "Regras de Murphy (cap. 10): o sinal principal é o cruzamento do MACD com a linha de sinal. Compras bem abaixo de zero e vendas bem acima pesam mais. O histograma mostra a distância entre as duas linhas: quando ele encolhe, o cruzamento está chegando. Divergências entre o MACD e o preço avisam de desgaste. As setas no painel marcam os cruzamentos.",
+    link: "Aula do MACD",
   },
   bollinger: {
     title: "Bandas de Bollinger",
