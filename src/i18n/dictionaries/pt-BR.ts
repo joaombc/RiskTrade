@@ -118,6 +118,12 @@ export const ptBR = {
       channelLow: "Mín. {n}S",
     },
   },
+  panes: {
+    hint: "Arraste ⋮⋮ para mudar a ordem dos painéis.",
+    reset: "Ordem padrão",
+    move: "Mover o painel {name}: arraste ou use ↑ e ↓",
+    names: { price: "Preço", volume: "Volume", obv: "OBV", openInterest: "Interesse aberto", momentum: "Momentum" },
+  },
   customRange: {
     label: "Quantidade de dias (pregões)",
     placeholder: "Dias",
