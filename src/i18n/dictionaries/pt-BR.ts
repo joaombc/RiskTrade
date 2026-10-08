@@ -106,7 +106,7 @@ export const ptBR = {
     closeExample: "Fechar exemplo",
     loading: "Carregando histórico…",
     confirmClear: "Apagar todos os {count} desenhos de {symbol}?",
-    series: { volume: "Volume", obv: "OBV", openInterest: "Int. aberto", divergence: "Div.", momentum: "Momentum {n}", maOscillator: "{fast} − {slow}", rsi: "IFR {n}", stochK: "%K {n}", stochD: "%D 3" },
+    series: { volume: "Volume", obv: "OBV", openInterest: "Int. aberto", divergence: "Div.", momentum: "Momentum {n}", maOscillator: "{fast} − {slow}", rsi: "IFR {n}", stochK: "%K {n}", stochD: "%D 3", williamsR: "%R {n}" },
     markers: {
       buy: "Compra",
       sell: "Venda",
@@ -122,7 +122,7 @@ export const ptBR = {
     hint: "Arraste ⋮⋮ para mudar a ordem dos painéis.",
     reset: "Ordem padrão",
     move: "Mover o painel {name}: arraste ou use ↑ e ↓",
-    names: { price: "Preço", volume: "Volume", obv: "OBV", openInterest: "Interesse aberto", momentum: "Momentum", maOscillator: "Diferença das médias", rsi: "IFR", stochastic: "Estocástico" },
+    names: { price: "Preço", volume: "Volume", obv: "OBV", openInterest: "Interesse aberto", momentum: "Momentum", maOscillator: "Diferença das médias", rsi: "IFR", stochastic: "Estocástico", williamsR: "%R" },
   },
   customRange: {
     label: "Quantidade de dias (pregões)",
@@ -199,6 +199,9 @@ export const ptBR = {
     stochastic: "Estocástico",
     stochasticHint: "Estocástico lento de Lane (N, 3, 3): onde o fechamento está na faixa dos últimos N candles, com 80 e 20 como zonas (Murphy, cap. 10).",
     stochasticPeriod: "Estocástico lento de {n} candles (%K {n}, 3; %D 3). Clique para {action}.",
+    williamsR: "%R de Williams",
+    williamsRHint: "%R de Larry Williams: onde o fechamento está em relação à máxima dos últimos N candles, de 0 a −100, com −20 (sobrecompra) e −80 (sobrevenda) (Murphy, cap. 10).",
+    williamsRPeriod: "%R de {n} candles. Clique para {action}.",
     entryOption: { "2": "2 semanas (sensível)", "4": "4 semanas (original)", "8": "8 semanas (filtra lateral)" },
     continuous: "Contínua (inverte no canal de entrada)",
     exitOption: { "1": "Não contínua: 1 semana", "2": "Não contínua: 2 semanas" },
@@ -367,6 +370,26 @@ export const ptBR = {
     footer:
       "Regras de Murphy (cap. 10): o sinal mais importante é a divergência entre o %D e o preço com o %D acima de 80 ou abaixo de 20. O cruzamento do %K com o %D nas zonas extremas dá o momento de agir. Numa tendência forte, o estocástico pode ficar muito tempo numa zona: opere a favor da tendência principal. As setas no painel marcam os cruzamentos nas zonas.",
     link: "Aula do estocástico",
+  },
+  williamsR: {
+    title: "%R de Williams",
+    params: "· {n} candles · −20/−80",
+    insufficient: "Ainda não há candles suficientes para o %R deste período.",
+    now: "Agora:",
+    value: "%R em {value}",
+    zones: {
+      overbought: ", na zona de sobrecompra (acima de −20): o fechamento está perto da máxima dos últimos candles. O %R chega aqui com frequência; o sinal vem quando ele sai da zona.",
+      oversold: ", na zona de sobrevenda (abaixo de −80): o fechamento está perto da mínima dos últimos candles. O %R chega aqui com frequência; o sinal vem quando ele sai da zona.",
+      upper: ", na metade de cima da faixa (acima de −50): o fechamento está mais perto da máxima.",
+      lower: ", na metade de baixo da faixa (abaixo de −50): o fechamento está mais perto da mínima.",
+    },
+    exit: "Zonas:",
+    exitSell: "saiu de cima de −20 em {date} (fechamento {price}): sinal de venda.",
+    exitBuy: "saiu de baixo de −80 em {date} (fechamento {price}): sinal de compra.",
+    noExit: "o %R não saiu das zonas de −20 ou −80 no período.",
+    open: " O sinal está no último candle: se ele ainda estiver em formação, pode se desfazer até o fechamento.",
+    footer:
+      "Regras de Murphy (cap. 10): o %R é o estocástico rápido de cabeça para baixo, muito sensível. Ele chega às zonas extremas com frequência, então opere a saída das zonas e só a favor da tendência principal. Divergências entre o %R e o preço avisam que o movimento perde força. As setas no painel marcam as saídas das zonas.",
   },
   bollinger: {
     title: "Bandas de Bollinger",

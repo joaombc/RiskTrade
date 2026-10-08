@@ -63,6 +63,16 @@ import {
   stochasticCrosses,
   type StochasticPeriod,
 } from "@/lib/stochastic";
+import {
+  loadWilliamsPeriod,
+  OVERBOUGHT as WILLIAMS_OVERBOUGHT,
+  OVERSOLD as WILLIAMS_OVERSOLD,
+  readWilliams,
+  saveWilliamsPeriod,
+  williamsExits,
+  williamsR,
+  type WilliamsPeriod,
+} from "@/lib/williamsR";
 import { loadMomentumPeriod, momentum, readMomentum, saveMomentumPeriod, zeroCrossings, type MomentumPeriod } from "@/lib/momentum";
 import {
   HISTORY_RANGES,
@@ -99,6 +109,7 @@ import { MaOscillatorPanel } from "./MaOscillatorPanel";
 import { MomentumPanel } from "./MomentumPanel";
 import { RsiPanel } from "./RsiPanel";
 import { StochasticPanel } from "./StochasticPanel";
+import { WilliamsRPanel } from "./WilliamsRPanel";
 import { DrawingsPrimitive } from "./DrawingsPrimitive";
 import { DrawingToolbar } from "./DrawingToolbar";
 import { MovingAverageBar } from "./MovingAverageBar";
@@ -155,7 +166,7 @@ const ENVELOPE_STYLE: Record<EnvelopePercent, LineStyle> = {
   10: LineStyle.LargeDashed,
 };
 const NO_EXAMPLE: ResolvedExample = { drawings: [], markers: [] };
-/** Altura do gráfico conforme o número de painéis opcionais abertos (0 a 5). */
+/** Altura do gráfico conforme o número de painéis opcionais abertos (0 a 6). */
 const CHART_HEIGHT = [
   "h-[560px] sm:h-[640px]",
   "h-[680px] sm:h-[780px]",
@@ -163,6 +174,7 @@ const CHART_HEIGHT = [
   "h-[920px] sm:h-[1060px]",
   "h-[1040px] sm:h-[1200px]",
   "h-[1160px] sm:h-[1340px]",
+  "h-[1280px] sm:h-[1480px]",
 ];
 
 /**
@@ -421,6 +433,11 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
   const [showStochasticSignals, setShowStochasticSignals] = useState(true);
   const stochasticLines = useMemo(() => (bars && stochasticPeriod ? stochastic(bars, stochasticPeriod) : null), [bars, stochasticPeriod]);
   const stochasticReading = useMemo(() => (stochasticLines ? readStochastic(stochasticLines) : null), [stochasticLines]);
+
+  const [williamsPeriod, setWilliamsPeriod] = useState<WilliamsPeriod | null>(loadWilliamsPeriod);
+  const [showWilliamsSignals, setShowWilliamsSignals] = useState(true);
+  const williamsValues = useMemo(() => (bars && williamsPeriod ? williamsR(bars, williamsPeriod) : null), [bars, williamsPeriod]);
+  const williamsReading = useMemo(() => (williamsValues ? readWilliams(williamsValues) : null), [williamsValues]);
   const fourWeekSystem = useMemo(() => {
     if (!bars || !fourWeek.enabled || isIntraday(range)) return null;
     const entryBars = fourWeek.entryWeeks * WEEK_BARS;
@@ -830,6 +847,10 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
   }, [stochasticPeriod]);
 
   useEffect(() => {
+    saveWilliamsPeriod(williamsPeriod);
+  }, [williamsPeriod]);
+
+  useEffect(() => {
     paneOrderRef.current = paneOrder;
     savePaneOrder(paneOrder);
     arrange();
@@ -1152,6 +1173,51 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
     };
   }, [bars, stochasticPeriod, stochasticLines, showStochasticSignals, theme, arrange]);
 
+  // %R de Williams: escala fixa de −100 a 0, linhas de −20, −50 e −80, e setas nas saídas das zonas.
+  useEffect(() => {
+    const handles = handlesRef.current;
+    if (!handles || !bars || !williamsPeriod || !williamsValues) return;
+    const series = addPaneSeries(handles, "williamsR", LineSeries, {
+      color: theme.williamsR,
+      lineWidth: 2,
+      priceLineVisible: false,
+      autoscaleInfoProvider: () => ({ priceRange: { minValue: -100, maxValue: 0 } }),
+    });
+    (
+      [
+        [WILLIAMS_OVERBOUGHT, LineStyle.Dashed, true],
+        [-50, LineStyle.Dotted, false],
+        [WILLIAMS_OVERSOLD, LineStyle.Dashed, true],
+      ] as const
+    ).forEach(([price, lineStyle, axisLabelVisible]) =>
+      series.createPriceLine({ price, color: theme.drawings.muted, lineWidth: 1, lineStyle, axisLabelVisible }),
+    );
+    series.setData(
+      bars.map((b, i) => {
+        const value = williamsValues[i];
+        return value === null ? { time: b.time as UTCTimestamp } : { time: b.time as UTCTimestamp, value };
+      }),
+    );
+    createSeriesMarkers(
+      series,
+      showWilliamsSignals
+        ? williamsExits(williamsValues).map(
+            (s): SeriesMarker<Time> => ({
+              time: bars[s.index].time as UTCTimestamp,
+              position: s.kind === "buy" ? "belowBar" : "aboveBar",
+              shape: s.kind === "buy" ? "arrowUp" : "arrowDown",
+              color: s.kind === "buy" ? theme.up : theme.down,
+            }),
+          )
+        : [],
+    );
+    arrange();
+    return () => {
+      removePaneSeries(handles, "williamsR", series);
+      arrange();
+    };
+  }, [bars, williamsPeriod, williamsValues, showWilliamsSignals, theme, arrange]);
+
   // Exemplo do glossário: aproxima o gráfico da janela do padrão (uma vez por exemplo carregado).
   useEffect(() => {
     const handles = handlesRef.current;
@@ -1356,6 +1422,7 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
     openInterest: [{ label: t.chart.series.openInterest, color: theme.drawings.primary }],
     momentum: momentumPeriod ? [{ label: fmt(t.chart.series.momentum, { n: momentumPeriod }), color: theme.momentum }] : [],
     rsi: rsiPeriod ? [{ label: fmt(t.chart.series.rsi, { n: rsiPeriod }), color: theme.rsi }] : [],
+    williamsR: williamsPeriod ? [{ label: fmt(t.chart.series.williamsR, { n: williamsPeriod }), color: theme.williamsR }] : [],
     stochastic: stochasticPeriod
       ? [
           { label: fmt(t.chart.series.stochK, { n: stochasticPeriod }), color: theme.stochastic.k },
@@ -1446,6 +1513,8 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
         onRsiChange={setRsiPeriod}
         stochastic={stochasticPeriod}
         onStochasticChange={setStochasticPeriod}
+        williamsR={williamsPeriod}
+        onWilliamsRChange={setWilliamsPeriod}
       />
 
       <DrawingToolbar
@@ -1483,7 +1552,7 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
       </div>
       <div
         ref={wrapperRef}
-        className={`relative ${CHART_HEIGHT[(openInterest ? 1 : 0) + (momentumPeriod ? 1 : 0) + (showMaOscillator ? 1 : 0) + (rsiPeriod ? 1 : 0) + (stochasticPeriod ? 1 : 0)]}`}
+        className={`relative ${CHART_HEIGHT[(openInterest ? 1 : 0) + (momentumPeriod ? 1 : 0) + (showMaOscillator ? 1 : 0) + (rsiPeriod ? 1 : 0) + (stochasticPeriod ? 1 : 0) + (williamsPeriod ? 1 : 0)]}`}
       >
         <div ref={containerRef} className={`h-full w-full ${tool ? "cursor-crosshair" : ""}`} />
         <PaneHandles
@@ -1552,6 +1621,16 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
           intraday={isIntraday(range)}
           show={maOscillatorVisible}
           onShowChange={setMaOscillatorVisible}
+        />
+      )}
+      {bars && bars.length > 0 && !loading && williamsPeriod && (
+        <WilliamsRPanel
+          bars={bars}
+          period={williamsPeriod}
+          reading={williamsReading}
+          intraday={isIntraday(range)}
+          show={showWilliamsSignals}
+          onShowChange={setShowWilliamsSignals}
         />
       )}
       {bars && bars.length > 0 && !loading && stochasticPeriod && (
