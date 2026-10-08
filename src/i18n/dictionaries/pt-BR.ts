@@ -286,6 +286,7 @@ export const ptBR = {
     crossOpen: " O cruzamento está no último candle: se ele ainda estiver em formação, pode se desfazer até o fechamento.",
     footer:
       "Regras de Murphy (cap. 10): cruzar a linha zero para cima é compra e para baixo é venda, mas opere só a favor da tendência principal. O momentum vira antes do preço: no topo de uma alta, a linha achata e cai enquanto o preço ainda sobe. As setas na linha de momentum, abaixo do OBV, marcam cada cruzamento: verde para cima, vermelha para baixo.",
+    link: "Como operar com a linha de momentum",
   },
   bollinger: {
     title: "Bandas de Bollinger",

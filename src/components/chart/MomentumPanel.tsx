@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { fmt } from "@/i18n/format";
 import { useI18n } from "@/i18n/I18nProvider";
 import type { Bar } from "@/lib/drawings/types";
@@ -16,7 +17,7 @@ interface Props {
 
 /** Leitura da linha de momentum no último candle, com as regras de Murphy (cap. 10). */
 export function MomentumPanel({ bars, period, reading, intraday, show, onShowChange }: Props) {
-  const { t, locale } = useI18n();
+  const { t, locale, href } = useI18n();
   const mo = t.momentum;
   const num = (v: number) => v.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const signed = (v: number) => `${v > 0 ? "+" : ""}${num(v)}`;
@@ -79,7 +80,12 @@ export function MomentumPanel({ bars, period, reading, intraday, show, onShowCha
         </ul>
       )}
 
-      <p className="text-[11px] text-muted">{mo.footer}</p>
+      <p className="text-[11px] text-muted">
+        {mo.footer}{" "}
+        <Link href={href("/glossario#linha-de-momentum")} className="font-medium text-accent hover:underline">
+          {mo.link}
+        </Link>
+      </p>
     </div>
   );
 }

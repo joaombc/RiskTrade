@@ -285,6 +285,7 @@ export const enUS: Dictionary = {
     crossOpen: " The crossing is on the last candle: if it is still forming, it may disappear by the close.",
     footer:
       "Murphy's rules (ch. 10): crossing above the zero line is a buy and below is a sell, but trade only in the direction of the major trend. Momentum turns before price: at the top of a rally, the line flattens and falls while price is still rising. The arrows on the momentum line, below OBV, mark each crossing: green upward, red downward.",
+    link: "How to trade the momentum line",
   },
   bollinger: {
     title: "Bollinger Bands",
