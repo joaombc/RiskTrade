@@ -10,6 +10,8 @@ export interface ChartTheme {
   movingAverages: string[];
   /** Linha de momentum: foge do roxo do OBV e do azul do interesse aberto, nos painéis vizinhos. */
   momentum: string;
+  /** IFR: verde-azulado, longe do roxo do OBV, do laranja do momentum e do azul do interesse aberto. */
+  rsi: string;
   drawings: Palette;
 }
 
@@ -22,6 +24,7 @@ export const CHART_THEMES: Record<"light" | "dark", ChartTheme> = {
     down: "#dc2626",
     movingAverages: ["#d97706", "#0891b2", "#db2777", "#475569"],
     momentum: "#c2410c",
+    rsi: "#0f766e",
     drawings: {
       primary: "#2563eb",
       support: "#059669",
@@ -40,6 +43,7 @@ export const CHART_THEMES: Record<"light" | "dark", ChartTheme> = {
     down: "#f87171",
     movingAverages: ["#fbbf24", "#22d3ee", "#f472b6", "#cbd5e1"],
     momentum: "#fb923c",
+    rsi: "#2dd4bf",
     drawings: {
       primary: "#60a5fa",
       support: "#34d399",
