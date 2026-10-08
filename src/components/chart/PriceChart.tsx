@@ -292,6 +292,9 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
   const canvasLabels = useMemo(() => ({ locale, ...t.drawings.canvas }), [locale, t]);
   const containerRef = useRef<HTMLDivElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
+  // Data da crosshair no topo: atualizada direto no DOM a cada movimento do mouse, sem re-renderizar.
+  const topDateRef = useRef<HTMLDivElement>(null);
+  const timeFormatterRef = useRef<(time: Time) => string>((time) => String(time));
   const handlesRef = useRef<ChartHandles | null>(null);
   // Ordem dos painéis escolhida pelo usuário; a ref serve aos efeitos que criam painéis.
   const [paneOrder, setPaneOrder] = useState<PaneId[]>(loadPaneOrder);
@@ -546,11 +549,28 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
       onClick(e.clientX - rect.left, e.clientY - rect.top);
     };
 
+    // A mesma data da etiqueta de baixo, no topo, alinhada à linha vertical e presa à área do gráfico.
+    const onHover = (param: MouseEventParams<Time>) => {
+      const label = topDateRef.current;
+      if (!label) return;
+      if (param.time === undefined || !param.point) {
+        label.style.visibility = "hidden";
+        return;
+      }
+      label.textContent = timeFormatterRef.current(param.time);
+      const half = label.offsetWidth / 2;
+      const x = Math.min(Math.max(param.point.x, half), chart.timeScale().width() - half);
+      label.style.left = `${x}px`;
+      label.style.visibility = "visible";
+    };
+
     chart.subscribeCrosshairMove(onMove);
+    chart.subscribeCrosshairMove(onHover);
     container.addEventListener("pointerdown", onPointerDown);
     container.addEventListener("pointerup", onPointerUp);
     return () => {
       chart.unsubscribeCrosshairMove(onMove);
+      chart.unsubscribeCrosshairMove(onHover);
       container.removeEventListener("pointerdown", onPointerDown);
       container.removeEventListener("pointerup", onPointerUp);
       chart.remove();
@@ -686,6 +706,7 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
   useEffect(() => {
     const intraday = isIntraday(range);
     const { timeFormatter, tickMarkFormatter } = timeFormatting(intraday, locale);
+    timeFormatterRef.current = timeFormatter;
     handlesRef.current?.chart.applyOptions({
       localization: { locale, timeFormatter },
       timeScale: { timeVisible: intraday, secondsVisible: false, tickMarkFormatter },
@@ -1366,9 +1387,15 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
           </button>
         )}
       </div>
+      <div aria-hidden className="relative mt-1 h-5">
+        <div
+          ref={topDateRef}
+          className="invisible absolute top-0 -translate-x-1/2 whitespace-nowrap rounded bg-foreground px-1.5 py-0.5 text-[11px] font-medium leading-4 text-background tabular-nums"
+        />
+      </div>
       <div
         ref={wrapperRef}
-        className={`relative mt-1 ${CHART_HEIGHT[(openInterest ? 1 : 0) + (momentumPeriod ? 1 : 0) + (showMaOscillator ? 1 : 0) + (rsiPeriod ? 1 : 0)]}`}
+        className={`relative ${CHART_HEIGHT[(openInterest ? 1 : 0) + (momentumPeriod ? 1 : 0) + (showMaOscillator ? 1 : 0) + (rsiPeriod ? 1 : 0)]}`}
       >
         <div ref={containerRef} className={`h-full w-full ${tool ? "cursor-crosshair" : ""}`} />
         <PaneHandles
