@@ -336,6 +336,7 @@ export const ptBR = {
     open: " O sinal está no último candle: se ele ainda estiver em formação, pode se desfazer até o fechamento.",
     footer:
       "Regras de Murphy (cap. 10): opere a volta para dentro da faixa, não o toque em 70 ou 30. Em tendência forte, use 80 e 20. A primeira entrada na zona costuma ser só um alerta; a divergência entre o IFR e o preço, com o IFR acima de 70 ou abaixo de 30, é o aviso mais importante. As setas no painel do IFR marcam as saídas das zonas e os failure swings (com um círculo).",
+    link: "Aula do IFR de Wilder",
   },
   bollinger: {
     title: "Bandas de Bollinger",

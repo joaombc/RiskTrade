@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { fmt } from "@/i18n/format";
 import { useI18n } from "@/i18n/I18nProvider";
 import type { Bar } from "@/lib/drawings/types";
@@ -16,7 +17,7 @@ interface Props {
 
 /** Leitura do IFR de Wilder no último candle, com as regras de Murphy (cap. 10). */
 export function RsiPanel({ bars, period, reading, intraday, show, onShowChange }: Props) {
-  const { t, locale } = useI18n();
+  const { t, locale, href } = useI18n();
   const r = t.rsi;
   const num = (v: number, digits = 2) => v.toLocaleString(locale, { minimumFractionDigits: digits, maximumFractionDigits: digits });
   const dateFormat = new Intl.DateTimeFormat(
@@ -70,7 +71,12 @@ export function RsiPanel({ bars, period, reading, intraday, show, onShowChange }
         </ul>
       )}
 
-      <p className="text-[11px] text-muted">{r.footer}</p>
+      <p className="text-[11px] text-muted">
+        {r.footer}{" "}
+        <Link href={href("/glossario/teorias/ifr-de-wilder")} className="font-medium text-accent hover:underline">
+          {r.link}
+        </Link>
+      </p>
     </div>
   );
 }

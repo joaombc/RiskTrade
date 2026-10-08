@@ -334,6 +334,7 @@ export const enUS: Dictionary = {
     open: " The signal is on the last candle: if it is still forming, it may disappear by the close.",
     footer:
       "Murphy's rules (ch. 10): trade the move back inside the band, not the touch of 70 or 30. In a strong trend, use 80 and 20. The first move into a zone is usually just a warning; divergence between the RSI and price, with the RSI above 70 or below 30, is the most important warning. The arrows on the RSI pane mark zone exits and failure swings (with a circle).",
+    link: "Wilder's RSI lesson",
   },
   bollinger: {
     title: "Bollinger Bands",
