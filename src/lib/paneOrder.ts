@@ -4,7 +4,7 @@
  * na mesma posição quando aparecerem.
  */
 
-export const PANE_IDS = ["price", "volume", "obv", "openInterest", "momentum", "maOscillator", "rsi", "stochastic", "williamsR"] as const;
+export const PANE_IDS = ["price", "volume", "obv", "openInterest", "momentum", "maOscillator", "rsi", "stochastic", "williamsR", "macd"] as const;
 export type PaneId = (typeof PANE_IDS)[number];
 
 export const DEFAULT_PANE_ORDER: PaneId[] = [...PANE_IDS];

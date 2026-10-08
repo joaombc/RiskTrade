@@ -34,6 +34,8 @@ interface Props {
   colors: string[];
   bollinger: boolean;
   onBollingerChange: (enabled: boolean) => void;
+  macd: boolean;
+  onMacdChange: (enabled: boolean) => void;
   fourWeek: FourWeekSettings;
   onFourWeekChange: (settings: FourWeekSettings) => void;
   /** Período da linha de momentum; null = desligada. */
@@ -60,6 +62,8 @@ export function MovingAverageBar({
   colors,
   bollinger,
   onBollingerChange,
+  macd,
+  onMacdChange,
   fourWeek,
   onFourWeekChange,
   momentum,
@@ -187,6 +191,12 @@ export function MovingAverageBar({
         <input type="checkbox" checked={bollinger} onChange={(e) => onBollingerChange(e.target.checked)} />
         <span className="font-semibold">{m.bollinger}</span>
         <span className="text-muted">{m.bollingerParams}</span>
+      </label>
+
+      <label className="flex w-fit items-center gap-1.5 text-xs" title={m.macdHint}>
+        <input type="checkbox" checked={macd} onChange={(e) => onMacdChange(e.target.checked)} />
+        <span className="font-semibold">{m.macd}</span>
+        <span className="text-muted">{m.macdParams}</span>
       </label>
 
       <div role="group" aria-label={m.fourWeek} className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs">

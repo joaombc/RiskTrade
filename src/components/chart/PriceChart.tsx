@@ -73,6 +73,7 @@ import {
   williamsR,
   type WilliamsPeriod,
 } from "@/lib/williamsR";
+import { loadMacdEnabled, macd, macdCrosses, readMacd, saveMacdEnabled } from "@/lib/macd";
 import { loadMomentumPeriod, momentum, readMomentum, saveMomentumPeriod, zeroCrossings, type MomentumPeriod } from "@/lib/momentum";
 import {
   HISTORY_RANGES,
@@ -110,6 +111,7 @@ import { MomentumPanel } from "./MomentumPanel";
 import { RsiPanel } from "./RsiPanel";
 import { StochasticPanel } from "./StochasticPanel";
 import { WilliamsRPanel } from "./WilliamsRPanel";
+import { MacdPanel } from "./MacdPanel";
 import { DrawingsPrimitive } from "./DrawingsPrimitive";
 import { DrawingToolbar } from "./DrawingToolbar";
 import { MovingAverageBar } from "./MovingAverageBar";
@@ -166,7 +168,7 @@ const ENVELOPE_STYLE: Record<EnvelopePercent, LineStyle> = {
   10: LineStyle.LargeDashed,
 };
 const NO_EXAMPLE: ResolvedExample = { drawings: [], markers: [] };
-/** Altura do gráfico conforme o número de painéis opcionais abertos (0 a 6). */
+/** Altura do gráfico conforme o número de painéis opcionais abertos (0 a 7). */
 const CHART_HEIGHT = [
   "h-[560px] sm:h-[640px]",
   "h-[680px] sm:h-[780px]",
@@ -175,6 +177,7 @@ const CHART_HEIGHT = [
   "h-[1040px] sm:h-[1200px]",
   "h-[1160px] sm:h-[1340px]",
   "h-[1280px] sm:h-[1480px]",
+  "h-[1400px] sm:h-[1620px]",
 ];
 
 /**
@@ -438,6 +441,11 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
   const [showWilliamsSignals, setShowWilliamsSignals] = useState(true);
   const williamsValues = useMemo(() => (bars && williamsPeriod ? williamsR(bars, williamsPeriod) : null), [bars, williamsPeriod]);
   const williamsReading = useMemo(() => (williamsValues ? readWilliams(williamsValues) : null), [williamsValues]);
+
+  const [macdOn, setMacdOn] = useState(loadMacdEnabled);
+  const [showMacdSignals, setShowMacdSignals] = useState(true);
+  const macdLines = useMemo(() => (bars && macdOn ? macd(bars, warmup) : null), [bars, macdOn, warmup]);
+  const macdReading = useMemo(() => (macdLines ? readMacd(macdLines) : null), [macdLines]);
   const fourWeekSystem = useMemo(() => {
     if (!bars || !fourWeek.enabled || isIntraday(range)) return null;
     const entryBars = fourWeek.entryWeeks * WEEK_BARS;
@@ -851,6 +859,10 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
   }, [williamsPeriod]);
 
   useEffect(() => {
+    saveMacdEnabled(macdOn);
+  }, [macdOn]);
+
+  useEffect(() => {
     paneOrderRef.current = paneOrder;
     savePaneOrder(paneOrder);
     arrange();
@@ -1218,6 +1230,55 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
     };
   }, [bars, williamsPeriod, williamsValues, showWilliamsSignals, theme, arrange]);
 
+  // MACD: histograma (verde/vermelho, claro quando encolhe), linha do MACD e linha de sinal no
+  // mesmo painel, com a linha zero e setas nos cruzamentos do MACD com o sinal.
+  useEffect(() => {
+    const handles = handlesRef.current;
+    if (!handles || !bars || !macdLines) return;
+    const histogram = addPaneSeries(handles, "macd", HistogramSeries, { priceLineVisible: false, lastValueVisible: false });
+    const pane = histogram.getPane().paneIndex();
+    const line = handles.chart.addSeries(LineSeries, { color: theme.macd.line, lineWidth: 2, priceLineVisible: false }, pane);
+    const signal = handles.chart.addSeries(
+      LineSeries,
+      { color: theme.macd.signal, lineWidth: 1, priceLineVisible: false, crosshairMarkerVisible: false },
+      pane,
+    );
+    line.createPriceLine({ price: 0, color: theme.drawings.muted, lineWidth: 1, lineStyle: LineStyle.Dashed, axisLabelVisible: false });
+    const time = (i: number) => bars[i].time as UTCTimestamp;
+    const toData = (values: (number | null)[]) =>
+      values.map((value, i) => (value === null ? { time: time(i) } : { time: time(i), value }));
+    histogram.setData(
+      macdLines.histogram.map((value, i) => {
+        if (value === null) return { time: time(i) };
+        const color = value >= 0 ? theme.up : theme.down;
+        // Barras que encolhem ficam claras: o MACD está se aproximando da linha de sinal.
+        return { time: time(i), value, color: isWidening(macdLines.histogram, i) === false ? `${color}66` : color };
+      }),
+    );
+    line.setData(toData(macdLines.macd));
+    signal.setData(toData(macdLines.signal));
+    createSeriesMarkers(
+      line,
+      showMacdSignals
+        ? macdCrosses(macdLines).map(
+            (c): SeriesMarker<Time> => ({
+              time: time(c.index),
+              position: c.dir === "up" ? "belowBar" : "aboveBar",
+              shape: c.dir === "up" ? "arrowUp" : "arrowDown",
+              color: c.dir === "up" ? theme.up : theme.down,
+            }),
+          )
+        : [],
+    );
+    arrange();
+    return () => {
+      // As linhas saem primeiro: o painel só é removido quando fica vazio (junto com o histograma).
+      [line, signal].forEach((s) => isAlive(handles.chart, s) && handles.chart.removeSeries(s));
+      removePaneSeries(handles, "macd", histogram);
+      arrange();
+    };
+  }, [bars, macdLines, showMacdSignals, theme, arrange]);
+
   // Exemplo do glossário: aproxima o gráfico da janela do padrão (uma vez por exemplo carregado).
   useEffect(() => {
     const handles = handlesRef.current;
@@ -1422,6 +1483,13 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
     openInterest: [{ label: t.chart.series.openInterest, color: theme.drawings.primary }],
     momentum: momentumPeriod ? [{ label: fmt(t.chart.series.momentum, { n: momentumPeriod }), color: theme.momentum }] : [],
     rsi: rsiPeriod ? [{ label: fmt(t.chart.series.rsi, { n: rsiPeriod }), color: theme.rsi }] : [],
+    macd: macdOn
+      ? [
+          { label: t.chart.series.macd, color: theme.macd.line },
+          { label: t.chart.series.macdSignal, color: theme.macd.signal },
+          { label: t.chart.series.macdHistogram, color: theme.up },
+        ]
+      : [],
     williamsR: williamsPeriod ? [{ label: fmt(t.chart.series.williamsR, { n: williamsPeriod }), color: theme.williamsR }] : [],
     stochastic: stochasticPeriod
       ? [
@@ -1505,6 +1573,8 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
         colors={theme.movingAverages}
         bollinger={bollingerOn}
         onBollingerChange={setBollingerOn}
+        macd={macdOn}
+        onMacdChange={setMacdOn}
         fourWeek={fourWeek}
         onFourWeekChange={setFourWeek}
         momentum={momentumPeriod}
@@ -1552,7 +1622,7 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
       </div>
       <div
         ref={wrapperRef}
-        className={`relative ${CHART_HEIGHT[(openInterest ? 1 : 0) + (momentumPeriod ? 1 : 0) + (showMaOscillator ? 1 : 0) + (rsiPeriod ? 1 : 0) + (stochasticPeriod ? 1 : 0) + (williamsPeriod ? 1 : 0)]}`}
+        className={`relative ${CHART_HEIGHT[(openInterest ? 1 : 0) + (momentumPeriod ? 1 : 0) + (showMaOscillator ? 1 : 0) + (rsiPeriod ? 1 : 0) + (stochasticPeriod ? 1 : 0) + (williamsPeriod ? 1 : 0) + (macdOn ? 1 : 0)]}`}
       >
         <div ref={containerRef} className={`h-full w-full ${tool ? "cursor-crosshair" : ""}`} />
         <PaneHandles
@@ -1621,6 +1691,15 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
           intraday={isIntraday(range)}
           show={maOscillatorVisible}
           onShowChange={setMaOscillatorVisible}
+        />
+      )}
+      {bars && bars.length > 0 && !loading && macdOn && (
+        <MacdPanel
+          bars={bars}
+          reading={macdReading}
+          intraday={isIntraday(range)}
+          show={showMacdSignals}
+          onShowChange={setShowMacdSignals}
         />
       )}
       {bars && bars.length > 0 && !loading && williamsPeriod && (

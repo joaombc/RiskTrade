@@ -16,6 +16,8 @@ export interface ChartTheme {
   stochastic: { k: string; d: string };
   /** %R de Williams: oliva, diferente dos outros osciladores. */
   williamsR: string;
+  /** MACD: linha do MACD e linha de sinal (o histograma usa as cores de alta e baixa). */
+  macd: { line: string; signal: string };
   drawings: Palette;
 }
 
@@ -31,6 +33,7 @@ export const CHART_THEMES: Record<"light" | "dark", ChartTheme> = {
     rsi: "#0f766e",
     stochastic: { k: "#4338ca", d: "#e11d48" },
     williamsR: "#4d7c0f",
+    macd: { line: "#0369a1", signal: "#ea580c" },
     drawings: {
       primary: "#2563eb",
       support: "#059669",
@@ -52,6 +55,7 @@ export const CHART_THEMES: Record<"light" | "dark", ChartTheme> = {
     rsi: "#2dd4bf",
     stochastic: { k: "#818cf8", d: "#fb7185" },
     williamsR: "#a3e635",
+    macd: { line: "#38bdf8", signal: "#fdba74" },
     drawings: {
       primary: "#60a5fa",
       support: "#34d399",
