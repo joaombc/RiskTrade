@@ -39,6 +39,7 @@ import { TOOLS, type Anchor, type Bar, type Drawing, type DrawingKind, type Draw
 import { resolveExample, type ResolvedExample } from "@/lib/glossary/examples";
 import type { TermExample } from "@/lib/glossary/types";
 import { computeOBV, findDivergences, type Divergence } from "@/lib/indicators";
+import { loadMomentumPeriod, momentum, readMomentum, saveMomentumPeriod, zeroCrossings, type MomentumPeriod } from "@/lib/momentum";
 import {
   HISTORY_RANGES,
   isIntraday,
@@ -70,6 +71,7 @@ import { CustomRangeInput } from "./CustomRangeInput";
 import { DivergencePanel } from "./DivergencePanel";
 import { EnvelopeSignalPanel } from "./EnvelopeSignalPanel";
 import { FourWeekPanel } from "./FourWeekPanel";
+import { MomentumPanel } from "./MomentumPanel";
 import { DrawingsPrimitive } from "./DrawingsPrimitive";
 import { DrawingToolbar } from "./DrawingToolbar";
 import { MovingAverageBar } from "./MovingAverageBar";
@@ -125,13 +127,31 @@ const ENVELOPE_STYLE: Record<EnvelopePercent, LineStyle> = {
   10: LineStyle.LargeDashed,
 };
 const NO_EXAMPLE: ResolvedExample = { drawings: [], markers: [] };
+/** Altura do gráfico conforme o número de painéis opcionais abertos (0, 1 ou 2). */
+const CHART_HEIGHT = ["h-[560px] sm:h-[640px]", "h-[680px] sm:h-[780px]", "h-[800px] sm:h-[920px]"];
 
 /** Painéis do gráfico, de cima para baixo. */
 const PRICE_PANE = 0;
 const VOLUME_PANE = 1;
 const OBV_PANE = 2;
-/** Só existe para futuros com dados da CFTC. */
-const OPEN_INTEREST_PANE = 3;
+
+/**
+ * Painéis opcionais (momentum, interesse aberto) entram no fim da lista, para não disputarem o
+ * mesmo índice, e saem levando o próprio painel.
+ */
+function addPaneSeries(chart: IChartApi, options: Parameters<IChartApi["addSeries"]>[1]): ISeriesApi<"Line"> {
+  const series = chart.addSeries(LineSeries, options, chart.panes().length);
+  series.getPane().setStretchFactor(1.5);
+  return series;
+}
+
+function removePaneSeries(chart: IChartApi, series: ISeriesApi<"Line">) {
+  // O gráfico pode ter sido recriado (desmontagem ou Fast Refresh) e levado a série junto.
+  if (!chart.panes().some((pane) => pane.getSeries().includes(series))) return;
+  const index = series.getPane().paneIndex();
+  chart.removeSeries(series);
+  if (chart.panes()[index]?.getSeries().length === 0) chart.removePane(index);
+}
 
 interface ChartHandles {
   chart: IChartApi;
@@ -264,6 +284,14 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
   // Regra das 4 semanas: só em candles diários (uma semana = 5 pregões).
   const [fourWeek, setFourWeek] = useState<FourWeekSettings>(loadFourWeekSettings);
   const [showFourWeekSignals, setShowFourWeekSignals] = useState(true);
+
+  const [momentumPeriod, setMomentumPeriod] = useState<MomentumPeriod | null>(loadMomentumPeriod);
+  const [showMomentumSignals, setShowMomentumSignals] = useState(true);
+  const momentumValues = useMemo(
+    () => (bars && momentumPeriod ? momentum(bars, momentumPeriod, warmup) : null),
+    [bars, momentumPeriod, warmup],
+  );
+  const momentumReading = useMemo(() => (bars && momentumValues ? readMomentum(bars, momentumValues) : null), [bars, momentumValues]);
   const fourWeekSystem = useMemo(() => {
     if (!bars || !fourWeek.enabled || isIntraday(range)) return null;
     const entryBars = fourWeek.entryWeeks * WEEK_BARS;
@@ -633,6 +661,10 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
     saveFourWeekSettings(fourWeek);
   }, [fourWeek]);
 
+  useEffect(() => {
+    saveMomentumPeriod(momentumPeriod);
+  }, [momentumPeriod]);
+
   // Regra das 4 semanas: canal de entrada em degraus (máxima e mínima) e, na versão não
   // contínua, o canal de saída pontilhado.
   useEffect(() => {
@@ -722,33 +754,56 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
   useEffect(() => {
     const handles = handlesRef.current;
     if (!handles || !bars || !openInterest || openInterest.values.length !== bars.length) return;
-    const series = handles.chart.addSeries(
-      LineSeries,
-      {
-        color: theme.drawings.primary,
-        lineWidth: 2,
-        lineType: LineType.WithSteps,
-        priceFormat: { type: "volume" },
-        priceLineVisible: false,
-        title: t.chart.series.openInterest,
-      },
-      OPEN_INTEREST_PANE,
-    );
-    handles.chart.panes()[OPEN_INTEREST_PANE]?.setStretchFactor(1.5);
+    const series = addPaneSeries(handles.chart, {
+      color: theme.drawings.primary,
+      lineWidth: 2,
+      lineType: LineType.WithSteps,
+      priceFormat: { type: "volume" },
+      priceLineVisible: false,
+      title: t.chart.series.openInterest,
+    });
     series.setData(
       bars.map((b, i) => {
         const value = openInterest.values[i];
         return value === null ? { time: b.time as UTCTimestamp } : { time: b.time as UTCTimestamp, value };
       }),
     );
-    return () => {
-      // O gráfico pode ter sido recriado (desmontagem ou Fast Refresh) e levado a série junto.
-      const pane = handlesRef.current?.chart.panes()[OPEN_INTEREST_PANE];
-      if (!pane?.getSeries().includes(series)) return;
-      handles.chart.removeSeries(series);
-      if (handles.chart.panes().length > OPEN_INTEREST_PANE) handles.chart.removePane(OPEN_INTEREST_PANE);
-    };
+    return () => removePaneSeries(handles.chart, series);
   }, [bars, openInterest, theme, t.chart.series.openInterest]);
+
+  // Linha de momentum: painel próprio, com a linha zero e os cruzamentos dela (Murphy, cap. 10).
+  useEffect(() => {
+    const handles = handlesRef.current;
+    if (!handles || !bars || !momentumPeriod || !momentumValues) return;
+    const series = addPaneSeries(handles.chart, {
+      color: theme.momentum,
+      lineWidth: 2,
+      priceLineVisible: false,
+      title: fmt(t.chart.series.momentum, { n: momentumPeriod }),
+    });
+    series.createPriceLine({ price: 0, color: theme.drawings.muted, lineWidth: 1, lineStyle: LineStyle.Dashed, axisLabelVisible: false });
+    series.setData(
+      bars.map((b, i) => {
+        const value = momentumValues[i];
+        return value === null ? { time: b.time as UTCTimestamp } : { time: b.time as UTCTimestamp, value };
+      }),
+    );
+    // Só setas: a linha cruza o zero com frequência, e as datas ficam no painel de leitura.
+    createSeriesMarkers(
+      series,
+      showMomentumSignals
+        ? zeroCrossings(momentumValues).map(
+            (c): SeriesMarker<Time> => ({
+              time: bars[c.index].time as UTCTimestamp,
+              position: c.dir === "up" ? "belowBar" : "aboveBar",
+              shape: c.dir === "up" ? "arrowUp" : "arrowDown",
+              color: c.dir === "up" ? theme.up : theme.down,
+            }),
+          )
+        : [],
+    );
+    return () => removePaneSeries(handles.chart, series);
+  }, [bars, momentumPeriod, momentumValues, showMomentumSignals, theme, t]);
 
   // Exemplo do glossário: aproxima o gráfico da janela do padrão (uma vez por exemplo carregado).
   useEffect(() => {
@@ -1002,6 +1057,8 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
         onBollingerChange={setBollingerOn}
         fourWeek={fourWeek}
         onFourWeekChange={setFourWeek}
+        momentum={momentumPeriod}
+        onMomentumChange={setMomentumPeriod}
       />
 
       <DrawingToolbar
@@ -1022,8 +1079,8 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
         }}
       />
 
-      {/* O painel de interesse aberto ganha altura própria, sem espremer o preço. */}
-      <div className={`relative mt-2 ${openInterest ? "h-[680px] sm:h-[780px]" : "h-[560px] sm:h-[640px]"}`}>
+      {/* Os painéis opcionais (interesse aberto, momentum) ganham altura própria, sem espremer o preço. */}
+      <div className={`relative mt-2 ${CHART_HEIGHT[(openInterest ? 1 : 0) + (momentumPeriod ? 1 : 0)]}`}>
         <div ref={containerRef} className={`h-full w-full ${tool ? "cursor-crosshair" : ""}`} />
         {loading && (
           <div role="status" className="absolute inset-0 flex items-center justify-center bg-surface/60 text-sm text-muted">
@@ -1070,6 +1127,16 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
       )}
       {bars && bars.length > 0 && !loading && bollingerOn && (
         <BollingerPanel bars={bars} reading={bollingerReading} intraday={isIntraday(range)} />
+      )}
+      {bars && bars.length > 0 && !loading && momentumPeriod && (
+        <MomentumPanel
+          bars={bars}
+          period={momentumPeriod}
+          reading={momentumReading}
+          intraday={isIntraday(range)}
+          show={showMomentumSignals}
+          onShowChange={setShowMomentumSignals}
+        />
       )}
       {bars && bars.length > 0 && (
         <DivergencePanel

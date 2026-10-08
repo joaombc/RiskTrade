@@ -20,6 +20,7 @@ import {
   type MovingAverage,
   type MovingAverageKind,
 } from "@/lib/movingAverages";
+import { MOMENTUM_PERIODS, type MomentumPeriod } from "@/lib/momentum";
 import { ENTRY_WEEKS, EXIT_WEEKS, type FourWeekSettings } from "@/lib/priceChannel";
 
 interface Props {
@@ -32,6 +33,9 @@ interface Props {
   onBollingerChange: (enabled: boolean) => void;
   fourWeek: FourWeekSettings;
   onFourWeekChange: (settings: FourWeekSettings) => void;
+  /** Período da linha de momentum; null = desligada. */
+  momentum: MomentumPeriod | null;
+  onMomentumChange: (period: MomentumPeriod | null) => void;
 }
 
 const chip = "flex items-center rounded-full border text-xs font-medium";
@@ -46,6 +50,8 @@ export function MovingAverageBar({
   onBollingerChange,
   fourWeek,
   onFourWeekChange,
+  momentum,
+  onMomentumChange,
 }: Props) {
   const { t } = useI18n();
   const m = t.ma;
@@ -217,6 +223,30 @@ export function MovingAverageBar({
             </label>
           </>
         )}
+      </div>
+
+      {/* Um período por vez; clicar no ativo desliga a linha. */}
+      <div role="group" aria-label={m.momentum} className="flex flex-wrap items-center gap-1.5">
+        <span className="mr-1 text-xs font-semibold" title={m.momentumHint}>
+          {m.momentum}
+        </span>
+        {MOMENTUM_PERIODS.map((period) => {
+          const active = momentum === period;
+          return (
+            <button
+              key={period}
+              type="button"
+              aria-pressed={active}
+              onClick={() => onMomentumChange(active ? null : period)}
+              title={fmt(m.momentumPeriod, { n: period, action: active ? m.hide : m.show })}
+              className={`${chip} px-2.5 py-1 tabular-nums ${
+                active ? "border-foreground bg-foreground text-background" : "border-border text-muted hover:bg-border/60 hover:text-foreground"
+              }`}
+            >
+              {period}
+            </button>
+          );
+        })}
       </div>
 
       <div role="group" aria-label={m.combosLabel} className="flex flex-wrap items-center gap-1.5">

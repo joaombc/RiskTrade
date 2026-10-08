@@ -105,7 +105,7 @@ export const enUS: Dictionary = {
     closeExample: "Close example",
     loading: "Loading price history…",
     confirmClear: "Delete all {count} drawings on {symbol}?",
-    series: { volume: "Volume", obv: "OBV", openInterest: "Open int.", divergence: "Div." },
+    series: { volume: "Volume", obv: "OBV", openInterest: "Open int.", divergence: "Div.", momentum: "Momentum {n}" },
     markers: {
       buy: "Buy",
       sell: "Sell",
@@ -183,6 +183,9 @@ export const enUS: Dictionary = {
       "Donchian price channel: buy on a close above the high of the previous weeks, sell below the low (Murphy, ch. 9).",
     entry: "Entry",
     exit: "Exit",
+    momentum: "Momentum line",
+    momentumHint: "Today's close minus the close N candles ago: it measures the speed of the move and oscillates around zero (Murphy, ch. 10).",
+    momentumPeriod: "{n}-candle momentum. Click to {action}.",
     entryOption: { "2": "2 weeks (sensitive)", "4": "4 weeks (original)", "8": "8 weeks (filters ranges)" },
     continuous: "Continuous (reverses on the entry channel)",
     exitOption: { "1": "Non-continuous: 1 week", "2": "Non-continuous: 2 weeks" },
@@ -252,6 +255,30 @@ export const enUS: Dictionary = {
     noneRecent: "No signal in the last {count} candles.",
     footer:
       "Short-term tactics from the moving averages lesson, beyond Murphy. The context comes from the slope of the average: a trend when it moves more than half the envelope width in half a period. Set the stop before entering; in mean reversion, it goes beyond the band that was touched.",
+  },
+  momentum: {
+    title: "Momentum line",
+    params: "· close minus the close {n} candles ago",
+    insufficient: "There are not enough candles yet for momentum on this range.",
+    position: "Now:",
+    positive: "positive momentum ({value}, {percent}): price is above where it was {n} candles ago.",
+    negative: "negative momentum ({value}, {percent}): price is below where it was {n} candles ago.",
+    rising: " Rising over the last {k} candles: the move is accelerating.",
+    falling: " Falling over the last {k} candles: the move is slowing down.",
+    flat: " Steady over the last {k} candles.",
+    extremeHigh: "Upside extreme:",
+    extremeHighText:
+      "the line is near its highest value of the last {lookback} candles. If it flattens or starts falling while price is still rising, the rally is losing strength.",
+    extremeLow: "Downside extreme:",
+    extremeLowText:
+      "the line is near its lowest value of the last {lookback} candles. If it flattens or starts rising while price is still falling, the decline is losing strength.",
+    cross: "Zero line:",
+    crossUp: "crossed above on {date} (close {price}), a buy signal.",
+    crossDown: "crossed below on {date} (close {price}), a sell signal.",
+    noCross: "no crossing in the range.",
+    crossOpen: " The crossing is on the last candle: if it is still forming, it may disappear by the close.",
+    footer:
+      "Murphy's rules (ch. 10): crossing above the zero line is a buy and below is a sell, but trade only in the direction of the major trend. Momentum turns before price: at the top of a rally, the line flattens and falls while price is still rising. The arrows on the momentum line, below OBV, mark each crossing: green upward, red downward.",
   },
   bollinger: {
     title: "Bollinger Bands",

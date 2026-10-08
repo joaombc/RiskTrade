@@ -8,6 +8,8 @@ export interface ChartTheme {
   down: string;
   /** Cores das médias móveis, uma por posição (slot). Fogem do verde/vermelho dos candles, do azul dos desenhos e do roxo do OBV. */
   movingAverages: string[];
+  /** Linha de momentum: foge do roxo do OBV e do azul do interesse aberto, nos painéis vizinhos. */
+  momentum: string;
   drawings: Palette;
 }
 
@@ -19,6 +21,7 @@ export const CHART_THEMES: Record<"light" | "dark", ChartTheme> = {
     up: "#059669",
     down: "#dc2626",
     movingAverages: ["#d97706", "#0891b2", "#db2777", "#475569"],
+    momentum: "#c2410c",
     drawings: {
       primary: "#2563eb",
       support: "#059669",
@@ -36,6 +39,7 @@ export const CHART_THEMES: Record<"light" | "dark", ChartTheme> = {
     up: "#34d399",
     down: "#f87171",
     movingAverages: ["#fbbf24", "#22d3ee", "#f472b6", "#cbd5e1"],
+    momentum: "#fb923c",
     drawings: {
       primary: "#60a5fa",
       support: "#34d399",
