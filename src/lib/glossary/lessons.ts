@@ -1,6 +1,7 @@
 import { CHANNEL_DIAGRAMS } from "./channel-diagrams";
 import { MA_DIAGRAMS } from "./ma-diagrams";
 import { RSI_DIAGRAMS } from "./rsi-diagrams";
+import { STOCHASTIC_DIAGRAMS } from "./stochastic-diagrams";
 import type { Diagram, Lesson } from "./types";
 
 /**
@@ -698,6 +699,124 @@ export const LESSONS: Lesson[] = [
       "O failure swing, quando o IFR não repete o extremo e rompe o ponto intermediário, é o sinal mais forte de Wilder.",
       "Divergências entre o IFR e o preço, com o IFR numa zona extrema, são o alerta mais importante.",
       "Opere o IFR a favor da tendência principal; ele funciona melhor no mercado lateral.",
+    ],
+  },
+  {
+    slug: "estocastico",
+    title: "Estocástico %K %D",
+    subtitle: "O oscilador de George Lane: onde o fechamento cai na faixa recente",
+    summary:
+      "Como o estocástico mede a posição do fechamento entre a máxima e a mínima recentes, a diferença entre as versões rápida e lenta, as zonas de 80 e 20, os cruzamentos do %K com o %D, as divergências e como combiná-lo com a tendência.",
+    readingMinutes: 9,
+    source: "Murphy, Technical Analysis of the Financial Markets, cap. 10 (Osciladores e opinião contrária)",
+    relatedTerms: ["linha-de-momentum", "divergencia-de-volume", "bandas-de-bollinger", "suporte-e-resistencia", "linha-de-tendencia"],
+    sections: [
+      {
+        heading: "Origem",
+        paragraphs: [
+          "O oscilador estocástico foi popularizado por George Lane, presidente da Investment Educators, nos anos 1950 e 1960. Junto com o IFR de Wilder, é um dos osciladores mais usados pelos analistas técnicos.",
+        ],
+      },
+      {
+        heading: "A ideia: onde o fechamento cai na faixa",
+        paragraphs: [
+          "Lane partiu de uma observação simples: numa alta, os fechamentos tendem a ficar perto das máximas do período; numa baixa, perto das mínimas. Quando, numa alta, os fechamentos começam a se afastar das máximas, a força compradora está diminuindo, mesmo que o preço ainda suba.",
+          "O estocástico mede isso: em que ponto da faixa entre a máxima e a mínima dos últimos períodos está o fechamento de hoje. Perto de 100, o fechamento está no topo da faixa; perto de 0, no fundo.",
+        ],
+      },
+      {
+        heading: "Como é calculado",
+        paragraphs: [
+          "São duas linhas. A principal, %K, é 100 × (fechamento − mínima de N) ÷ (máxima de N − mínima de N), com N normalmente igual a 14. A segunda, %D, é uma média de 3 períodos do %K e funciona como linha de sinal.",
+        ],
+        bullets: [
+          "Exemplo: nos últimos 14 dias, a máxima foi 120 e a mínima 100. Fechando hoje em 115, o %K é 100 × (115 − 100) ÷ (120 − 100) = 75.",
+          "Fechando na máxima da faixa, o %K é 100; na mínima, é 0.",
+          "Como usa máximas e mínimas, e não só fechamentos, o estocástico reage a movimentos dentro do pregão que o IFR não vê.",
+        ],
+      },
+      {
+        heading: "Rápido e lento",
+        paragraphs: [
+          "O %K calculado direto (o estocástico rápido) é muito sensível e oscila demais. Por isso a maioria dos analistas usa o estocástico lento: o %D do rápido vira o novo %K, e o novo %D é uma média de 3 dele. É a versão (14, 3, 3), mais suave e confiável.",
+        ],
+        diagram: {
+          diagram: STOCHASTIC_DIAGRAMS.fastSlow,
+          caption: "O %K rápido (cinza) e o lento (azul) sobre o mesmo preço: o lento elimina boa parte do ruído.",
+        },
+      },
+      {
+        heading: "Zonas de 80 e 20",
+        paragraphs: [
+          "Acima de 80, o mercado está sobrecomprado; abaixo de 20, sobrevendido. Algumas pessoas usam 70 e 30, como no IFR. Como nos outros osciladores, estar numa zona extrema é um alerta, não um sinal: numa tendência forte, o estocástico pode passar muito tempo perto de 100 ou de 0.",
+        ],
+      },
+      {
+        heading: "Cruzamentos do %K com o %D",
+        paragraphs: [
+          "O momento de agir vem do cruzamento das duas linhas. A compra acontece quando o %K cruza o %D para cima com as linhas abaixo de 20; a venda, quando o %K cruza para baixo com as linhas acima de 80. Cruzamentos no meio da faixa têm pouco valor.",
+          "Murphy observa que o cruzamento à direita, quando o %K cruza o %D depois de o %D já ter virado, costuma ser mais confiável que o cruzamento à esquerda, quando o %K cruza o %D ainda na direção do movimento anterior.",
+        ],
+        diagram: {
+          diagram: STOCHASTIC_DIAGRAMS.crosses,
+          caption: "Estocástico lento (14, 3, 3): a venda vem quando o %K cruza o %D para baixo acima de 80, e a compra quando cruza para cima abaixo de 20.",
+        },
+      },
+      {
+        heading: "Divergências",
+        paragraphs: [
+          "Para Murphy, o sinal mais importante do estocástico é a divergência entre o %D e o preço com o %D numa zona extrema. Numa divergência de baixa, o preço faz um topo mais alto e o %D, acima de 80, faz um topo mais baixo: os fechamentos estão se afastando das máximas. A divergência de alta é o espelho, abaixo de 20.",
+          "Como em todo oscilador, a divergência é um alerta. O cruzamento do %K com o %D, ou o rompimento de uma linha de tendência no preço, dá a confirmação.",
+        ],
+        diagram: {
+          diagram: STOCHASTIC_DIAGRAMS.divergence,
+          caption: "O preço faz um topo mais alto, mas o %D, acima de 80, faz um topo mais baixo: a alta perdeu força.",
+        },
+      },
+      {
+        heading: "Estocástico e tendência",
+        paragraphs: [
+          "O estocástico funciona melhor em mercados laterais. Numa tendência forte, ele pode ficar dias na zona extrema e gerar sinais contra a tendência que não dão em nada.",
+          "A regra de Murphy é usar o oscilador a favor da tendência principal: numa alta, aproveitar as quedas do estocástico abaixo de 20 para comprar e usar a sobrecompra só para realizar lucro; numa baixa, o contrário. Uma forma de definir a tendência é o estocástico semanal: o sinal do semanal dá a direção, e o do diário, o momento de entrar.",
+        ],
+      },
+      {
+        heading: "Qual período usar",
+        paragraphs: [
+          "Lane usava 14 períodos, e esse é o padrão. Períodos curtos, como 5 ou 9, deixam o estocástico mais nervoso, com mais sinais e mais sinais falsos; servem para quem opera no curtíssimo prazo. Períodos longos, como 21, aproximam o indicador do ciclo mensal e reduzem o ruído.",
+        ],
+      },
+      {
+        heading: "Semanal e mensal",
+        paragraphs: [
+          "O estocástico pode ser aplicado a gráficos semanais e mensais. Nesses prazos, os sinais são raros e mais importantes, e servem como filtro para os sinais do diário.",
+        ],
+      },
+      {
+        heading: "Estocástico e IFR",
+        paragraphs: [
+          "Os dois medem sobrecompra e sobrevenda, mas de jeitos diferentes. O IFR compara o tamanho das altas com o das baixas, só com fechamentos. O estocástico compara o fechamento com a faixa entre máxima e mínima, e por isso reage mais rápido. Muitos analistas usam os dois juntos: um sinal confirmado pelos dois é mais forte.",
+        ],
+      },
+      {
+        heading: "No RiskTrade",
+        paragraphs: ["Use os botões Estocástico na barra de médias do gráfico:"],
+        bullets: [
+          "Escolha 14 (padrão), 5 (curto prazo) ou 21 (ciclo mensal), sempre na versão lenta (N, 3, 3). Clicar de novo no botão ativo desliga o estocástico.",
+          "O painel mostra o %K (linha cheia) e o %D (outra cor), com as linhas de 80 e 20 tracejadas e a de 50 pontilhada.",
+          "Setas marcam os cruzamentos nas zonas: compra quando o %K cruza o %D para cima abaixo de 20, venda quando cruza para baixo acima de 80.",
+          "O painel de leitura diz o %K, o %D, a zona, o último cruzamento e o último sinal nas zonas.",
+          "Arraste o painel pela alça ⋮⋮ para perto do preço e compare as divergências; combine com o IFR para confirmar os sinais.",
+        ],
+      },
+    ],
+    takeaways: [
+      "%K = 100 × (fechamento − mínima de N) ÷ (máxima de N − mínima de N); %D é a média de 3 do %K.",
+      "Use a versão lenta (14, 3, 3): o estocástico rápido oscila demais.",
+      "80 e 20 marcam sobrecompra e sobrevenda; estar na zona é alerta, não sinal.",
+      "O sinal vem do %K cruzando o %D nas zonas extremas; o cruzamento à direita é mais confiável.",
+      "A divergência entre o %D e o preço, com o %D acima de 80 ou abaixo de 20, é o sinal mais importante.",
+      "Opere a favor da tendência principal; o estocástico semanal ajuda a defini-la.",
     ],
   },
   {

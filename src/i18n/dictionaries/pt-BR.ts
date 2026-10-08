@@ -366,6 +366,7 @@ export const ptBR = {
     open: " O cruzamento está no último candle: se ele ainda estiver em formação, pode se desfazer até o fechamento.",
     footer:
       "Regras de Murphy (cap. 10): o sinal mais importante é a divergência entre o %D e o preço com o %D acima de 80 ou abaixo de 20. O cruzamento do %K com o %D nas zonas extremas dá o momento de agir. Numa tendência forte, o estocástico pode ficar muito tempo numa zona: opere a favor da tendência principal. As setas no painel marcam os cruzamentos nas zonas.",
+    link: "Aula do estocástico",
   },
   bollinger: {
     title: "Bandas de Bollinger",
