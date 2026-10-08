@@ -670,6 +670,36 @@ export const enUS: Dictionary = {
       "DX-Y.NYB": "US dollar index (DXY)",
       "^VIX": "VIX (volatility)",
     },
+    aaii: {
+      title: "Investor sentiment (AAII)",
+      surveyDate: "survey of {date}",
+      unavailable: "AAII survey unavailable right now.",
+      bullish: "Bullish",
+      neutral: "Neutral",
+      bearish: "Bearish",
+      average: "avg {value}",
+      averageMark: "historical average",
+      changeMark: "weekly change in pts",
+      spread: "Bull − bear spread:",
+      spreadAverage: "(historical avg {value})",
+      mood: {
+        pessimistic: "Marked pessimism.",
+        optimistic: "Excessive optimism.",
+        normal: "Sentiment within the normal range.",
+      },
+      moodText: {
+        pessimistic:
+          "Spread at {spread}, below −10. Under contrary opinion, extreme pessimism among individual investors tends to show up near bottoms.",
+        optimistic:
+          "Spread at {spread}, above +30. Under contrary opinion, extreme optimism among individual investors tends to show up near tops.",
+        normal: "Spread at {spread}, between −10 and +30: no extreme contrary-opinion reading.",
+      },
+      history: "Last {n} weeks",
+      weekTitle: "{date}: bullish {bullish}, neutral {neutral}, bearish {bearish}",
+      footer:
+        "Weekly survey by the American Association of Individual Investors: what members expect from stocks over the next 6 months. Averages and ranges published by AAII (since 1987). A contrary indicator: use it as context, not as an entry signal.",
+      source: "Source: AAII",
+    },
   },
   risk: {
     label: "Risk management for {symbol}",

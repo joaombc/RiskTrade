@@ -16,6 +16,9 @@ vi.mock("yahoo-finance2", () => ({
   },
 }));
 
+// A pesquisa da AAII vem de outro site: nos testes, não há rede.
+vi.mock("./aaii", () => ({ getAaiiSentiment: vi.fn(async () => null) }));
+
 const { AssetNotFoundError, getAssetSummary, getHistory, getPremarketReport, NotUSListedError } = await import("./yahoo");
 const { GET: historyRoute } = await import("../app/api/history/route");
 const { GET: premarketRoute } = await import("../app/api/premarket/route");

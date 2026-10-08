@@ -1,3 +1,4 @@
+import type { AaiiSentiment } from "./aaii";
 import { isSwing } from "./drawings/geometry";
 import type { Bar } from "./drawings/types";
 import { computeOBV, findDivergences } from "./indicators";
@@ -266,6 +267,8 @@ export interface PremarketReport {
   analysts: AnalystAction[];
   news: NewsItem[];
   context: MarketContextItem[];
+  /** Pesquisa de sentimento da AAII; null se o site não respondeu. */
+  sentiment: AaiiSentiment | null;
 }
 
 /** Notícias que citam o ticker, das mais focadas (menos tickers) para as menos; entre iguais, as mais novas. */

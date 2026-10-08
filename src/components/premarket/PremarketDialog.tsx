@@ -5,6 +5,7 @@ import { apiErrorMessage } from "@/i18n/apiError";
 import type { Dictionary } from "@/i18n/dictionary";
 import { fmt } from "@/i18n/format";
 import { useI18n } from "@/i18n/I18nProvider";
+import { AAII_AVERAGES, AAII_URL, type AaiiWeek } from "@/lib/aaii";
 import { maLabel } from "@/lib/movingAverages";
 import type { Level, PremarketReport } from "@/lib/premarket";
 
@@ -279,6 +280,91 @@ function Context({ report, c }: { report: PremarketReport; c: Ctx }) {
   );
 }
 
+const AAII_ROWS = [
+  { key: "bullish", bar: "bg-positive" },
+  { key: "neutral", bar: "bg-muted" },
+  { key: "bearish", bar: "bg-negative" },
+] as const;
+
+/** Pesquisa de sentimento da AAII: percentuais contra as médias históricas, spread e leitura contrária. */
+function Sentiment({ report, c }: { report: PremarketReport; c: Ctx }) {
+  const { p, num, date } = c;
+  const a = p.aaii;
+  const s = report.sentiment;
+  const pts = (v: number) => `${v >= 0 ? "+" : ""}${num(v, 1)}`;
+  const percent = (v: number) => `${num(v, 1)}%`;
+  const weekTitle = (w: AaiiWeek) =>
+    fmt(a.weekTitle, { date: date(w.date), bullish: percent(w.bullish), neutral: percent(w.neutral), bearish: percent(w.bearish) });
+
+  return (
+    <div className="mt-3 rounded-lg border border-border p-3">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <p className="text-sm font-semibold">{a.title}</p>
+        {s && <p className="text-xs text-muted">{fmt(a.surveyDate, { date: date(s.date) })}</p>}
+      </div>
+      {!s ? (
+        <p className="mt-2 text-sm text-muted">{a.unavailable}</p>
+      ) : (
+        <>
+          <ul className="mt-3 flex flex-col gap-2">
+            {AAII_ROWS.map(({ key, bar }) => (
+              <li key={key} className="grid grid-cols-[5.5rem_1fr_auto] items-center gap-2 text-sm">
+                <span>{a[key]}</span>
+                <span className="relative h-2.5 rounded-full bg-border/50" title={fmt(a.average, { value: percent(AAII_AVERAGES[key]) })}>
+                  <span className={`absolute inset-y-0 left-0 rounded-full ${bar}`} style={{ width: `${Math.min(s[key], 100)}%` }} />
+                  {/* Marca da média histórica. */}
+                  <span className="absolute -inset-y-1 w-0.5 bg-foreground/70" style={{ left: `${AAII_AVERAGES[key]}%` }} />
+                </span>
+                <span className="text-right tabular-nums">
+                  <span className="font-semibold">{percent(s[key])}</span>
+                  {s.change && <span className="ml-1.5 text-xs text-muted">{pts(s.change[key])}</span>}
+                </span>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-1 text-[11px] text-muted">
+            ▏{a.averageMark} · {a.changeMark}
+          </p>
+          <p className="mt-3 text-sm">
+            <strong>{a.spread}</strong> <span className={`font-semibold tabular-nums ${tone(s.spread)}`}>{pts(s.spread)}</span>{" "}
+            <span className="text-muted">{fmt(a.spreadAverage, { value: pts(AAII_AVERAGES.spread) })}</span>
+          </p>
+          <p
+            role="status"
+            className={`mt-2 rounded-lg border p-3 text-sm ${s.mood === "normal" ? "border-border bg-background/60" : "border-target/40 bg-target/10"}`}
+          >
+            <strong>{a.mood[s.mood]}</strong> {fmt(a.moodText[s.mood], { spread: pts(s.spread) })}
+          </p>
+          {s.history.length > 1 && (
+            <div className="mt-3">
+              <p className="mb-1 text-xs text-muted">{fmt(a.history, { n: s.history.length })}</p>
+              <div className="flex h-12 items-stretch gap-1">
+                {s.history.map((w) => (
+                  <div key={w.date} title={weekTitle(w)} aria-label={weekTitle(w)} className="flex flex-1 flex-col overflow-hidden rounded-sm">
+                    <span className="bg-positive" style={{ flexGrow: w.bullish }} />
+                    <span className="bg-muted/60" style={{ flexGrow: w.neutral }} />
+                    <span className="bg-negative" style={{ flexGrow: w.bearish }} />
+                  </div>
+                ))}
+              </div>
+              <div className="mt-1 flex justify-between text-[10px] text-muted tabular-nums">
+                <span>{date(s.history[0].date)}</span>
+                <span>{date(s.history.at(-1)!.date)}</span>
+              </div>
+            </div>
+          )}
+          <p className="mt-3 text-[11px] text-muted">
+            {a.footer}{" "}
+            <a href={AAII_URL} target="_blank" rel="noopener noreferrer" className="font-medium text-accent hover:underline">
+              {a.source}
+            </a>
+          </p>
+        </>
+      )}
+    </div>
+  );
+}
+
 type State = { kind: "loading" } | { kind: "error"; message: string } | { kind: "ready"; report: PremarketReport };
 
 /** Relatório pré-market de uma ação ou ETF americano, aberto pelo botão do card do ativo. */
@@ -383,6 +469,7 @@ export function PremarketDialog({ symbol, onClose }: { symbol: string; onClose: 
             </Section>
             <Section title={p.sections.context}>
               <Context report={state.report} c={c} />
+              <Sentiment report={state.report} c={c} />
             </Section>
             <footer className="border-t border-border pt-4 text-xs text-muted">{p.footer}</footer>
           </>

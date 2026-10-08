@@ -643,6 +643,36 @@ export const ptBR = {
       "DX-Y.NYB": "Índice do dólar (DXY)",
       "^VIX": "VIX (volatilidade)",
     },
+    aaii: {
+      title: "Sentimento do investidor (AAII)",
+      surveyDate: "pesquisa de {date}",
+      unavailable: "Pesquisa da AAII indisponível no momento.",
+      bullish: "Otimistas",
+      neutral: "Neutros",
+      bearish: "Pessimistas",
+      average: "média {value}",
+      averageMark: "média histórica",
+      changeMark: "variação semanal em p.p.",
+      spread: "Spread otimistas − pessimistas:",
+      spreadAverage: "(média histórica {value})",
+      mood: {
+        pessimistic: "Pessimismo acentuado.",
+        optimistic: "Otimismo excessivo.",
+        normal: "Sentimento dentro do normal.",
+      },
+      moodText: {
+        pessimistic:
+          "Spread em {spread}, abaixo de −10. Pela opinião contrária, pessimismo extremo dos pequenos investidores costuma aparecer perto de fundos.",
+        optimistic:
+          "Spread em {spread}, acima de +30. Pela opinião contrária, otimismo extremo dos pequenos investidores costuma aparecer perto de topos.",
+        normal: "Spread em {spread}, entre −10 e +30: sem leitura extrema pela opinião contrária.",
+      },
+      history: "Últimas {n} semanas",
+      weekTitle: "{date}: otimistas {bullish}, neutros {neutral}, pessimistas {bearish}",
+      footer:
+        "Pesquisa semanal da American Association of Individual Investors: o que os associados esperam das ações nos próximos 6 meses. Médias e faixas publicadas pela AAII (desde 1987). Indicador contrário: serve de contexto, não de sinal de entrada.",
+      source: "Fonte: AAII",
+    },
   },
   risk: {
     label: "Gestão de risco para {symbol}",
