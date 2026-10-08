@@ -106,7 +106,7 @@ export const ptBR = {
     closeExample: "Fechar exemplo",
     loading: "Carregando histórico…",
     confirmClear: "Apagar todos os {count} desenhos de {symbol}?",
-    series: { volume: "Volume", obv: "OBV", openInterest: "Int. aberto", divergence: "Div." },
+    series: { volume: "Volume", obv: "OBV", openInterest: "Int. aberto", divergence: "Div.", momentum: "Momentum {n}" },
     markers: {
       buy: "Compra",
       sell: "Venda",
@@ -184,6 +184,9 @@ export const ptBR = {
       "Canal de preço de Donchian: compra no fechamento acima da máxima das semanas anteriores, venda abaixo da mínima (Murphy, cap. 9).",
     entry: "Entrada",
     exit: "Saída",
+    momentum: "Linha de momentum",
+    momentumHint: "Fechamento de hoje menos o de N candles atrás: mede a velocidade do movimento e oscila em torno de zero (Murphy, cap. 10).",
+    momentumPeriod: "Momentum de {n} candles. Clique para {action}.",
     entryOption: { "2": "2 semanas (sensível)", "4": "4 semanas (original)", "8": "8 semanas (filtra lateral)" },
     continuous: "Contínua (inverte no canal de entrada)",
     exitOption: { "1": "Não contínua: 1 semana", "2": "Não contínua: 2 semanas" },
@@ -253,6 +256,30 @@ export const ptBR = {
     noneRecent: "Nenhum sinal nos últimos {count} candles.",
     footer:
       "Táticas de curto prazo da aula de médias móveis, além do Murphy. O contexto vem da inclinação da média: tendência quando ela anda mais que metade da largura do envelope em meio período. Defina o stop antes de entrar; na reversão, ele fica além da banda tocada.",
+  },
+  momentum: {
+    title: "Linha de momentum",
+    params: "· fechamento menos o de {n} candles atrás",
+    insufficient: "Ainda não há candles suficientes para o momentum deste período.",
+    position: "Agora:",
+    positive: "momentum positivo ({value}, {percent}): o preço está acima de {n} candles atrás.",
+    negative: "momentum negativo ({value}, {percent}): o preço está abaixo de {n} candles atrás.",
+    rising: " Subindo nos últimos {k} candles: o movimento acelera.",
+    falling: " Caindo nos últimos {k} candles: o movimento desacelera.",
+    flat: " Estável nos últimos {k} candles.",
+    extremeHigh: "Extremo de alta:",
+    extremeHighText:
+      "a linha está perto do maior valor dos últimos {lookback} candles. Se ela achatar ou começar a cair com o preço ainda subindo, a alta está perdendo força.",
+    extremeLow: "Extremo de baixa:",
+    extremeLowText:
+      "a linha está perto do menor valor dos últimos {lookback} candles. Se ela achatar ou começar a subir com o preço ainda caindo, a queda está perdendo força.",
+    cross: "Linha zero:",
+    crossUp: "cruzou para cima em {date} (fechamento {price}), sinal de compra.",
+    crossDown: "cruzou para baixo em {date} (fechamento {price}), sinal de venda.",
+    noCross: "sem cruzamento no período.",
+    crossOpen: " O cruzamento está no último candle: se ele ainda estiver em formação, pode se desfazer até o fechamento.",
+    footer:
+      "Regras de Murphy (cap. 10): cruzar a linha zero para cima é compra e para baixo é venda, mas opere só a favor da tendência principal. O momentum vira antes do preço: no topo de uma alta, a linha achata e cai enquanto o preço ainda sobe. As setas na linha de momentum, abaixo do OBV, marcam cada cruzamento: verde para cima, vermelha para baixo.",
   },
   bollinger: {
     title: "Bandas de Bollinger",
