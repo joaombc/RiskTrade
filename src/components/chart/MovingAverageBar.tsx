@@ -22,6 +22,7 @@ import {
 } from "@/lib/movingAverages";
 import { MOMENTUM_PERIODS, type MomentumPeriod } from "@/lib/momentum";
 import { RSI_PERIODS, type RsiPeriod } from "@/lib/rsi";
+import { STOCHASTIC_PERIODS, type StochasticPeriod } from "@/lib/stochastic";
 import { ENTRY_WEEKS, EXIT_WEEKS, type FourWeekSettings } from "@/lib/priceChannel";
 
 interface Props {
@@ -40,6 +41,9 @@ interface Props {
   /** Período do IFR; null = desligado. */
   rsi: RsiPeriod | null;
   onRsiChange: (period: RsiPeriod | null) => void;
+  /** Período do estocástico lento; null = desligado. */
+  stochastic: StochasticPeriod | null;
+  onStochasticChange: (period: StochasticPeriod | null) => void;
 }
 
 const chip = "flex items-center rounded-full border text-xs font-medium";
@@ -58,6 +62,8 @@ export function MovingAverageBar({
   onMomentumChange,
   rsi,
   onRsiChange,
+  stochastic,
+  onStochasticChange,
 }: Props) {
   const { t } = useI18n();
   const m = t.ma;
@@ -268,6 +274,29 @@ export function MovingAverageBar({
               aria-pressed={active}
               onClick={() => onRsiChange(active ? null : period)}
               title={fmt(m.rsiPeriod, { n: period, action: active ? m.hide : m.show })}
+              className={`${chip} px-2.5 py-1 tabular-nums ${
+                active ? "border-foreground bg-foreground text-background" : "border-border text-muted hover:bg-border/60 hover:text-foreground"
+              }`}
+            >
+              {period}
+            </button>
+          );
+        })}
+      </div>
+
+      <div role="group" aria-label={m.stochastic} className="flex flex-wrap items-center gap-1.5">
+        <span className="mr-1 text-xs font-semibold" title={m.stochasticHint}>
+          {m.stochastic}
+        </span>
+        {STOCHASTIC_PERIODS.map((period) => {
+          const active = stochastic === period;
+          return (
+            <button
+              key={period}
+              type="button"
+              aria-pressed={active}
+              onClick={() => onStochasticChange(active ? null : period)}
+              title={fmt(m.stochasticPeriod, { n: period, action: active ? m.hide : m.show })}
               className={`${chip} px-2.5 py-1 tabular-nums ${
                 active ? "border-foreground bg-foreground text-background" : "border-border text-muted hover:bg-border/60 hover:text-foreground"
               }`}
