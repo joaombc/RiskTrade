@@ -1,6 +1,7 @@
 import "server-only";
 import YahooFinance from "yahoo-finance2";
 import type { ChartResultArrayQuote } from "yahoo-finance2/modules/chart";
+import { getAaiiSentiment } from "./aaii";
 import type { Bar } from "./drawings/types";
 import {
   averageVolume,
@@ -304,7 +305,7 @@ async function optional<T>(label: string, task: Promise<T>, fallback: T): Promis
 
 /**
  * Relatório pré-market de uma ação ou ETF americano. Cotação e histórico são obrigatórios;
- * balanço, analistas, notícias e contexto do mercado são opcionais. ETF não tem balanço nem
+ * balanço, analistas, notícias, contexto do mercado e sentimento da AAII são opcionais. ETF não tem balanço nem
  * analistas, então essa parte nem é buscada.
  */
 export async function getPremarketReport(symbol: string): Promise<PremarketReport> {
@@ -314,11 +315,12 @@ export async function getPremarketReport(symbol: string): Promise<PremarketRepor
   if (!kind) throw new NotUSListedError(quote.symbol);
 
   const noEvents = { earnings: null, analysts: [] as AnalystAction[] };
-  const [history, ev, newsItems, context] = await Promise.all([
+  const [history, ev, newsItems, context, sentiment] = await Promise.all([
     getHistory(quote.symbol, "1y"),
     kind === "stock" ? optional("eventos", events(quote.symbol), noEvents) : noEvents,
     optional("notícias", news(quote.symbol), []),
     optional("contexto", marketContext(), []),
+    optional("sentimento AAII", getAaiiSentiment(), null),
   ]);
 
   // Com o pregão aberto, o candle de hoje está incompleto: o mapa técnico usa só pregões fechados.
@@ -347,5 +349,6 @@ export async function getPremarketReport(symbol: string): Promise<PremarketRepor
     analysts: ev.analysts,
     news: newsItems,
     context,
+    sentiment,
   };
 }
