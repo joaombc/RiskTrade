@@ -1,5 +1,6 @@
 import { CHANNEL_DIAGRAMS } from "./channel-diagrams";
 import { MA_DIAGRAMS } from "./ma-diagrams";
+import { RSI_DIAGRAMS } from "./rsi-diagrams";
 import type { Diagram, Lesson } from "./types";
 
 /**
@@ -583,6 +584,120 @@ export const LESSONS: Lesson[] = [
       "Encurte (2 ou 1 semana) para mais sensibilidade e alongue (8 semanas) para filtrar a lateralidade.",
       "Os ajustes funcionam melhor multiplicando ou dividindo por 2, seguindo os ciclos: 1, 2, 4 e 8 semanas.",
       "Como todo sistema de seguir tendência, não pega topos nem fundos, e não precisa pegar.",
+    ],
+  },
+  {
+    slug: "ifr-de-wilder",
+    title: "IFR de Wilder",
+    subtitle: "O Índice de Força Relativa: zonas, failure swings e divergências",
+    summary:
+      "O oscilador mais usado da análise técnica: como ele é calculado, como ler as zonas de 70 e 30, por que o sinal vem na volta para dentro da faixa, o failure swing, as divergências e como ajustar o período e os níveis à tendência.",
+    readingMinutes: 10,
+    source:
+      "Murphy, Technical Analysis of the Financial Markets, cap. 10 (Osciladores e opinião contrária); J. Welles Wilder, New Concepts in Technical Trading Systems (1978)",
+    relatedTerms: ["linha-de-momentum", "divergencia-de-volume", "bandas-de-bollinger", "linha-de-tendencia", "suporte-e-resistencia"],
+    sections: [
+      {
+        heading: "Origem",
+        paragraphs: [
+          "J. Welles Wilder apresentou o Índice de Força Relativa (IFR, ou RSI em inglês) em 1978, no livro New Concepts in Technical Trading Systems. Ele queria corrigir dois defeitos da linha de momentum simples: os saltos bruscos que aparecem quando um preço muito alto ou muito baixo sai da janela de cálculo, e a falta de uma escala fixa para comparar ativos e momentos diferentes.",
+          "O resultado é um oscilador que vai sempre de 0 a 100, com movimento mais suave. Murphy o descreve como um dos osciladores mais populares entre os analistas técnicos.",
+        ],
+      },
+      {
+        heading: "Como é calculado",
+        paragraphs: [
+          "O IFR compara o tamanho médio das altas com o tamanho médio das baixas dos últimos 14 períodos. Primeiro calcula-se a força relativa: RS = média das altas ÷ média das baixas. Depois, IFR = 100 − 100 ÷ (1 + RS).",
+          "As médias usam a suavização de Wilder: a primeira é a média simples das 14 primeiras variações; daí em diante, cada nova média é (média anterior × 13 + variação de hoje) ÷ 14. Assim, um dia antigo nunca sai da conta de uma vez, e a linha não dá saltos.",
+        ],
+        bullets: [
+          "Exemplo: se a média das altas é 1,20 e a das baixas é 0,60, RS = 2 e IFR = 100 − 100 ÷ 3 ≈ 66,7.",
+          "Só altas na janela: o IFR chega a 100. Só baixas: chega a 0.",
+          "Altas e baixas do mesmo tamanho: o IFR fica em 50.",
+        ],
+      },
+      {
+        heading: "Sobrecompra e sobrevenda: 70 e 30",
+        paragraphs: [
+          "Acima de 70, o mercado está sobrecomprado; abaixo de 30, sobrevendido. São zonas de alerta, não sinais: um movimento forte pode deixar o IFR muito tempo numa zona extrema, e a primeira entrada nela costuma ser só um aviso de que o movimento esticou.",
+          "Por isso Murphy recomenda esperar a volta: o sinal de venda vem quando o IFR, depois de passar de 70, volta para baixo dele; o de compra, quando volta para cima de 30.",
+        ],
+        diagram: {
+          diagram: RSI_DIAGRAMS.zones,
+          caption: "IFR de 14 períodos sobre um preço oscilante: a venda vem quando ele volta para baixo de 70, e a compra quando volta para cima de 30.",
+        },
+      },
+      {
+        heading: "Os níveis se ajustam à tendência",
+        paragraphs: [
+          "Num mercado de alta forte, o IFR costuma oscilar entre 40 e 80 e raramente chega a 30: 70 deixa de ser um bom nível de venda, e muitos analistas passam a usar 80 como sobrecompra. Num mercado de baixa, o espelho: o IFR anda entre 20 e 60, e 20 vira o nível de sobrevenda.",
+          "A linha de 50 também ajuda: acima dela, os ganhos recentes superam as perdas; abaixo, o contrário. Recuos que param perto de 40 a 50 numa alta, sem chegar a 30, mostram que a tendência continua forte.",
+        ],
+      },
+      {
+        heading: "Failure swing",
+        paragraphs: [
+          "Wilder considerava o failure swing o sinal mais forte do IFR. No de topo, o IFR passa de 70 (A), recua (B), repica sem superar o topo A (C) e então perde o fundo B: é o sinal de venda. O padrão mostra que a força compradora não conseguiu repetir o pico, mesmo com o preço ainda alto.",
+          "O failure swing de fundo é o espelho: o IFR cai abaixo de 30, repica, recua sem perder o fundo e então supera o topo intermediário, sinal de compra. Em ambos, o sinal depende só do IFR, sem precisar olhar o gráfico de preço.",
+        ],
+        diagram: { diagram: RSI_DIAGRAMS.failureTop, caption: "Failure swing de topo: C não supera A, e a venda vem quando o IFR perde o fundo B." },
+      },
+      {
+        heading: "Divergências",
+        paragraphs: [
+          "Quando o preço faz um novo topo e o IFR faz um topo mais baixo, há uma divergência de baixa: o movimento continua, mas com menos força. O espelho, preço num fundo mais baixo e IFR num fundo mais alto, é a divergência de alta.",
+          "Para Murphy, a divergência é o sinal mais importante dos osciladores, principalmente quando o primeiro topo do IFR está acima de 70 (ou o primeiro fundo, abaixo de 30). Ela é um alerta: a confirmação vem pelo preço, como o rompimento de uma linha de tendência, ou pelo próprio IFR, num failure swing.",
+        ],
+        diagram: {
+          diagram: RSI_DIAGRAMS.divergence,
+          caption: "O preço faz um topo mais alto, mas o IFR de 14 períodos faz um topo mais baixo: a alta perdeu força.",
+        },
+      },
+      {
+        heading: "Linhas de tendência e padrões no próprio IFR",
+        paragraphs: [
+          "O IFR forma os mesmos desenhos do preço: linhas de tendência, suportes, resistências e até padrões como triângulos ou ombro-cabeça-ombro. Muitas vezes eles aparecem com mais clareza no IFR, e o rompimento de uma linha de tendência do IFR pode vir antes do rompimento correspondente no preço.",
+        ],
+      },
+      {
+        heading: "Qual período usar",
+        paragraphs: [
+          "Wilder usava 14 períodos, e esse continua sendo o padrão. Quanto menor o período, mais sensível o IFR e maior a amplitude: o de 9 períodos chega às zonas extremas com mais frequência e dá mais sinais, inclusive falsos. Quanto maior o período, mais suave a linha: o de 25 raramente sai da faixa de 30 a 70.",
+          "Murphy observa que quem encurta o período costuma alargar os níveis (80 e 20), e quem alonga costuma estreitá-los, para que os sinais continuem aparecendo.",
+        ],
+      },
+      {
+        heading: "Em tendência e no mercado lateral",
+        paragraphs: [
+          "Os osciladores funcionam melhor em mercados laterais, onde o preço vai e volta entre suporte e resistência. Numa tendência forte, sobrecompra e sobrevenda podem durar muito, e operar contra a tendência a cada toque em 70 ou 30 sai caro.",
+          "A regra de Murphy é usar o oscilador a favor da tendência principal: numa alta, comprar quando o IFR sai da sobrevenda (ou recua até 40 a 50) e só realizar lucro na sobrecompra; numa baixa, vender quando ele sai da sobrecompra.",
+        ],
+      },
+      {
+        heading: "Semanal e mensal",
+        paragraphs: [
+          "O IFR também funciona em gráficos semanais e mensais, com 14 semanas ou 14 meses. Nesses prazos, as zonas extremas são raras e costumam marcar viradas importantes do mercado, e as divergências ganham ainda mais peso.",
+        ],
+      },
+      {
+        heading: "No RiskTrade",
+        paragraphs: ["Use os botões IFR de Wilder na barra de médias do gráfico:"],
+        bullets: [
+          "Escolha 14 (Wilder), 9 (mais sensível) ou 25 (mais suave). Clicar de novo no botão ativo desliga o IFR.",
+          "O painel do IFR tem escala fixa de 0 a 100, com as linhas de 70 e 30 tracejadas e a de 50 pontilhada.",
+          "Setas marcam as voltas para dentro da faixa (compra acima de 30, venda abaixo de 70), e círculos marcam os failure swings.",
+          "O painel de leitura diz a zona atual, a última saída das zonas e o último failure swing.",
+          "Arraste o painel pela alça ⋮⋮ para colocá-lo logo abaixo do preço e comparar as divergências.",
+        ],
+      },
+    ],
+    takeaways: [
+      "IFR = 100 − 100 ÷ (1 + média das altas ÷ média das baixas), com a suavização de Wilder; vai de 0 a 100.",
+      "70 e 30 marcam sobrecompra e sobrevenda; o sinal vem na volta para dentro da faixa, não no toque.",
+      "Em tendência forte, os níveis se deslocam: use 80 numa alta e 20 numa baixa.",
+      "O failure swing, quando o IFR não repete o extremo e rompe o ponto intermediário, é o sinal mais forte de Wilder.",
+      "Divergências entre o IFR e o preço, com o IFR numa zona extrema, são o alerta mais importante.",
+      "Opere o IFR a favor da tendência principal; ele funciona melhor no mercado lateral.",
     ],
   },
   {

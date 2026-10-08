@@ -56,6 +56,14 @@ export const LESSON_LABELS_EN: Record<string, string> = {
   "máx. 8 sem.": "8-wk high",
   "mín. 8 sem.": "8-wk low",
   "pontos: sinais falsos da regra de 4 semanas": "dots: false signals of the 4-week rule",
+  // IFR
+  "70 sobrecompra": "70 overbought",
+  "30 sobrevenda": "30 oversold",
+  preço: "price",
+  "fundo B": "low B",
+  "C não supera A": "C fails to exceed A",
+  "IFR 14": "RSI 14",
+  "IFR mais baixo": "lower RSI",
 };
 
 export const LESSONS_EN: Record<string, LessonTranslation> = {
@@ -402,6 +410,111 @@ export const LESSONS_EN: Record<string, LessonTranslation> = {
       "Shorten (2 or 1 week) for more sensitivity and lengthen (8 weeks) to filter out ranges.",
       "Adjustments work best by multiplying or dividing by 2, following the cycles: 1, 2, 4 and 8 weeks.",
       "Like every trend-following system, it doesn't catch tops or bottoms, and it doesn't need to.",
+    ],
+  },
+  "ifr-de-wilder": {
+    title: "Wilder's RSI",
+    subtitle: "The Relative Strength Index: zones, failure swings and divergences",
+    summary:
+      "The most widely used oscillator in technical analysis: how it is calculated, how to read the 70 and 30 zones, why the signal comes when it moves back inside the band, the failure swing, divergences and how to adjust the period and levels to the trend.",
+    source:
+      "Murphy, Technical Analysis of the Financial Markets, ch. 10 (Oscillators and Contrary Opinion); J. Welles Wilder, New Concepts in Technical Trading Systems (1978)",
+    sections: [
+      {
+        heading: "Origins",
+        paragraphs: [
+          "J. Welles Wilder introduced the Relative Strength Index (RSI) in 1978, in the book New Concepts in Technical Trading Systems. He wanted to fix two flaws of the simple momentum line: the sharp jumps that appear when a very high or very low price drops out of the calculation window, and the lack of a fixed scale to compare different assets and moments.",
+          "The result is an oscillator that always ranges from 0 to 100, with smoother movement. Murphy describes it as one of the most popular oscillators among technical analysts.",
+        ],
+      },
+      {
+        heading: "How it is calculated",
+        paragraphs: [
+          "The RSI compares the average size of up moves with the average size of down moves over the last 14 periods. First, relative strength is calculated: RS = average gain ÷ average loss. Then, RSI = 100 − 100 ÷ (1 + RS).",
+          "The averages use Wilder's smoothing: the first is the simple average of the first 14 changes; from then on, each new average is (previous average × 13 + today's change) ÷ 14. That way, an old day never drops out of the calculation all at once, and the line doesn't jump.",
+        ],
+        bullets: [
+          "Example: if the average gain is 1.20 and the average loss is 0.60, RS = 2 and RSI = 100 − 100 ÷ 3 ≈ 66.7.",
+          "Only gains in the window: the RSI reaches 100. Only losses: it reaches 0.",
+          "Gains and losses of the same size: the RSI sits at 50.",
+        ],
+      },
+      {
+        heading: "Overbought and oversold: 70 and 30",
+        paragraphs: [
+          "Above 70, the market is overbought; below 30, oversold. These are warning zones, not signals: a strong move can keep the RSI in an extreme zone for a long time, and the first move into it is usually just a warning that the move is stretched.",
+          "That is why Murphy recommends waiting for the move back: the sell signal comes when the RSI, after going above 70, moves back below it; the buy signal, when it moves back above 30.",
+        ],
+        caption: "A 14-period RSI on an oscillating price: the sell comes when it moves back below 70, and the buy when it moves back above 30.",
+      },
+      {
+        heading: "The levels adjust to the trend",
+        paragraphs: [
+          "In a strong bull market, the RSI tends to swing between 40 and 80 and rarely reaches 30: 70 stops being a good sell level, and many analysts switch to 80 as overbought. In a bear market, the mirror image: the RSI moves between 20 and 60, and 20 becomes the oversold level.",
+          "The 50 line also helps: above it, recent gains outweigh losses; below it, the reverse. Pullbacks that stop near 40 to 50 in an uptrend, without reaching 30, show the trend is still strong.",
+        ],
+      },
+      {
+        heading: "Failure swing",
+        paragraphs: [
+          "Wilder considered the failure swing the RSI's strongest signal. In a top failure swing, the RSI goes above 70 (A), pulls back (B), rallies without exceeding peak A (C) and then breaks below low B: that is the sell signal. The pattern shows that buying power couldn't repeat the peak, even with price still high.",
+          "The bottom failure swing is the mirror image: the RSI falls below 30, bounces, pulls back without breaking the low and then exceeds the intervening high, a buy signal. In both cases, the signal depends only on the RSI, without looking at the price chart.",
+        ],
+        caption: "Top failure swing: C fails to exceed A, and the sell comes when the RSI breaks low B.",
+      },
+      {
+        heading: "Divergences",
+        paragraphs: [
+          "When price makes a new high and the RSI makes a lower high, there is a bearish divergence: the move continues, but with less strength. The mirror image, price at a lower low and the RSI at a higher low, is a bullish divergence.",
+          "For Murphy, divergence is the most important signal of oscillators, especially when the RSI's first peak is above 70 (or the first trough below 30). It is a warning: confirmation comes from price, such as the break of a trendline, or from the RSI itself, in a failure swing.",
+        ],
+        caption: "Price makes a higher high, but the 14-period RSI makes a lower high: the rally has lost strength.",
+      },
+      {
+        heading: "Trendlines and patterns on the RSI itself",
+        paragraphs: [
+          "The RSI forms the same shapes as price: trendlines, support, resistance and even patterns such as triangles or head and shoulders. They often show up more clearly on the RSI, and the break of an RSI trendline can come before the corresponding break in price.",
+        ],
+      },
+      {
+        heading: "Which period to use",
+        paragraphs: [
+          "Wilder used 14 periods, and that remains the standard. The shorter the period, the more sensitive the RSI and the wider its amplitude: the 9-period RSI reaches the extreme zones more often and gives more signals, false ones included. The longer the period, the smoother the line: the 25-period RSI rarely leaves the 30 to 70 band.",
+          "Murphy notes that those who shorten the period tend to widen the levels (80 and 20), and those who lengthen it tend to narrow them, so that signals keep appearing.",
+        ],
+      },
+      {
+        heading: "In a trend and in a sideways market",
+        paragraphs: [
+          "Oscillators work best in sideways markets, where price goes back and forth between support and resistance. In a strong trend, overbought and oversold conditions can last a long time, and trading against the trend at every touch of 70 or 30 is costly.",
+          "Murphy's rule is to use the oscillator in the direction of the major trend: in an uptrend, buy when the RSI leaves oversold (or pulls back to 40 to 50) and only take profits when it is overbought; in a downtrend, sell when it leaves overbought.",
+        ],
+      },
+      {
+        heading: "Weekly and monthly",
+        paragraphs: [
+          "The RSI also works on weekly and monthly charts, with 14 weeks or 14 months. On those time frames, the extreme zones are rare and usually mark important market turns, and divergences carry even more weight.",
+        ],
+      },
+      {
+        heading: "In RiskTrade",
+        paragraphs: ["Use the Wilder's RSI buttons in the chart's averages bar:"],
+        bullets: [
+          "Choose 14 (Wilder), 9 (more sensitive) or 25 (smoother). Clicking the active button again turns the RSI off.",
+          "The RSI pane has a fixed 0 to 100 scale, with dashed 70 and 30 lines and a dotted 50 line.",
+          "Arrows mark moves back inside the band (buy above 30, sell below 70), and circles mark failure swings.",
+          "The reading panel shows the current zone, the last zone exit and the last failure swing.",
+          "Drag the pane by its ⋮⋮ handle to put it right below price and compare divergences.",
+        ],
+      },
+    ],
+    takeaways: [
+      "RSI = 100 − 100 ÷ (1 + average gain ÷ average loss), with Wilder's smoothing; it ranges from 0 to 100.",
+      "70 and 30 mark overbought and oversold; the signal comes on the move back inside the band, not on the touch.",
+      "In a strong trend, the levels shift: use 80 in an uptrend and 20 in a downtrend.",
+      "The failure swing, when the RSI fails to repeat the extreme and breaks the intervening point, is Wilder's strongest signal.",
+      "Divergences between the RSI and price, with the RSI in an extreme zone, are the most important warning.",
+      "Trade the RSI in the direction of the major trend; it works best in a sideways market.",
     ],
   },
   "ondas-de-elliott": {
