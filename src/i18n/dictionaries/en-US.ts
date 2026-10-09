@@ -105,7 +105,7 @@ export const enUS: Dictionary = {
     closeExample: "Close example",
     loading: "Loading price history…",
     confirmClear: "Delete all {count} drawings on {symbol}?",
-    series: { volume: "Volume", obv: "OBV", openInterest: "Open int.", divergence: "Div.", momentum: "Momentum {n}", maOscillator: "{fast} − {slow}", rsi: "RSI {n}", stochK: "%K {n}", stochD: "%D 3", williamsR: "%R {n}", macd: "MACD", macdSignal: "Signal 9", macdHistogram: "Histogram" },
+    series: { volume: "Volume", obv: "OBV", openInterest: "Open int.", divergence: "Div.", momentum: "Momentum {n}", maOscillator: "{fast} − {slow}", rsi: "RSI {n}", stochK: "%K {n}", stochD: "%D 3", williamsR: "%R {n}", macd: "MACD", macdSignal: "Signal 9", macdHistogram: "Histogram", trend: "Trend ({degree})" },
     markers: {
       buy: "Buy",
       sell: "Sell",
@@ -115,6 +115,10 @@ export const enUS: Dictionary = {
       weeks: "{n}W",
       channelHigh: "High {n}W",
       channelLow: "Low {n}W",
+      swing: {
+        high: { higher: "HH", lower: "LH", equal: "EH", first: "H" },
+        low: { higher: "HL", lower: "LL", equal: "EL", first: "L" },
+      },
     },
   },
   panes: {
@@ -195,6 +199,10 @@ export const enUS: Dictionary = {
     momentum: "Momentum line",
     momentumHint: "Today's close minus the close N candles ago: it measures the speed of the move and oscillates around zero (Murphy, ch. 10).",
     momentumPeriod: "{n}-candle momentum. Click to {action}.",
+    trend: "Trend",
+    trendHint: "Direction of peaks and troughs (Murphy, ch. 4): up, down or sideways, in three degrees.",
+    trendDegree: "Trend ({degree}): peaks and troughs confirmed by {n} candles on each side. Click to {action}.",
+    trendDegrees: { primary: "Primary", intermediate: "Intermediate", short: "Near term" },
     rsi: "Wilder's RSI",
     rsiHint: "Relative Strength Index: from 0 to 100, with 70 (overbought) and 30 (oversold) (Murphy, ch. 10).",
     rsiPeriod: "{n}-candle RSI. Click to {action}.",
@@ -421,6 +429,40 @@ export const enUS: Dictionary = {
     footer:
       "Murphy's rules (ch. 10): the main signal is the MACD crossing its signal line. Buys well below zero and sells well above carry more weight. The histogram shows the distance between the two lines: when it shrinks, a crossover is coming. Divergences between the MACD and price warn of wear. The arrows on the pane mark the crossovers.",
     link: "MACD lesson",
+  },
+  trend: {
+    title: "Trend (Murphy)",
+    params: "· peaks and troughs",
+    degree: "Degree",
+    trendCol: "Trend",
+    since: "Since",
+    window: "{n} candles on each side",
+    insufficient: "not enough peaks and troughs",
+    trends: { up: "Up", down: "Down", lateral: "Sideways" },
+    select: "Show the {degree} degree on the chart",
+    selected: "on chart",
+    now: "Trend ({degree}):",
+    insufficientText: "there are not yet two confirmed peaks and two confirmed troughs in this period. Pick a longer period or a shorter degree.",
+    reading: {
+      up: "successively higher troughs, with peaks rising or at the same level. Last peak at {high} ({highDate}); last trough at {low} ({lowDate}).",
+      down: "successively lower peaks, with troughs falling or at the same level. Last peak at {high} ({highDate}); last trough at {low} ({lowDate}).",
+      lateral: "peaks and troughs with no common direction, or at the same level. Last peak at {high} ({highDate}); last trough at {low} ({lowDate}).",
+    },
+    broken: {
+      up: "The uptrend was broken: the close fell below the last trough ({low}). Until peaks and troughs set a new direction, the trend is sideways.",
+      down: "The downtrend was broken: the close rose above the last peak ({high}). Until peaks and troughs set a new direction, the trend is sideways.",
+    },
+    watch: "What changes the reading:",
+    invalidation: {
+      up: "a close below {low}, the last trough.",
+      down: "a close above {high}, the last peak.",
+      lateral: "a break out of the range: above {high} (last peak) or below {low} (last trough).",
+    },
+    legend:
+      "Marks: HH/LH = higher/lower high than the previous one; HL/LL = higher/lower low; EH and EL = at the same level (within half an ATR). Chart background: green = up, red = down, gray = sideways. An equal peak in an uptrend (or equal trough in a downtrend) is a warning: the trend only changes when the last trough (or peak) is broken.",
+    footer:
+      "Murphy's definition (ch. 4): the trend is the direction of peaks and troughs. The three degrees (primary, intermediate and near term) use peaks and troughs confirmed by 25, 10 and 3 candles on each side; on a daily chart, roughly months, weeks and days. A peak or trough only counts once confirmed, so each candle's reading does not look ahead.",
+    link: "Dow Theory lesson",
   },
   bollinger: {
     title: "Bollinger Bands",

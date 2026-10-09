@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  AreaSeries,
   CandlestickSeries,
   ColorType,
   createChart,
@@ -73,6 +74,17 @@ import {
   williamsR,
   type WilliamsPeriod,
 } from "@/lib/williamsR";
+import {
+  findSwings,
+  loadTrendDegree,
+  readTrend,
+  saveTrendDegree,
+  TREND_DEGREES,
+  TREND_WINDOWS,
+  trendStates,
+  type TrendDegree,
+  type TrendReading,
+} from "@/lib/trend";
 import { loadMacdEnabled, macd, macdCrosses, readMacd, saveMacdEnabled } from "@/lib/macd";
 import { loadMomentumPeriod, momentum, readMomentum, saveMomentumPeriod, zeroCrossings, type MomentumPeriod } from "@/lib/momentum";
 import {
@@ -112,6 +124,7 @@ import { RsiPanel } from "./RsiPanel";
 import { StochasticPanel } from "./StochasticPanel";
 import { WilliamsRPanel } from "./WilliamsRPanel";
 import { MacdPanel } from "./MacdPanel";
+import { TrendPanel } from "./TrendPanel";
 import { DrawingsPrimitive } from "./DrawingsPrimitive";
 import { DrawingToolbar } from "./DrawingToolbar";
 import { MovingAverageBar } from "./MovingAverageBar";
@@ -415,6 +428,19 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
   const [bollingerOn, setBollingerOn] = useState(loadBollingerEnabled);
   const bands = useMemo(() => (bars && bollingerOn ? bollinger(bars, warmup) : null), [bars, warmup, bollingerOn]);
   const bollingerReading = useMemo(() => (bars && bands ? readBollinger(bars, bands) : null), [bars, bands]);
+  // Tendência pelos topos e fundos (Murphy, cap. 4): o prazo escolhido vai para o gráfico; o painel mostra os três.
+  const [trendDegree, setTrendDegree] = useState<TrendDegree | null>(loadTrendDegree);
+  const trendWindow = trendDegree ? TREND_WINDOWS[trendDegree] : null;
+  const trendOn = trendDegree !== null;
+  const trendSwings = useMemo(() => (bars && trendWindow ? findSwings(bars, trendWindow) : []), [bars, trendWindow]);
+  const trendBarStates = useMemo(() => (bars && trendWindow ? trendStates(bars, trendWindow) : null), [bars, trendWindow]);
+  const trendReadings = useMemo(
+    () =>
+      bars && trendOn
+        ? (Object.fromEntries(TREND_DEGREES.map((d) => [d, readTrend(bars, TREND_WINDOWS[d])])) as Record<TrendDegree, TrendReading | null>)
+        : null,
+    [bars, trendOn],
+  );
   // Regra das 4 semanas: só em candles diários (uma semana = 5 pregões).
   const [fourWeek, setFourWeek] = useState<FourWeekSettings>(loadFourWeekSettings);
   const [showFourWeekSignals, setShowFourWeekSignals] = useState(true);
@@ -835,6 +861,10 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
   }, [bollingerOn]);
 
   useEffect(() => {
+    saveTrendDegree(trendDegree);
+  }, [trendDegree]);
+
+  useEffect(() => {
     saveFourWeekSettings(fourWeek);
   }, [fourWeek]);
 
@@ -948,6 +978,57 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
       });
     };
   }, [bars, fourWeekSystem, fourWeek.exitWeeks, theme]);
+
+  // Tendência: fundo do painel do preço colorido em cada candle (atrás dos candles) e o zigue-zague
+  // ligando os topos e fundos.
+  useEffect(() => {
+    const handles = handlesRef.current;
+    if (!handles || !bars || !trendBarStates) return;
+    const pane = pricePaneIndex(handles);
+    // Área contínua numa escala própria e invisível, fixa em 0–1: com o valor 1, ela cobre o painel inteiro.
+    const background = handles.chart.addSeries(
+      AreaSeries,
+      {
+        priceScaleId: "trend-background",
+        lineVisible: false,
+        priceLineVisible: false,
+        lastValueVisible: false,
+        crosshairMarkerVisible: false,
+        autoscaleInfoProvider: () => ({ priceRange: { minValue: 0, maxValue: 1 } }),
+      },
+      pane,
+    );
+    background.priceScale().applyOptions({ visible: false, scaleMargins: { top: 0, bottom: 0 } });
+    background.setData(
+      bars.map((b, i) => {
+        const state = trendBarStates[i];
+        const time = b.time as UTCTimestamp;
+        if (!state) return { time };
+        const color = theme.trend[state.trend];
+        return { time, value: 1, topColor: color, bottomColor: color, lineColor: color };
+      }),
+    );
+    background.setSeriesOrder(0);
+    const zigzag = handles.chart.addSeries(
+      LineSeries,
+      {
+        color: theme.trend.zigzag,
+        lineWidth: 1,
+        priceLineVisible: false,
+        lastValueVisible: false,
+        crosshairMarkerVisible: false,
+        autoscaleInfoProvider: () => null,
+      },
+      pane,
+    );
+    zigzag.setData(trendSwings.map((sw) => ({ time: bars[sw.index].time as UTCTimestamp, value: sw.price })));
+    return () => {
+      const alive = handlesRef.current?.candles.getPane().getSeries() ?? [];
+      [background, zigzag].forEach((series) => {
+        if (alive.includes(series)) handles.chart.removeSeries(series);
+      });
+    };
+  }, [bars, trendBarStates, trendSwings, theme]);
 
   // Bandas de Bollinger: bandas de cima e de baixo e a média central tracejada, numa cor neutra.
   useEffect(() => {
@@ -1357,6 +1438,17 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
             ? { time: time(signal.index), position: "aboveBar", shape: "arrowDown", color: theme.down, text: `${mk.sell} ${weekTag}` }
             : { time: time(signal.index), position: "aboveBar", shape: "circle", color: theme.drawings.target, text: mk.exit },
     );
+    // Topos e fundos da tendência: verde quando mais alto que o anterior, vermelho quando mais baixo.
+    const trendMarkers = trendSwings.map(
+      (sw): SeriesMarker<Time> => ({
+        time: time(sw.index),
+        position: sw.kind === "high" ? "aboveBar" : "belowBar",
+        shape: "circle",
+        size: 0.5,
+        color: sw.step === "higher" ? theme.up : sw.step === "lower" ? theme.down : theme.drawings.muted,
+        text: mk.swing[sw.kind][sw.step ?? "first"],
+      }),
+    );
     const exampleMarkers = resolvedExample.markers.map(
       (m): SeriesMarker<Time> => ({
         time: m.time as UTCTimestamp,
@@ -1368,7 +1460,7 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
     );
     // A API exige marcadores em ordem cronológica.
     handles.priceMarkers.setMarkers(
-      [...divergenceMarkers, ...crossMarkers, ...envelopeMarkers, ...fourWeekMarkers, ...exampleMarkers].sort(
+      [...divergenceMarkers, ...crossMarkers, ...envelopeMarkers, ...fourWeekMarkers, ...trendMarkers, ...exampleMarkers].sort(
         (a, b) => (a.time as number) - (b.time as number),
       ),
     );
@@ -1424,6 +1516,7 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
     fourWeekSystem,
     showFourWeekSignals,
     fourWeek.entryWeeks,
+    trendSwings,
     t,
   ]);
 
@@ -1471,6 +1564,9 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
     price: [
       ...averageLines.map(({ ma }) => ({ label: maLabel(ma, t.ma.short), color: theme.movingAverages[ma.slot] })),
       ...(bands ? [{ label: t.ma.bollinger, color: theme.drawings.muted }] : []),
+      ...(trendDegree
+        ? [{ label: fmt(t.chart.series.trend, { degree: t.ma.trendDegrees[trendDegree].toLocaleLowerCase(locale) }), color: theme.trend.zigzag }]
+        : []),
       ...(fourWeekSystem
         ? [
             { label: fmt(t.chart.markers.channelHigh, { n: fourWeek.entryWeeks }), color: theme.down },
@@ -1585,6 +1681,8 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
         onStochasticChange={setStochasticPeriod}
         williamsR={williamsPeriod}
         onWilliamsRChange={setWilliamsPeriod}
+        trend={trendDegree}
+        onTrendChange={setTrendDegree}
       />
 
       <DrawingToolbar
@@ -1677,6 +1775,15 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
           system={fourWeekSystem}
           show={showFourWeekSignals}
           onShowChange={setShowFourWeekSignals}
+        />
+      )}
+      {bars && bars.length > 0 && !loading && trendDegree && trendReadings && (
+        <TrendPanel
+          bars={bars}
+          readings={trendReadings}
+          degree={trendDegree}
+          onDegreeChange={setTrendDegree}
+          intraday={isIntraday(range)}
         />
       )}
       {bars && bars.length > 0 && !loading && bollingerOn && (

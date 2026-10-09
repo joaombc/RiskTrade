@@ -23,6 +23,7 @@ import {
 import { MOMENTUM_PERIODS, type MomentumPeriod } from "@/lib/momentum";
 import { RSI_PERIODS, type RsiPeriod } from "@/lib/rsi";
 import { STOCHASTIC_PERIODS, type StochasticPeriod } from "@/lib/stochastic";
+import { TREND_DEGREES, TREND_WINDOWS, type TrendDegree } from "@/lib/trend";
 import { WILLIAMS_PERIODS, type WilliamsPeriod } from "@/lib/williamsR";
 import { ENTRY_WEEKS, EXIT_WEEKS, type FourWeekSettings } from "@/lib/priceChannel";
 
@@ -50,6 +51,9 @@ interface Props {
   /** Período do %R de Williams; null = desligado. */
   williamsR: WilliamsPeriod | null;
   onWilliamsRChange: (period: WilliamsPeriod | null) => void;
+  /** Prazo da tendência (Murphy, cap. 4) mostrado no gráfico; null = desligada. */
+  trend: TrendDegree | null;
+  onTrendChange: (degree: TrendDegree | null) => void;
 }
 
 const chip = "flex items-center rounded-full border text-xs font-medium";
@@ -74,8 +78,10 @@ export function MovingAverageBar({
   onStochasticChange,
   williamsR,
   onWilliamsRChange,
+  trend,
+  onTrendChange,
 }: Props) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const m = t.ma;
   const label = (ma: Pick<MovingAverage, "kind" | "period">) => maLabel(ma, m.short);
   const [custom, setCustom] = useState<{ kind: MovingAverageKind; period: string } | null>(null);
@@ -254,6 +260,29 @@ export function MovingAverageBar({
       </div>
 
       {/* Um período por vez; clicar no ativo desliga a linha. */}
+      <div role="group" aria-label={m.trend} className="flex flex-wrap items-center gap-1.5">
+        <span className="mr-1 text-xs font-semibold" title={m.trendHint}>
+          {m.trend}
+        </span>
+        {TREND_DEGREES.map((degree) => {
+          const active = trend === degree;
+          return (
+            <button
+              key={degree}
+              type="button"
+              aria-pressed={active}
+              onClick={() => onTrendChange(active ? null : degree)}
+              title={fmt(m.trendDegree, { degree: m.trendDegrees[degree].toLocaleLowerCase(locale), n: TREND_WINDOWS[degree], action: active ? m.hide : m.show })}
+              className={`${chip} px-2.5 py-1 ${
+                active ? "border-foreground bg-foreground text-background" : "border-border text-muted hover:bg-border/60 hover:text-foreground"
+              }`}
+            >
+              {m.trendDegrees[degree]}
+            </button>
+          );
+        })}
+      </div>
+
       <div role="group" aria-label={m.momentum} className="flex flex-wrap items-center gap-1.5">
         <span className="mr-1 text-xs font-semibold" title={m.momentumHint}>
           {m.momentum}
