@@ -106,7 +106,7 @@ export const ptBR = {
     closeExample: "Fechar exemplo",
     loading: "Carregando histórico…",
     confirmClear: "Apagar todos os {count} desenhos de {symbol}?",
-    series: { volume: "Volume", obv: "OBV", openInterest: "Int. aberto", divergence: "Div.", momentum: "Momentum {n}", maOscillator: "{fast} − {slow}", rsi: "IFR {n}", stochK: "%K {n}", stochD: "%D 3", williamsR: "%R {n}", macd: "MACD", macdSignal: "Sinal 9", macdHistogram: "Histograma" },
+    series: { volume: "Volume", obv: "OBV", openInterest: "Int. aberto", divergence: "Div.", momentum: "Momentum {n}", maOscillator: "{fast} − {slow}", rsi: "IFR {n}", stochK: "%K {n}", stochD: "%D 3", williamsR: "%R {n}", macd: "MACD", macdSignal: "Sinal 9", macdHistogram: "Histograma", trend: "Tendência ({degree})" },
     markers: {
       buy: "Compra",
       sell: "Venda",
@@ -116,6 +116,10 @@ export const ptBR = {
       weeks: "{n}S",
       channelHigh: "Máx. {n}S",
       channelLow: "Mín. {n}S",
+      swing: {
+        high: { higher: "TA", lower: "TD", equal: "T=", first: "T" },
+        low: { higher: "FA", lower: "FD", equal: "F=", first: "F" },
+      },
     },
   },
   panes: {
@@ -196,6 +200,10 @@ export const ptBR = {
     momentum: "Linha de momentum",
     momentumHint: "Fechamento de hoje menos o de N candles atrás: mede a velocidade do movimento e oscila em torno de zero (Murphy, cap. 10).",
     momentumPeriod: "Momentum de {n} candles. Clique para {action}.",
+    trend: "Tendência",
+    trendHint: "Direção dos topos e fundos (Murphy, cap. 4): alta, baixa ou lateral, em três prazos.",
+    trendDegree: "Tendência ({degree}): topos e fundos confirmados por {n} candles de cada lado. Clique para {action}.",
+    trendDegrees: { primary: "Primária", intermediate: "Intermediária", short: "Curto prazo" },
     rsi: "IFR de Wilder",
     rsiHint: "Índice de Força Relativa: de 0 a 100, com 70 (sobrecompra) e 30 (sobrevenda) (Murphy, cap. 10).",
     rsiPeriod: "IFR de {n} candles. Clique para {action}.",
@@ -423,6 +431,40 @@ export const ptBR = {
     footer:
       "Regras de Murphy (cap. 10): o sinal principal é o cruzamento do MACD com a linha de sinal. Compras bem abaixo de zero e vendas bem acima pesam mais. O histograma mostra a distância entre as duas linhas: quando ele encolhe, o cruzamento está chegando. Divergências entre o MACD e o preço avisam de desgaste. As setas no painel marcam os cruzamentos.",
     link: "Aula do MACD",
+  },
+  trend: {
+    title: "Tendência (Murphy)",
+    params: "· topos e fundos",
+    degree: "Prazo",
+    trendCol: "Tendência",
+    since: "Desde",
+    window: "{n} candles de cada lado",
+    insufficient: "sem topos e fundos suficientes",
+    trends: { up: "Alta", down: "Baixa", lateral: "Lateral" },
+    select: "Mostrar o prazo {degree} no gráfico",
+    selected: "no gráfico",
+    now: "Tendência ({degree}):",
+    insufficientText: "ainda não há dois topos e dois fundos confirmados neste período. Escolha um período maior ou um prazo mais curto.",
+    reading: {
+      up: "fundos sucessivamente mais altos, com topos subindo ou no mesmo nível. Último topo em {high} ({highDate}); último fundo em {low} ({lowDate}).",
+      down: "topos sucessivamente mais baixos, com fundos caindo ou no mesmo nível. Último topo em {high} ({highDate}); último fundo em {low} ({lowDate}).",
+      lateral: "topos e fundos sem direção comum, ou no mesmo nível. Último topo em {high} ({highDate}); último fundo em {low} ({lowDate}).",
+    },
+    broken: {
+      up: "A alta foi quebrada: o fechamento perdeu o último fundo ({low}). Até os topos e fundos definirem nova direção, a tendência fica lateral.",
+      down: "A baixa foi quebrada: o fechamento passou o último topo ({high}). Até os topos e fundos definirem nova direção, a tendência fica lateral.",
+    },
+    watch: "O que muda a leitura:",
+    invalidation: {
+      up: "fechar abaixo de {low}, o último fundo.",
+      down: "fechar acima de {high}, o último topo.",
+      lateral: "romper a faixa: acima de {high} (último topo) ou abaixo de {low} (último fundo).",
+    },
+    legend:
+      "Marcas: TA/TD = topo mais alto/mais baixo que o anterior; FA/FD = fundo mais alto/mais baixo; T= e F= = no mesmo nível (até meio ATR). Fundo do gráfico: verde = alta, vermelho = baixa, cinza = lateral. Topo igual numa alta (ou fundo igual numa baixa) é aviso: a tendência só muda quando o último fundo (ou topo) é rompido.",
+    footer:
+      "Definição de Murphy (cap. 4): a tendência é a direção dos topos e fundos. Os três prazos (primária, intermediária e de curto prazo) usam topos e fundos confirmados por 25, 10 e 3 candles de cada lado; num gráfico diário, equivalem aproximadamente a meses, semanas e dias. Um topo ou fundo só conta depois de confirmado, então a leitura de cada candle não olha o futuro.",
+    link: "Aula da Teoria de Dow",
   },
   bollinger: {
     title: "Bandas de Bollinger",
