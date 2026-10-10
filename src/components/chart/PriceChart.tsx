@@ -86,6 +86,7 @@ import {
   type TrendReading,
 } from "@/lib/trend";
 import { findTrendLines, trendLinesToDrawings } from "@/lib/trendlines";
+import { defaultBoxSize, loadChartType, pointFigure, readPointFigure, saveChartType, type ChartType } from "@/lib/pointFigure";
 import { loadMacdEnabled, macd, macdCrosses, readMacd, saveMacdEnabled } from "@/lib/macd";
 import { loadMomentumPeriod, momentum, readMomentum, saveMomentumPeriod, zeroCrossings, type MomentumPeriod } from "@/lib/momentum";
 import {
@@ -126,6 +127,8 @@ import { StochasticPanel } from "./StochasticPanel";
 import { WilliamsRPanel } from "./WilliamsRPanel";
 import { MacdPanel } from "./MacdPanel";
 import { trendLineName, TrendPanel } from "./TrendPanel";
+import { PointFigureChart } from "./PointFigureChart";
+import { PointFigurePanel } from "./PointFigurePanel";
 import { DrawingsPrimitive } from "./DrawingsPrimitive";
 import { DrawingToolbar } from "./DrawingToolbar";
 import { MovingAverageBar } from "./MovingAverageBar";
@@ -449,6 +452,15 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
     () => (bars && currentTrend ? findTrendLines(bars, trendSwings, currentTrend) : []),
     [bars, trendSwings, currentTrend],
   );
+  // Ponto e figura (Murphy, cap. 11): alternativa aos candles. A caixa escolhida vale só para o ativo
+  // em que foi escolhida; em outro ativo, volta ao tamanho padrão dele.
+  const [chartType, setChartType] = useState<ChartType>(loadChartType);
+  const pointFigureOn = chartType === "pointFigure";
+  const [pfBoxChoice, setPfBoxChoice] = useState<{ symbol: string; box: number } | null>(null);
+  const pfDefaultBox = bars && bars.length > 0 ? defaultBoxSize(bars[bars.length - 1].close) : null;
+  const pfBox = pfBoxChoice?.symbol === symbol ? pfBoxChoice.box : pfDefaultBox;
+  const pf = useMemo(() => (bars && pointFigureOn && pfBox ? pointFigure(bars, pfBox) : null), [bars, pointFigureOn, pfBox]);
+  const pfReading = useMemo(() => (pf ? readPointFigure(pf) : null), [pf]);
   // Regra das 4 semanas: só em candles diários (uma semana = 5 pregões).
   const [fourWeek, setFourWeek] = useState<FourWeekSettings>(loadFourWeekSettings);
   const [showFourWeekSignals, setShowFourWeekSignals] = useState(true);
@@ -871,6 +883,10 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
   useEffect(() => {
     saveTrendDegree(trendDegree);
   }, [trendDegree]);
+
+  useEffect(() => {
+    saveChartType(chartType);
+  }, [chartType]);
 
   useEffect(() => {
     saveFourWeekSettings(fourWeek);
@@ -1683,6 +1699,20 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
         </div>
       </header>
 
+      <div role="group" aria-label={t.pointFigure.chartType} className="mb-3 flex w-fit rounded-lg border border-border p-0.5 text-xs font-medium">
+        {(["candles", "pointFigure"] as const).map((type) => (
+          <button
+            key={type}
+            type="button"
+            aria-pressed={chartType === type}
+            onClick={() => setChartType(type)}
+            className={`rounded-md px-3 py-1 ${chartType === type ? "bg-foreground text-background" : "text-muted hover:text-foreground"}`}
+          >
+            {t.pointFigure[type]}
+          </button>
+        ))}
+      </div>
+
       {example && (
         <div role="status" className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border border-target/40 bg-target/10 p-3 text-sm">
           <span className="min-w-0 flex-1">
@@ -1711,49 +1741,53 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
         </div>
       )}
 
-      <MovingAverageBar
-        averages={averages}
-        onChange={setAverages}
-        barCount={bars && !loading ? bars.length + (warmup?.length ?? 0) : null}
-        colors={theme.movingAverages}
-        bollinger={bollingerOn}
-        onBollingerChange={setBollingerOn}
-        macd={macdOn}
-        onMacdChange={setMacdOn}
-        fourWeek={fourWeek}
-        onFourWeekChange={setFourWeek}
-        momentum={momentumPeriod}
-        onMomentumChange={setMomentumPeriod}
-        rsi={rsiPeriod}
-        onRsiChange={setRsiPeriod}
-        stochastic={stochasticPeriod}
-        onStochasticChange={setStochasticPeriod}
-        williamsR={williamsPeriod}
-        onWilliamsRChange={setWilliamsPeriod}
-        trend={trendDegree}
-        onTrendChange={setTrendDegree}
-      />
+      {!pointFigureOn && (
+        <>
+          <MovingAverageBar
+            averages={averages}
+            onChange={setAverages}
+            barCount={bars && !loading ? bars.length + (warmup?.length ?? 0) : null}
+            colors={theme.movingAverages}
+            bollinger={bollingerOn}
+            onBollingerChange={setBollingerOn}
+            macd={macdOn}
+            onMacdChange={setMacdOn}
+            fourWeek={fourWeek}
+            onFourWeekChange={setFourWeek}
+            momentum={momentumPeriod}
+            onMomentumChange={setMomentumPeriod}
+            rsi={rsiPeriod}
+            onRsiChange={setRsiPeriod}
+            stochastic={stochasticPeriod}
+            onStochasticChange={setStochasticPeriod}
+            williamsR={williamsPeriod}
+            onWilliamsRChange={setWilliamsPeriod}
+            trend={trendDegree}
+            onTrendChange={setTrendDegree}
+          />
 
-      <DrawingToolbar
-        activeTool={tool}
-        pendingPoints={pending.length}
-        selected={selected}
-        drawingCount={drawings.length}
-        onToolChange={changeTool}
-        onOptionsChange={(options: DrawingOptions) =>
-          setDrawings((current) => current.map((d) => (d.id === selectedId ? { ...d, options } : d)))
-        }
-        onDeleteSelected={deleteSelected}
-        onClearAll={() => {
-          if (window.confirm(fmt(t.chart.confirmClear, { count: drawings.length, symbol }))) {
-            setDrawings([]);
-            setSelectedId(null);
-          }
-        }}
-      />
+          <DrawingToolbar
+            activeTool={tool}
+            pendingPoints={pending.length}
+            selected={selected}
+            drawingCount={drawings.length}
+            onToolChange={changeTool}
+            onOptionsChange={(options: DrawingOptions) =>
+              setDrawings((current) => current.map((d) => (d.id === selectedId ? { ...d, options } : d)))
+            }
+            onDeleteSelected={deleteSelected}
+            onClearAll={() => {
+              if (window.confirm(fmt(t.chart.confirmClear, { count: drawings.length, symbol }))) {
+                setDrawings([]);
+                setSelectedId(null);
+              }
+            }}
+          />
+        </>
+      )}
 
       {/* Os painéis opcionais (interesse aberto, momentum) ganham altura própria, sem espremer o preço. */}
-      <div className="mt-2 flex flex-wrap items-center justify-end gap-x-3 gap-y-1 text-[11px] text-muted">
+      <div className={`mt-2 flex flex-wrap items-center justify-end gap-x-3 gap-y-1 text-[11px] text-muted ${pointFigureOn ? "hidden" : ""}`}>
         <span>{t.panes.hint}</span>
         {!isDefaultPaneOrder(paneOrder) && (
           <button type="button" onClick={() => setPaneOrder(DEFAULT_PANE_ORDER)} className="font-medium text-accent hover:underline">
@@ -1761,7 +1795,7 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
           </button>
         )}
       </div>
-      <div aria-hidden className="relative mt-1 h-5">
+      <div aria-hidden className={`relative mt-1 h-5 ${pointFigureOn ? "hidden" : ""}`}>
         <div
           ref={topDateRef}
           className="invisible absolute top-0 -translate-x-1/2 whitespace-nowrap rounded bg-foreground px-1.5 py-0.5 text-[11px] font-medium leading-4 text-background tabular-nums"
@@ -1769,7 +1803,8 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
       </div>
       <div
         ref={wrapperRef}
-        className={`relative ${CHART_HEIGHT[(openInterest ? 1 : 0) + (momentumPeriod ? 1 : 0) + (showMaOscillator ? 1 : 0) + (rsiPeriod ? 1 : 0) + (stochasticPeriod ? 1 : 0) + (williamsPeriod ? 1 : 0) + (macdOn ? 1 : 0)]}`}
+        // No ponto e figura o gráfico de candles só fica oculto: desenhos e painéis voltam como estavam.
+        className={`relative ${pointFigureOn ? "hidden" : ""} ${CHART_HEIGHT[(openInterest ? 1 : 0) + (momentumPeriod ? 1 : 0) + (showMaOscillator ? 1 : 0) + (rsiPeriod ? 1 : 0) + (stochasticPeriod ? 1 : 0) + (williamsPeriod ? 1 : 0) + (macdOn ? 1 : 0)]}`}
       >
         <div ref={containerRef} className={`h-full w-full ${tool ? "cursor-crosshair" : ""}`} />
         <PaneHandles
@@ -1794,128 +1829,156 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
           </div>
         )}
       </div>
-      {bars && bars.length > 0 && !loading && (
-        <CrossSignalPanel
-          bars={bars}
-          averages={crossLines.map((l) => l.ma)}
-          lastValues={crossLines.map((l) => l.values[l.values.length - 1] ?? null)}
-          signals={crossSignals}
-          intraday={isIntraday(range)}
-          show={showCrossSignals}
-          onShowChange={setShowCrossSignals}
-        />
+      {pointFigureOn &&
+        (loading || !bars ? (
+          <p role="status" className="rounded-lg border border-border p-6 text-center text-sm text-muted">
+            {t.chart.loading}
+          </p>
+        ) : history?.error && history.key === key ? (
+          <div role="alert" className="rounded-lg bg-negative/10 p-3 text-sm text-negative">
+            {history.error}
+          </div>
+        ) : (
+          pf &&
+          pfDefaultBox && (
+            <>
+              <PointFigureChart
+                bars={bars}
+                pf={pf}
+                defaultBox={pfDefaultBox}
+                onBoxChange={(box) => setPfBoxChoice(box === null ? null : { symbol, box })}
+                intraday={isIntraday(range)}
+              />
+              <PointFigurePanel bars={bars} pf={pf} reading={pfReading} intraday={isIntraday(range)} />
+            </>
+          )
+        ))}
+      {!pointFigureOn && (
+        <>
+          {bars && bars.length > 0 && !loading && (
+            <CrossSignalPanel
+              bars={bars}
+              averages={crossLines.map((l) => l.ma)}
+              lastValues={crossLines.map((l) => l.values[l.values.length - 1] ?? null)}
+              signals={crossSignals}
+              intraday={isIntraday(range)}
+              show={showCrossSignals}
+              onShowChange={setShowCrossSignals}
+            />
+          )}
+          {bars && bars.length > 0 && !loading && envelopeSource && (
+            <EnvelopeSignalPanel
+              bars={bars}
+              average={envelopeSource.ma}
+              percent={envelopeSource.percent}
+              signals={envelopeSignals}
+              regime={envelopeRegime(envelopeSource.values, bars.length - 1, envelopeSource.ma.period, envelopeSource.percent)}
+              intraday={isIntraday(range)}
+              show={showEnvelopeSignals}
+              onShowChange={setShowEnvelopeSignals}
+            />
+          )}
+          {bars && bars.length > 0 && !loading && fourWeek.enabled && (
+            <FourWeekPanel
+              bars={bars}
+              settings={fourWeek}
+              system={fourWeekSystem}
+              show={showFourWeekSignals}
+              onShowChange={setShowFourWeekSignals}
+            />
+          )}
+          {bars && bars.length > 0 && !loading && trendDegree && trendReadings && (
+            <TrendPanel
+              bars={bars}
+              readings={trendReadings}
+              degree={trendDegree}
+              onDegreeChange={setTrendDegree}
+              intraday={isIntraday(range)}
+              lines={trendLines}
+              showLines={showTrendLines}
+              onShowLinesChange={setShowTrendLines}
+              onCopyLines={() =>
+                setDrawings((current) => [
+                  ...current,
+                  ...trendLinesToDrawings(bars, trendLines).map((d) => ({ ...d, id: crypto.randomUUID() })),
+                ])
+              }
+            />
+          )}
+          {bars && bars.length > 0 && !loading && bollingerOn && (
+            <BollingerPanel bars={bars} reading={bollingerReading} intraday={isIntraday(range)} />
+          )}
+          {bars && bars.length > 0 && !loading && maOscillator && (
+            <MaOscillatorPanel
+              bars={bars}
+              fast={maLabel(maOscillator.fast, t.ma.short)}
+              slow={maLabel(maOscillator.slow, t.ma.short)}
+              reading={maOscillatorReading}
+              intraday={isIntraday(range)}
+              show={maOscillatorVisible}
+              onShowChange={setMaOscillatorVisible}
+            />
+          )}
+          {bars && bars.length > 0 && !loading && macdOn && (
+            <MacdPanel
+              bars={bars}
+              reading={macdReading}
+              intraday={isIntraday(range)}
+              show={showMacdSignals}
+              onShowChange={setShowMacdSignals}
+            />
+          )}
+          {bars && bars.length > 0 && !loading && williamsPeriod && (
+            <WilliamsRPanel
+              bars={bars}
+              period={williamsPeriod}
+              reading={williamsReading}
+              intraday={isIntraday(range)}
+              show={showWilliamsSignals}
+              onShowChange={setShowWilliamsSignals}
+            />
+          )}
+          {bars && bars.length > 0 && !loading && stochasticPeriod && (
+            <StochasticPanel
+              bars={bars}
+              period={stochasticPeriod}
+              reading={stochasticReading}
+              intraday={isIntraday(range)}
+              show={showStochasticSignals}
+              onShowChange={setShowStochasticSignals}
+            />
+          )}
+          {bars && bars.length > 0 && !loading && rsiPeriod && (
+            <RsiPanel
+              bars={bars}
+              period={rsiPeriod}
+              reading={rsiReading}
+              intraday={isIntraday(range)}
+              show={showRsiSignals}
+              onShowChange={setShowRsiSignals}
+            />
+          )}
+          {bars && bars.length > 0 && !loading && momentumPeriod && (
+            <MomentumPanel
+              bars={bars}
+              period={momentumPeriod}
+              reading={momentumReading}
+              intraday={isIntraday(range)}
+              show={showMomentumSignals}
+              onShowChange={setShowMomentumSignals}
+            />
+          )}
+          {bars && bars.length > 0 && (
+            <DivergencePanel
+              bars={bars}
+              divergences={divergences}
+              show={showDivergences}
+              onShowChange={setShowDivergences}
+            />
+          )}
+          <OpenInterestNote symbol={symbol} range={range} bars={bars ?? []} series={openInterest} loading={loading} />
+        </>
       )}
-      {bars && bars.length > 0 && !loading && envelopeSource && (
-        <EnvelopeSignalPanel
-          bars={bars}
-          average={envelopeSource.ma}
-          percent={envelopeSource.percent}
-          signals={envelopeSignals}
-          regime={envelopeRegime(envelopeSource.values, bars.length - 1, envelopeSource.ma.period, envelopeSource.percent)}
-          intraday={isIntraday(range)}
-          show={showEnvelopeSignals}
-          onShowChange={setShowEnvelopeSignals}
-        />
-      )}
-      {bars && bars.length > 0 && !loading && fourWeek.enabled && (
-        <FourWeekPanel
-          bars={bars}
-          settings={fourWeek}
-          system={fourWeekSystem}
-          show={showFourWeekSignals}
-          onShowChange={setShowFourWeekSignals}
-        />
-      )}
-      {bars && bars.length > 0 && !loading && trendDegree && trendReadings && (
-        <TrendPanel
-          bars={bars}
-          readings={trendReadings}
-          degree={trendDegree}
-          onDegreeChange={setTrendDegree}
-          intraday={isIntraday(range)}
-          lines={trendLines}
-          showLines={showTrendLines}
-          onShowLinesChange={setShowTrendLines}
-          onCopyLines={() =>
-            setDrawings((current) => [
-              ...current,
-              ...trendLinesToDrawings(bars, trendLines).map((d) => ({ ...d, id: crypto.randomUUID() })),
-            ])
-          }
-        />
-      )}
-      {bars && bars.length > 0 && !loading && bollingerOn && (
-        <BollingerPanel bars={bars} reading={bollingerReading} intraday={isIntraday(range)} />
-      )}
-      {bars && bars.length > 0 && !loading && maOscillator && (
-        <MaOscillatorPanel
-          bars={bars}
-          fast={maLabel(maOscillator.fast, t.ma.short)}
-          slow={maLabel(maOscillator.slow, t.ma.short)}
-          reading={maOscillatorReading}
-          intraday={isIntraday(range)}
-          show={maOscillatorVisible}
-          onShowChange={setMaOscillatorVisible}
-        />
-      )}
-      {bars && bars.length > 0 && !loading && macdOn && (
-        <MacdPanel
-          bars={bars}
-          reading={macdReading}
-          intraday={isIntraday(range)}
-          show={showMacdSignals}
-          onShowChange={setShowMacdSignals}
-        />
-      )}
-      {bars && bars.length > 0 && !loading && williamsPeriod && (
-        <WilliamsRPanel
-          bars={bars}
-          period={williamsPeriod}
-          reading={williamsReading}
-          intraday={isIntraday(range)}
-          show={showWilliamsSignals}
-          onShowChange={setShowWilliamsSignals}
-        />
-      )}
-      {bars && bars.length > 0 && !loading && stochasticPeriod && (
-        <StochasticPanel
-          bars={bars}
-          period={stochasticPeriod}
-          reading={stochasticReading}
-          intraday={isIntraday(range)}
-          show={showStochasticSignals}
-          onShowChange={setShowStochasticSignals}
-        />
-      )}
-      {bars && bars.length > 0 && !loading && rsiPeriod && (
-        <RsiPanel
-          bars={bars}
-          period={rsiPeriod}
-          reading={rsiReading}
-          intraday={isIntraday(range)}
-          show={showRsiSignals}
-          onShowChange={setShowRsiSignals}
-        />
-      )}
-      {bars && bars.length > 0 && !loading && momentumPeriod && (
-        <MomentumPanel
-          bars={bars}
-          period={momentumPeriod}
-          reading={momentumReading}
-          intraday={isIntraday(range)}
-          show={showMomentumSignals}
-          onShowChange={setShowMomentumSignals}
-        />
-      )}
-      {bars && bars.length > 0 && (
-        <DivergencePanel
-          bars={bars}
-          divergences={divergences}
-          show={showDivergences}
-          onShowChange={setShowDivergences}
-        />
-      )}
-      <OpenInterestNote symbol={symbol} range={range} bars={bars ?? []} series={openInterest} loading={loading} />
     </section>
   );
 }
