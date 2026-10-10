@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { PnfBrowser } from "@/components/pnf/PnfBrowser";
 import { PnfIntro } from "@/components/pnf/PnfIntro";
+import { PnfLessonCard } from "@/components/pnf/PnfLesson";
 import { SiteHeader } from "@/components/SiteHeader";
 import { hasLocale } from "@/i18n/config";
 import { getDictionary } from "@/i18n/dictionary";
@@ -26,6 +27,7 @@ export default async function PointFigurePatternsPage({ params }: PageProps<"/[l
         <h2 className="text-2xl font-bold tracking-tight">{t.pages.pnfHeading}</h2>
         <p className="mt-1 text-muted">{t.pages.pnfSubtitle}</p>
       </div>
+      <PnfLessonCard />
       <PnfIntro t={t.pnfIntro} lang={lang} />
       <section aria-labelledby="padroes-pnf-title" className="flex flex-col gap-3">
         <h2 id="padroes-pnf-title" className="text-xl font-semibold">

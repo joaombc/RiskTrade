@@ -998,6 +998,87 @@ export const enUS: Dictionary = {
     confirmation: "Confirmation and use",
     source: "Source: {source}.",
   },
+  pnfLesson: {
+    eyebrow: "Lesson",
+    title: "Measuring and trading tactics",
+    subtitle: "How point and figure gives price targets, entry points and stops (Murphy, ch. 11).",
+    summary:
+      "Horizontal and vertical counts for price targets, entry on the signal or on the pullback, protective and trailing stops: how to turn point and figure signals into trades.",
+    read: "Read the lesson",
+    back: "Point & figure",
+    lessons: "Lesson",
+    intro:
+      "Beyond the signals, point and figure has two practical advantages that Murphy highlights in chapter 11: it gives objective price targets, by counting columns, and it makes entry and stop points clear. The lesson uses the 3-box reversal chart, the same one as on RiskTrade's dashboard.",
+    horizontal: {
+      heading: "1. Horizontal count",
+      paragraphs: [
+        "A wide congestion usually comes before a large move. The horizontal count measures that width: count the columns of the congestion area, from one wall to the other. At a bottom, from the column that made the low to the column that breaks out of the congestion.",
+        "Multiply the number of columns by the box size and the reversal and add it to the low: target = low + columns × box × 3. At a top, subtract it from the high.",
+        "In the drawing, with a box of 1: 6 columns × 1 × 3 = 18, added to the low of 6, give a target of 24.",
+      ],
+    },
+    vertical: {
+      heading: "2. Vertical count",
+      paragraphs: [
+        "Simpler, it uses only the first column off the bottom: the first X column after the low. The strength of that first rally tends to indicate the strength of the whole move.",
+        "Count the boxes in that column, multiply by the reversal and the box size and add it to the low: target = low + boxes × 3 × box. At a top, use the first O column after the high and subtract from the high.",
+        "In the drawing: the first X column after the low of 4 has 6 boxes; 6 × 3 × 1 = 18, a target of 22.",
+      ],
+    },
+    estimates:
+      "Both counts are estimates, not promises: price may stop short of the target or go past it. When both point to about the same price, the target carries more weight. Their main use is to compare the expected gain with the risk to the stop.",
+    tactics: {
+      heading: "3. Trading tactics",
+      items: [
+        {
+          title: "Entry on the signal",
+          text: "The most direct way: buy on the buy signal (X above the previous X) and sell on the sell signal. The entry is objective, with no interpretation.",
+        },
+        {
+          title: "Entry on the pullback",
+          text: "Since the signal usually comes after much of the advance, an alternative is to wait for the 3-box reversal down that follows it and buy there, as long as it stops above the previous low. The price is better and the stop is closer.",
+        },
+        {
+          title: "Protective stop",
+          text: "For a buy, one box below the bottom of the last O column; for a sell, one box above the top of the last X column. If price gets there, the pattern that gave the signal no longer exists.",
+        },
+        {
+          title: "Trailing stop",
+          text: "With each new O column that stops at a higher low, the stop moves up to just below it (for a sell, down to just above each new lower high). Profits are protected without getting out too early.",
+        },
+        {
+          title: "Taking profits",
+          text: "Use the count targets to take part of the position off; the rest stays on with the trailing stop until it is hit or a signal in the opposite direction appears.",
+        },
+        {
+          title: "With the trend",
+          text: "Favor buys above the 45° bullish support line and sells below the bearish resistance line. Signals against these lines fail more often.",
+        },
+      ],
+    },
+    cautions: {
+      heading: "4. Cautions",
+      items: [
+        "Smaller boxes give more signals and tighter stops, but also more false signals; larger boxes filter out noise and come later. Fit the box to the asset and your time frame: on the dashboard chart, the − and + buttons change the size.",
+        "In a sideways market, signals cancel each other out (buy high, sell low). The tight stop is what keeps those losses small.",
+        "No rule removes the risk: point and figure organizes the decisions, but it does not guarantee the outcome.",
+      ],
+    },
+    labels: {
+      columns: "{n} columns",
+      boxes: "{n} boxes",
+      target: "target {price}",
+      low: "low {price}",
+      math: "{n} × 3 × 1 = {total}",
+      pullback: "pullback",
+      stop: "stop",
+      trailing: "trailing stop",
+      horizontalDiagram: "Horizontal count: width of the congestion and target",
+      verticalDiagram: "Vertical count: first column off the low and target",
+      tacticsDiagram: "Tactics: buy signal, pullback entry and trailing stop",
+    },
+    source: "Source: Murphy, Technical Analysis of the Financial Markets, ch. 11. Original text; not investment advice.",
+  },
   pnfIntro: {
     heading: "How to read the patterns",
     reading:

@@ -2,7 +2,39 @@
 
 import { fmt } from "@/i18n/format";
 import { useI18n } from "@/i18n/I18nProvider";
-import type { PnfVariant } from "@/lib/pnfPatterns/patterns";
+import type { PnfColumn, PnfVariant } from "@/lib/pnfPatterns/patterns";
+
+/** Colunas de X (verde) e O (vermelho); as `context` primeiras saem apagadas (tendência anterior). */
+export function PnfColumnMarks({ columns, cell, y, context = 0 }: { columns: readonly PnfColumn[]; cell: number; y: (level: number) => number; context?: number }) {
+  const inset = cell * 0.2;
+  return (
+    <>
+      {columns.map(([a, b], k) => {
+        const up = b > a;
+        const span = Array.from({ length: Math.abs(b - a) + 1 }, (_, i) => Math.min(a, b) + i);
+        return (
+          <g key={k} className={up ? "text-positive" : "text-negative"} opacity={k < context ? 0.3 : 1}>
+            {span.map((level) => {
+              const bx = k * cell + 1;
+              const by = y(level);
+              return up ? (
+                <path
+                  key={level}
+                  d={`M${bx + inset} ${by + inset}L${bx + cell - inset} ${by + cell - inset}M${bx + cell - inset} ${by + inset}L${bx + inset} ${by + cell - inset}`}
+                  stroke="currentColor"
+                  strokeWidth={1.4}
+                  strokeLinecap="round"
+                />
+              ) : (
+                <circle key={level} cx={bx + cell / 2} cy={by + cell / 2} r={cell / 2 - inset} fill="none" stroke="currentColor" strokeWidth={1.4} />
+              );
+            })}
+          </g>
+        );
+      })}
+    </>
+  );
+}
 
 /**
  * Diagrama esquemático de um padrão de ponto e figura: X em verde e O em vermelho, a tendência
@@ -24,7 +56,6 @@ export function PnfDiagram({ variant, large = false }: { variant: PnfVariant; la
   const y = (level: number) => (high - level) * cell;
   const cx = (column: number) => column * cell + 1 + cell / 2;
   const cy = (level: number) => y(level) + cell / 2;
-  const inset = cell * 0.2;
 
   const buy = variant.side === "bottom";
   const [signalColumn, signalLevel] = variant.signal;
@@ -35,29 +66,7 @@ export function PnfDiagram({ variant, large = false }: { variant: PnfVariant; la
 
   return (
     <svg role="img" aria-label={fmt(u.diagram, { name: variant.name })} viewBox={`0 0 ${width} ${height}`} className="h-auto w-full" style={{ maxWidth: width }}>
-      {variant.columns.map(([a, b], k) => {
-        const up = b > a;
-        const span = Array.from({ length: Math.abs(b - a) + 1 }, (_, i) => Math.min(a, b) + i);
-        return (
-          <g key={k} className={up ? "text-positive" : "text-negative"} opacity={k < variant.context ? 0.3 : 1}>
-            {span.map((level) => {
-              const bx = k * cell + 1;
-              const by = y(level);
-              return up ? (
-                <path
-                  key={level}
-                  d={`M${bx + inset} ${by + inset}L${bx + cell - inset} ${by + cell - inset}M${bx + cell - inset} ${by + inset}L${bx + inset} ${by + cell - inset}`}
-                  stroke="currentColor"
-                  strokeWidth={1.4}
-                  strokeLinecap="round"
-                />
-              ) : (
-                <circle key={level} cx={bx + cell / 2} cy={by + cell / 2} r={cell / 2 - inset} fill="none" stroke="currentColor" strokeWidth={1.4} />
-              );
-            })}
-          </g>
-        );
-      })}
+      <PnfColumnMarks columns={variant.columns} cell={cell} y={y} context={variant.context} />
 
       {/* Linhas do padrão: lados do triângulo, linhas de 45°. */}
       {variant.lines.map((l, k) => (
