@@ -12,6 +12,7 @@ export const enUS: Dictionary = {
     dashboard: "Dashboard",
     glossary: "Glossary",
     candles: "Candles",
+    pointFigure: "Point & figure",
     switchLanguage: "Mudar para português",
     themeToDark: "Switch to dark theme",
     themeToLight: "Switch to light theme",
@@ -526,6 +527,7 @@ export const enUS: Dictionary = {
     sellTrigger: "sell if an O column reaches {price}.",
     buyActive: "the current X column is already above the previous X (buy in force);",
     sellActive: "the current O column is already below the previous O (sell in force).",
+    patternsLink: "Point and figure reversal patterns",
     footer:
       "Murphy (ch. 11): on a 3-box reversal point and figure chart, the simplest buy signal is an X column rising above the top of the previous X column, and the sell signal is an O column falling below the bottom of the previous O column. Smaller boxes give more signals (and more false ones); larger boxes filter out noise.",
   },
@@ -967,6 +969,51 @@ export const enUS: Dictionary = {
       },
     ],
   },
+  pnfUi: {
+    searchLabel: "Search pattern",
+    searchPlaceholder: "Search pattern — e.g. fulcrum, saucer, V, head and shoulders",
+    noResults: "No pattern found.",
+    countOne: "{n} pattern",
+    countMany: "{n} patterns",
+    bottom: "Bottom",
+    top: "Top",
+    details: "See details",
+    detailsOf: "See details of {name}",
+    close: "Close",
+    diagram: "{name}: point and figure diagram",
+    breakout: "breakout",
+    contextNote: "The faded columns show the preceding trend; the dashed line is the breakout that confirms the pattern.",
+    recognize: "How to recognize it",
+    market: "What is happening in the market",
+    confirmation: "Confirmation and use",
+    source: "Source: {source}.",
+  },
+  pnfIntro: {
+    heading: "How to read the patterns",
+    reading:
+      "On a point and figure chart, each X is a rising box and each O a falling box. A new column only starts when price reverses by the reversal amount; time does not count. That is why patterns show up as congestion areas: columns side by side, with lows (or highs) at a similar level.",
+    patterns:
+      "Reversal patterns mark the end of a trend. At bottoms, the congestion is accumulation: buyers absorb supply until price breaks out upward. At tops, it is distribution. Every bottom pattern has a top counterpart, which is the same drawing mirrored.",
+    rules: [
+      {
+        title: "1. Context",
+        text: "A bottom pattern only makes sense after a decline, and a top pattern after an advance. A congestion in the middle of a trend tends to be a continuation.",
+      },
+      {
+        title: "2. Confirmation",
+        text: "The pattern is only complete with the breakout: an X column above the top of the congestion (bottom) or an O column below its low (top). These are the same buy and sell signals as on RiskTrade's point and figure chart.",
+      },
+      {
+        title: "3. Size of the base",
+        text: "The wider the congestion, the larger the expected move. This is the horizontal count: the number of columns in the base, times the box size and the reversal, added to the low (or subtracted from the high), gives the target.",
+      },
+      {
+        title: "4. Where the drawings come from",
+        text: "Murphy reproduces these patterns from A. H. Wheelan, who studied them on the one-box reversal chart. The diagrams here are schematic: they show the shape of each pattern, which is recognized the same way on 3-box charts.",
+      },
+    ],
+    chartLink: "See the point and figure chart on the dashboard",
+  },
   pages: {
     glossaryTitle: "Glossary · RiskTrade",
     glossaryDescription:
@@ -978,6 +1025,10 @@ export const enUS: Dictionary = {
     candlesHeading: "Candlestick patterns",
     candlesSubtitle: "Japanese candlesticks: basic candles, reversal and continuation patterns.",
     patterns: "Patterns",
+    pnfTitle: "Point and figure patterns · RiskTrade",
+    pnfDescription: "The {count} point and figure reversal patterns (bottoms and tops), with diagrams, psychology and confirmation.",
+    pnfHeading: "Point and figure patterns",
+    pnfSubtitle: "Bottom and top reversal patterns, as Murphy presents them in chapter 11.",
   },
   lesson: {
     trail: "Breadcrumb",

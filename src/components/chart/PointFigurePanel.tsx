@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { fmt } from "@/i18n/format";
 import { useI18n } from "@/i18n/I18nProvider";
 import type { Bar } from "@/lib/drawings/types";
@@ -14,7 +15,7 @@ interface Props {
 
 /** Leitura do ponto e figura: coluna atual, último sinal e os níveis que dão o próximo sinal (Murphy, cap. 11). */
 export function PointFigurePanel({ bars, pf, reading, intraday }: Props) {
-  const { t, locale } = useI18n();
+  const { t, locale, href } = useI18n();
   const p = t.pointFigure;
   const { box } = pf;
   const decimals = box < 0.01 ? 4 : box < 1 ? 2 : box % 1 === 0 ? 0 : 2;
@@ -70,7 +71,12 @@ export function PointFigurePanel({ bars, pf, reading, intraday }: Props) {
         </ul>
       )}
 
-      <p className="text-[11px] text-muted">{p.footer}</p>
+      <p className="text-[11px] text-muted">
+        {p.footer}{" "}
+        <Link href={href("/ponto-e-figura")} className="font-medium text-accent hover:underline">
+          {p.patternsLink}
+        </Link>
+      </p>
     </div>
   );
 }
