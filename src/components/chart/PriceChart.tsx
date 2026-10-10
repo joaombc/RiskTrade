@@ -85,6 +85,7 @@ import {
   type TrendDegree,
   type TrendReading,
 } from "@/lib/trend";
+import { findTrendLines, trendLinesToDrawings } from "@/lib/trendlines";
 import { loadMacdEnabled, macd, macdCrosses, readMacd, saveMacdEnabled } from "@/lib/macd";
 import { loadMomentumPeriod, momentum, readMomentum, saveMomentumPeriod, zeroCrossings, type MomentumPeriod } from "@/lib/momentum";
 import {
@@ -124,7 +125,7 @@ import { RsiPanel } from "./RsiPanel";
 import { StochasticPanel } from "./StochasticPanel";
 import { WilliamsRPanel } from "./WilliamsRPanel";
 import { MacdPanel } from "./MacdPanel";
-import { TrendPanel } from "./TrendPanel";
+import { trendLineName, TrendPanel } from "./TrendPanel";
 import { DrawingsPrimitive } from "./DrawingsPrimitive";
 import { DrawingToolbar } from "./DrawingToolbar";
 import { MovingAverageBar } from "./MovingAverageBar";
@@ -440,6 +441,13 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
         ? (Object.fromEntries(TREND_DEGREES.map((d) => [d, readTrend(bars, TREND_WINDOWS[d])])) as Record<TrendDegree, TrendReading | null>)
         : null,
     [bars, trendOn],
+  );
+  // Linhas de tendência automáticas do prazo escolhido (Murphy, cap. 4).
+  const [showTrendLines, setShowTrendLines] = useState(true);
+  const currentTrend = trendDegree && trendReadings ? (trendReadings[trendDegree]?.trend ?? null) : null;
+  const trendLines = useMemo(
+    () => (bars && currentTrend ? findTrendLines(bars, trendSwings, currentTrend) : []),
+    [bars, trendSwings, currentTrend],
   );
   // Regra das 4 semanas: só em candles diários (uma semana = 5 pregões).
   const [fourWeek, setFourWeek] = useState<FourWeekSettings>(loadFourWeekSettings);
@@ -1030,6 +1038,44 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
     };
   }, [bars, trendBarStates, trendSwings, theme]);
 
+  // Linhas de tendência automáticas: verde as de suporte (LTA), vermelho as de resistência (LTB);
+  // a principal mais grossa, o canal tracejado. Vão do primeiro ponto até o último candle.
+  useEffect(() => {
+    const handles = handlesRef.current;
+    if (!handles || !bars || !showTrendLines || trendLines.length === 0) return;
+    const last = bars.length - 1;
+    const series = trendLines.map((line) => {
+      const s = handles.chart.addSeries(
+        LineSeries,
+        {
+          color: line.side === "support" ? theme.up : theme.down,
+          lineWidth: line.role === "recent" || line.role === "channel" ? 1 : 2,
+          lineStyle: line.role === "channel" ? LineStyle.Dashed : LineStyle.Solid,
+          priceLineVisible: false,
+          lastValueVisible: true,
+          crosshairMarkerVisible: false,
+          autoscaleInfoProvider: () => null,
+        },
+        pricePaneIndex(handles),
+      );
+      s.setData(
+        line.from.index === last
+          ? [{ time: bars[last].time as UTCTimestamp, value: line.now }]
+          : [
+              { time: bars[line.from.index].time as UTCTimestamp, value: line.from.price },
+              { time: bars[last].time as UTCTimestamp, value: line.now },
+            ],
+      );
+      return s;
+    });
+    return () => {
+      const alive = handlesRef.current?.candles.getPane().getSeries() ?? [];
+      series.forEach((s) => {
+        if (alive.includes(s)) handles.chart.removeSeries(s);
+      });
+    };
+  }, [bars, trendLines, showTrendLines, theme]);
+
   // Bandas de Bollinger: bandas de cima e de baixo e a média central tracejada, numa cor neutra.
   useEffect(() => {
     const handles = handlesRef.current;
@@ -1567,6 +1613,9 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
       ...(trendDegree
         ? [{ label: fmt(t.chart.series.trend, { degree: t.ma.trendDegrees[trendDegree].toLocaleLowerCase(locale) }), color: theme.trend.zigzag }]
         : []),
+      ...(showTrendLines
+        ? trendLines.map((line) => ({ label: t.trend.lines.names[trendLineName(line)], color: line.side === "support" ? theme.up : theme.down }))
+        : []),
       ...(fourWeekSystem
         ? [
             { label: fmt(t.chart.markers.channelHigh, { n: fourWeek.entryWeeks }), color: theme.down },
@@ -1784,6 +1833,15 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
           degree={trendDegree}
           onDegreeChange={setTrendDegree}
           intraday={isIntraday(range)}
+          lines={trendLines}
+          showLines={showTrendLines}
+          onShowLinesChange={setShowTrendLines}
+          onCopyLines={() =>
+            setDrawings((current) => [
+              ...current,
+              ...trendLinesToDrawings(bars, trendLines).map((d) => ({ ...d, id: crypto.randomUUID() })),
+            ])
+          }
         />
       )}
       {bars && bars.length > 0 && !loading && bollingerOn && (
