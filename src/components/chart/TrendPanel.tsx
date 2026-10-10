@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { fmt } from "@/i18n/format";
 import { useI18n } from "@/i18n/I18nProvider";
 import type { Bar } from "@/lib/drawings/types";
 import { TREND_DEGREES, TREND_WINDOWS, type Trend, type TrendDegree, type TrendReading } from "@/lib/trend";
+import type { TrendLine } from "@/lib/trendlines";
 
 interface Props {
   bars: Bar[];
@@ -13,6 +15,17 @@ interface Props {
   degree: TrendDegree;
   onDegreeChange: (degree: TrendDegree) => void;
   intraday: boolean;
+  /** Linhas de tendência automáticas do prazo escolhido. */
+  lines: TrendLine[];
+  showLines: boolean;
+  onShowLinesChange: (show: boolean) => void;
+  onCopyLines: () => void;
+}
+
+/** Chave do nome da linha no dicionário. */
+export function trendLineName(line: TrendLine): "mainSupport" | "mainResistance" | "recentSupport" | "recentResistance" | "channel" | "support" | "resistance" {
+  if (line.role === "main" || line.role === "recent") return `${line.role}${line.side === "support" ? "Support" : "Resistance"}`;
+  return line.role;
 }
 
 const BADGE: Record<Trend, string> = {
@@ -22,7 +35,9 @@ const BADGE: Record<Trend, string> = {
 };
 
 /** Tendência pelos topos e fundos (Murphy, cap. 4) nos três prazos, com a leitura do prazo do gráfico. */
-export function TrendPanel({ bars, readings, degree, onDegreeChange, intraday }: Props) {
+export function TrendPanel({ bars, readings, degree, onDegreeChange, intraday, lines, showLines, onShowLinesChange, onCopyLines }: Props) {
+  /** Linhas já copiadas para os desenhos (a confirmação some quando as linhas mudam). */
+  const [copied, setCopied] = useState<TrendLine[] | null>(null);
   const { t, locale, href } = useI18n();
   const tr = t.trend;
   const num = (v: number) => v.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -118,6 +133,70 @@ export function TrendPanel({ bars, readings, degree, onDegreeChange, intraday }:
           </li>
         </ul>
       )}
+
+      <div className="flex flex-col gap-2 rounded-lg border border-border p-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-sm font-semibold">{tr.lines.title}</p>
+          <label className="flex items-center gap-1.5 text-xs text-muted">
+            <input type="checkbox" checked={showLines} onChange={(e) => onShowLinesChange(e.target.checked)} />
+            {tr.lines.show}
+          </label>
+        </div>
+        {lines.length === 0 ? (
+          <p className="text-sm text-muted">{tr.lines.none}</p>
+        ) : (
+          <>
+            <ul className="flex flex-col gap-2 text-sm">
+              {lines.map((line) => {
+                const close = bars[bars.length - 1].close;
+                const distance = ((line.now - close) / close) * 100;
+                return (
+                  <li key={`${line.role}-${line.from.index}-${line.through.index}`}>
+                    <strong className={line.side === "support" ? "text-positive" : "text-negative"}>{tr.lines.names[trendLineName(line)]}:</strong>{" "}
+                    {fmt(tr.lines.item, {
+                      touches: line.touches,
+                      touchWord: line.touches === 1 ? tr.lines.touch : tr.lines.touchesWord,
+                      date: dateOf(line.from.index),
+                      now: num(line.now),
+                      distance: num(Math.abs(distance)),
+                      position: distance >= 0 ? tr.lines.above : tr.lines.below,
+                    })}{" "}
+                    <span className="text-muted">
+                      {line.role === "recent"
+                        ? tr.lines.recentNote
+                        : line.role === "channel"
+                          ? tr.lines.channelNote
+                          : line.role === "support" || line.role === "resistance"
+                            ? tr.lines.rangeNote
+                            : line.touches >= 3
+                            ? tr.lines.confirmed
+                            : tr.lines.tentative}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  onCopyLines();
+                  setCopied(lines);
+                }}
+                className="rounded-md bg-target px-2.5 py-1 text-xs font-medium text-white hover:opacity-90"
+              >
+                {tr.lines.copy}
+              </button>
+              {copied === lines && (
+                <span role="status" className="text-xs text-muted">
+                  {tr.lines.copied}
+                </span>
+              )}
+            </div>
+          </>
+        )}
+        <p className="text-[11px] text-muted">{tr.lines.footer}</p>
+      </div>
 
       <p className="text-[11px] text-muted">{tr.legend}</p>
       <p className="text-[11px] text-muted">
