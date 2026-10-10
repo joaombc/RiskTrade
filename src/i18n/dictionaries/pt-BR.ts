@@ -971,6 +971,87 @@ export const ptBR = {
     confirmation: "Confirmação e uso",
     source: "Fonte: {source}.",
   },
+  pnfLesson: {
+    eyebrow: "Aula",
+    title: "Mensuração e táticas de trading",
+    subtitle: "Como o ponto e figura dá alvos de preço, pontos de entrada e stops (Murphy, cap. 11).",
+    summary:
+      "Contagem horizontal e vertical para os alvos de preço, entrada no sinal ou no recuo, stop de proteção e stop móvel: como transformar os sinais do ponto e figura em operações.",
+    read: "Ler a aula",
+    back: "Ponto e figura",
+    lessons: "Aula",
+    intro:
+      "Além dos sinais, o ponto e figura tem duas vantagens práticas que Murphy destaca no capítulo 11: dá alvos de preço objetivos, pela contagem das colunas, e deixa claros os pontos de entrada e de stop. A aula usa o gráfico de reversão de 3 caixas, o mesmo do painel do RiskTrade.",
+    horizontal: {
+      heading: "1. Contagem horizontal",
+      paragraphs: [
+        "Uma congestão larga costuma preceder um movimento grande. A contagem horizontal mede essa largura: conte as colunas da área de congestão, de uma parede à outra. No fundo, da coluna que fez a mínima até a coluna que rompe a congestão.",
+        "Multiplique o número de colunas pelo tamanho da caixa e pela reversão e some ao fundo: alvo = fundo + colunas × caixa × 3. Num topo, subtraia do topo.",
+        "No desenho, com caixa de 1: 6 colunas × 1 × 3 = 18, somadas ao fundo de 6, dão alvo de 24.",
+      ],
+    },
+    vertical: {
+      heading: "2. Contagem vertical",
+      paragraphs: [
+        "Mais simples, usa só a primeira coluna que sai do fundo: a primeira coluna de X depois da mínima. A força desse primeiro repique costuma indicar a força do movimento inteiro.",
+        "Conte as caixas dessa coluna, multiplique pela reversão e pela caixa e some ao fundo: alvo = fundo + caixas × 3 × caixa. Num topo, use a primeira coluna de O depois da máxima e subtraia do topo.",
+        "No desenho: a primeira coluna de X depois do fundo de 4 tem 6 caixas; 6 × 3 × 1 = 18, alvo de 22.",
+      ],
+    },
+    estimates:
+      "As duas contagens são estimativas, não promessas: o preço pode parar antes ou passar do alvo. Quando as duas apontam para perto do mesmo preço, o alvo ganha peso. O uso principal é comparar o ganho esperado com o risco até o stop.",
+    tactics: {
+      heading: "3. Táticas de trading",
+      items: [
+        {
+          title: "Entrada no sinal",
+          text: "A forma mais direta: comprar no sinal de compra (X acima do X anterior) e vender no de venda. A entrada é objetiva, sem interpretação.",
+        },
+        {
+          title: "Entrada no recuo",
+          text: "Como o sinal costuma vir depois de boa parte da alta, uma alternativa é esperar a reversão de 3 caixas para baixo que vem depois dele e comprar nela, desde que pare acima do fundo anterior. O preço é melhor e o stop fica mais perto.",
+        },
+        {
+          title: "Stop de proteção",
+          text: "Na compra, uma caixa abaixo do fundo da última coluna de O; na venda, uma caixa acima do topo da última coluna de X. Se o preço chega lá, o padrão que deu o sinal deixou de existir.",
+        },
+        {
+          title: "Stop móvel",
+          text: "A cada nova coluna de O que para num fundo mais alto, o stop sobe para logo abaixo dela (na venda, desce para logo acima de cada novo topo mais baixo). O lucro fica protegido sem sair cedo demais.",
+        },
+        {
+          title: "Realização",
+          text: "Use o alvo das contagens para realizar parte da posição; o restante segue com o stop móvel até ser atingido ou até um sinal na direção contrária.",
+        },
+        {
+          title: "A favor da tendência",
+          text: "Prefira compras acima da linha de suporte de alta de 45° e vendas abaixo da linha de resistência de baixa. Sinais contra essas linhas falham mais.",
+        },
+      ],
+    },
+    cautions: {
+      heading: "4. Cuidados",
+      items: [
+        "Caixas menores dão mais sinais e stops mais curtos, mas também mais sinais falsos; caixas maiores filtram o ruído e chegam mais tarde. Ajuste a caixa ao ativo e ao seu prazo: no gráfico do painel, os botões − e + mudam o tamanho.",
+        "Em mercado lateral, os sinais se anulam (compra no alto, venda no baixo). O stop curto é o que mantém essas perdas pequenas.",
+        "Nenhuma regra elimina o risco: o ponto e figura organiza as decisões, mas não garante o resultado.",
+      ],
+    },
+    labels: {
+      columns: "{n} colunas",
+      boxes: "{n} caixas",
+      target: "alvo {price}",
+      low: "fundo {price}",
+      math: "{n} × 3 × 1 = {total}",
+      pullback: "recuo",
+      stop: "stop",
+      trailing: "stop móvel",
+      horizontalDiagram: "Contagem horizontal: largura da congestão e alvo",
+      verticalDiagram: "Contagem vertical: primeira coluna depois do fundo e alvo",
+      tacticsDiagram: "Táticas: sinal de compra, entrada no recuo e stop móvel",
+    },
+    source: "Fonte: Murphy, Technical Analysis of the Financial Markets, cap. 11. Texto autoral; não é recomendação de investimento.",
+  },
   pnfIntro: {
     heading: "Como ler os padrões",
     reading:
