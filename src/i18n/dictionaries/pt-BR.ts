@@ -943,6 +943,8 @@ export const ptBR = {
     ],
   },
   pnfUi: {
+    filter: "Filtrar padrões",
+    all: "Todos",
     searchLabel: "Buscar padrão",
     searchPlaceholder: "Buscar padrão — ex: fulcro, pires, V, ombro-cabeça-ombro",
     noResults: "Nenhum padrão encontrado.",
@@ -950,12 +952,20 @@ export const ptBR = {
     countMany: "{n} padrões",
     bottom: "Fundo",
     top: "Topo",
+    buy: "Compra",
+    sell: "Venda",
+    buyLetter: "C",
+    sellLetter: "V",
+    reversalHeading: "Padrões de reversão",
+    reversalIntro: "Fundos e topos que encerram uma tendência (Wheelan, no gráfico de 1 caixa).",
+    signalHeading: "Sinais de compra e venda",
+    signalIntro: "Os sinais clássicos do gráfico de 3 caixas, do mais simples ao rompimento das linhas de 45°.",
     details: "Ver detalhes",
     detailsOf: "Ver detalhes de {name}",
     close: "Fechar",
     diagram: "{name}: diagrama de ponto e figura",
     breakout: "rompimento",
-    contextNote: "As colunas apagadas mostram a tendência anterior; a linha tracejada é o rompimento que confirma o padrão.",
+    contextNote: "As colunas apagadas mostram a tendência anterior; a linha tracejada é o rompimento. A caixa destacada com C é o ponto de compra; com V, o de venda.",
     recognize: "Como reconhecer",
     market: "O que está acontecendo no mercado",
     confirmation: "Confirmação e uso",
@@ -966,7 +976,7 @@ export const ptBR = {
     reading:
       "No ponto e figura, cada X é uma caixa de alta e cada O, uma caixa de baixa. Uma coluna nova só começa quando o preço reverte o número de caixas da reversão; o tempo não conta. Por isso os padrões aparecem como áreas de congestão: colunas lado a lado, com os fundos (ou topos) num nível parecido.",
     patterns:
-      "Os padrões de reversão marcam o fim de uma tendência. Nos fundos, a congestão é acumulação: compradores absorvem a oferta até o preço romper para cima. Nos topos, é distribuição. Cada padrão de fundo tem um par de topo, que é o mesmo desenho espelhado.",
+      "Os padrões de reversão marcam o fim de uma tendência. Nos fundos, a congestão é acumulação: compradores absorvem a oferta até o preço romper para cima. Nos topos, é distribuição. Os sinais de compra e venda são os rompimentos que o gráfico de 3 caixas usa para entrar e sair. Cada padrão de alta tem um par de baixa, que é o mesmo desenho espelhado; nos desenhos, C marca o ponto de compra e V, o de venda.",
     rules: [
       {
         title: "1. Contexto",
@@ -999,9 +1009,9 @@ export const ptBR = {
     candlesSubtitle: "Candlesticks japoneses: velas básicas, padrões de reversão e de continuação.",
     patterns: "Padrões",
     pnfTitle: "Padrões de ponto e figura · RiskTrade",
-    pnfDescription: "Os {count} padrões de reversão do ponto e figura (fundos e topos), com diagramas, psicologia e confirmação.",
+    pnfDescription: "Os {count} padrões do ponto e figura: reversões de fundo e de topo e sinais de compra e venda, com diagramas, psicologia e confirmação.",
     pnfHeading: "Padrões de ponto e figura",
-    pnfSubtitle: "Padrões de reversão de fundo e de topo, como Murphy os apresenta no capítulo 11.",
+    pnfSubtitle: "Padrões de reversão de fundo e de topo e os sinais de compra e venda, como Murphy os apresenta no capítulo 11.",
   },
   lesson: {
     trail: "Trilha",

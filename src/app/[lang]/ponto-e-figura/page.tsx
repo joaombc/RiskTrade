@@ -6,14 +6,13 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { hasLocale } from "@/i18n/config";
 import { getDictionary } from "@/i18n/dictionary";
 import { fmt } from "@/i18n/format";
-import { getPnfPatterns } from "@/lib/pnfPatterns/localize";
-import { PNF_PATTERNS } from "@/lib/pnfPatterns/patterns";
+import { getPnfPatterns, PNF_ALL } from "@/lib/pnfPatterns/localize";
 
 export async function generateMetadata({ params }: PageProps<"/[lang]/ponto-e-figura">): Promise<Metadata> {
   const { lang } = await params;
   if (!hasLocale(lang)) return {};
   const { pages } = await getDictionary(lang);
-  return { title: pages.pnfTitle, description: fmt(pages.pnfDescription, { count: PNF_PATTERNS.length }) };
+  return { title: pages.pnfTitle, description: fmt(pages.pnfDescription, { count: PNF_ALL.length }) };
 }
 
 export default async function PointFigurePatternsPage({ params }: PageProps<"/[lang]/ponto-e-figura">) {

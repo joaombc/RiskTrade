@@ -970,6 +970,8 @@ export const enUS: Dictionary = {
     ],
   },
   pnfUi: {
+    filter: "Filter patterns",
+    all: "All",
     searchLabel: "Search pattern",
     searchPlaceholder: "Search pattern — e.g. fulcrum, saucer, V, head and shoulders",
     noResults: "No pattern found.",
@@ -977,12 +979,20 @@ export const enUS: Dictionary = {
     countMany: "{n} patterns",
     bottom: "Bottom",
     top: "Top",
+    buy: "Buy",
+    sell: "Sell",
+    buyLetter: "B",
+    sellLetter: "S",
+    reversalHeading: "Reversal patterns",
+    reversalIntro: "Bottoms and tops that end a trend (Wheelan, on the one-box chart).",
+    signalHeading: "Buy and sell signals",
+    signalIntro: "The classic signals of the 3-box chart, from the simplest one to the break of the 45° lines.",
     details: "See details",
     detailsOf: "See details of {name}",
     close: "Close",
     diagram: "{name}: point and figure diagram",
     breakout: "breakout",
-    contextNote: "The faded columns show the preceding trend; the dashed line is the breakout that confirms the pattern.",
+    contextNote: "The faded columns show the preceding trend; the dashed line is the breakout. The highlighted box with B is the buy point; with S, the sell point.",
     recognize: "How to recognize it",
     market: "What is happening in the market",
     confirmation: "Confirmation and use",
@@ -993,7 +1003,7 @@ export const enUS: Dictionary = {
     reading:
       "On a point and figure chart, each X is a rising box and each O a falling box. A new column only starts when price reverses by the reversal amount; time does not count. That is why patterns show up as congestion areas: columns side by side, with lows (or highs) at a similar level.",
     patterns:
-      "Reversal patterns mark the end of a trend. At bottoms, the congestion is accumulation: buyers absorb supply until price breaks out upward. At tops, it is distribution. Every bottom pattern has a top counterpart, which is the same drawing mirrored.",
+      "Reversal patterns mark the end of a trend. At bottoms, the congestion is accumulation: buyers absorb supply until price breaks out upward. At tops, it is distribution. Buy and sell signals are the breakouts the 3-box chart uses to get in and out. Every bullish pattern has a bearish counterpart, which is the same drawing mirrored; in the drawings, B marks the buy point and S the sell point.",
     rules: [
       {
         title: "1. Context",
@@ -1026,9 +1036,9 @@ export const enUS: Dictionary = {
     candlesSubtitle: "Japanese candlesticks: basic candles, reversal and continuation patterns.",
     patterns: "Patterns",
     pnfTitle: "Point and figure patterns · RiskTrade",
-    pnfDescription: "The {count} point and figure reversal patterns (bottoms and tops), with diagrams, psychology and confirmation.",
+    pnfDescription: "The {count} point and figure patterns: bottom and top reversals and buy and sell signals, with diagrams, psychology and confirmation.",
     pnfHeading: "Point and figure patterns",
-    pnfSubtitle: "Bottom and top reversal patterns, as Murphy presents them in chapter 11.",
+    pnfSubtitle: "Bottom and top reversal patterns and the buy and sell signals, as Murphy presents them in chapter 11.",
   },
   lesson: {
     trail: "Breadcrumb",

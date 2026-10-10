@@ -1,12 +1,15 @@
 import type { Locale } from "@/i18n/config";
 import { normalize } from "../glossary/search";
-import { PNF_PATTERNS, type PnfPattern } from "./patterns";
+import { PNF_PATTERNS, PNF_SIGNALS, type PnfPattern } from "./patterns";
+
+/** Padrões de reversão e sinais de compra e venda, nessa ordem. */
+export const PNF_ALL = [...PNF_PATTERNS, ...PNF_SIGNALS];
 
 /** Padrões no idioma pedido. O inglês só é carregado quando necessário (no servidor). */
 export async function getPnfPatterns(locale: Locale): Promise<PnfPattern[]> {
-  if (locale === "pt-BR") return PNF_PATTERNS;
-  const { PNF_PATTERNS_EN, PNF_SOURCE_EN } = await import("./en");
-  return PNF_PATTERNS.map((p) => {
+  if (locale === "pt-BR") return PNF_ALL;
+  const { PNF_PATTERNS_EN, PNF_SOURCE_EN, PNF_SIGNAL_SOURCE_EN } = await import("./en");
+  return PNF_ALL.map((p) => {
     const text = PNF_PATTERNS_EN[p.slug];
     if (!text) return p;
     return {
@@ -20,7 +23,7 @@ export async function getPnfPatterns(locale: Locale): Promise<PnfPattern[]> {
         { ...p.variants[0], name: text.variants[0] },
         { ...p.variants[1], name: text.variants[1] },
       ],
-      source: PNF_SOURCE_EN,
+      source: p.group === "reversal" ? PNF_SOURCE_EN : PNF_SIGNAL_SOURCE_EN,
     };
   });
 }

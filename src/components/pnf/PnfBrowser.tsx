@@ -4,11 +4,12 @@ import { useEffect, useId, useRef, useState } from "react";
 import { fmt } from "@/i18n/format";
 import { useI18n } from "@/i18n/I18nProvider";
 import { searchPnfPatterns } from "@/lib/pnfPatterns/localize";
-import type { PnfPattern } from "@/lib/pnfPatterns/patterns";
+import type { PnfGroup, PnfPattern } from "@/lib/pnfPatterns/patterns";
 import { useHashSlug } from "../glossary/useHashSlug";
 import { PnfDiagram } from "./PnfDiagram";
 
 const SIDE_CLASS = { bottom: "bg-positive/15 text-positive", top: "bg-negative/15 text-negative" } as const;
+const GROUPS: PnfGroup[] = ["reversal", "signal"];
 
 /** Fundo e topo lado a lado, com o nome de cada versão. */
 function Variants({ pattern, large = false }: { pattern: PnfPattern; large?: boolean }) {
@@ -20,7 +21,10 @@ function Variants({ pattern, large = false }: { pattern: PnfPattern; large?: boo
         <figure key={v.side} className="flex min-w-0 flex-1 flex-col items-center gap-1.5">
           <PnfDiagram variant={v} large={large} />
           <figcaption className={`text-center ${large ? "text-xs" : "text-[11px]"}`}>
-            <span className={`mr-1 rounded-full px-1.5 py-0.5 font-medium ${SIDE_CLASS[v.side]}`}>{u[v.side]}</span>
+            {/* Reversões: fundo/topo; sinais: compra/venda. */}
+            <span className={`mr-1 rounded-full px-1.5 py-0.5 font-medium ${SIDE_CLASS[v.side]}`}>
+              {pattern.group === "reversal" ? u[v.side] : v.side === "bottom" ? u.buy : u.sell}
+            </span>
             <span className="text-muted">{v.name}</span>
           </figcaption>
         </figure>
@@ -135,8 +139,10 @@ function PnfDialog({ pattern, onClose }: { pattern: PnfPattern | null; onClose: 
 export function PnfBrowser({ patterns }: { patterns: PnfPattern[] }) {
   const { pnfUi: u } = useI18n().t;
   const [query, setQuery] = useState("");
+  /** Grupo escolhido nos botões de filtro; null = todos. */
+  const [groupFilter, setGroupFilter] = useState<PnfGroup | null>(null);
   const inputId = useId();
-  const results = searchPnfPatterns(patterns, query);
+  const results = searchPnfPatterns(patterns, query).filter((p) => groupFilter === null || p.group === groupFilter);
   const [openSlug, close] = useHashSlug();
   const open = patterns.find((p) => p.slug === openSlug) ?? null;
 
@@ -161,15 +167,46 @@ export function PnfBrowser({ patterns }: { patterns: PnfPattern[] }) {
         />
       </div>
 
+      <div role="group" aria-label={u.filter} className="flex flex-wrap items-center gap-1.5 text-xs">
+        {([null, ...GROUPS] as const).map((group) => {
+          const active = groupFilter === group;
+          return (
+            <button
+              key={group ?? "all"}
+              type="button"
+              aria-pressed={active}
+              onClick={() => setGroupFilter(group)}
+              className={`rounded-full px-3 py-1 font-medium ${active ? "bg-accent text-white" : "bg-border/60 text-muted hover:bg-border"}`}
+            >
+              {group === null ? u.all : group === "reversal" ? u.reversalHeading : u.signalHeading}
+            </button>
+          );
+        })}
+      </div>
+
       <p className="text-sm text-muted" aria-live="polite">
         {results.length === 0 ? u.noResults : fmt(results.length === 1 ? u.countOne : u.countMany, { n: results.length })}
       </p>
 
-      <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
-        {results.map((p) => (
-          <PnfCard key={p.slug} pattern={p} />
-        ))}
-      </div>
+      {GROUPS.map((group) => {
+        const items = results.filter((p) => p.group === group);
+        if (items.length === 0) return null;
+        return (
+          <section key={group} aria-labelledby={`pnf-${group}`} className="flex flex-col gap-3">
+            <div>
+              <h3 id={`pnf-${group}`} className="text-lg font-semibold">
+                {group === "reversal" ? u.reversalHeading : u.signalHeading}
+              </h3>
+              <p className="text-sm text-muted">{group === "reversal" ? u.reversalIntro : u.signalIntro}</p>
+            </div>
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
+              {items.map((p) => (
+                <PnfCard key={p.slug} pattern={p} />
+              ))}
+            </div>
+          </section>
+        );
+      })}
 
       <PnfDialog pattern={open} onClose={close} />
     </div>
