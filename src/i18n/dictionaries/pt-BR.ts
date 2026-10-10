@@ -13,6 +13,7 @@ export const ptBR = {
     dashboard: "Painel",
     glossary: "Glossário",
     candles: "Candles",
+    pointFigure: "Ponto e figura",
     switchLanguage: "Switch to English",
     themeToDark: "Ativar tema escuro",
     themeToLight: "Ativar tema claro",
@@ -528,6 +529,7 @@ export const ptBR = {
     sellTrigger: "venda se uma coluna de O chegar a {price}.",
     buyActive: "a coluna de X atual já está acima do X anterior (compra valendo);",
     sellActive: "a coluna de O atual já está abaixo do O anterior (venda valendo).",
+    patternsLink: "Padrões de reversão no ponto e figura",
     footer:
       "Murphy (cap. 11): no ponto e figura de reversão de 3 caixas, o sinal de compra mais simples é uma coluna de X passar o topo da coluna de X anterior, e o de venda é uma coluna de O perder o fundo da coluna de O anterior. Caixas menores dão mais sinais (e mais falsos); caixas maiores filtram o ruído.",
   },
@@ -940,6 +942,51 @@ export const ptBR = {
       },
     ],
   },
+  pnfUi: {
+    searchLabel: "Buscar padrão",
+    searchPlaceholder: "Buscar padrão — ex: fulcro, pires, V, ombro-cabeça-ombro",
+    noResults: "Nenhum padrão encontrado.",
+    countOne: "{n} padrão",
+    countMany: "{n} padrões",
+    bottom: "Fundo",
+    top: "Topo",
+    details: "Ver detalhes",
+    detailsOf: "Ver detalhes de {name}",
+    close: "Fechar",
+    diagram: "{name}: diagrama de ponto e figura",
+    breakout: "rompimento",
+    contextNote: "As colunas apagadas mostram a tendência anterior; a linha tracejada é o rompimento que confirma o padrão.",
+    recognize: "Como reconhecer",
+    market: "O que está acontecendo no mercado",
+    confirmation: "Confirmação e uso",
+    source: "Fonte: {source}.",
+  },
+  pnfIntro: {
+    heading: "Como ler os padrões",
+    reading:
+      "No ponto e figura, cada X é uma caixa de alta e cada O, uma caixa de baixa. Uma coluna nova só começa quando o preço reverte o número de caixas da reversão; o tempo não conta. Por isso os padrões aparecem como áreas de congestão: colunas lado a lado, com os fundos (ou topos) num nível parecido.",
+    patterns:
+      "Os padrões de reversão marcam o fim de uma tendência. Nos fundos, a congestão é acumulação: compradores absorvem a oferta até o preço romper para cima. Nos topos, é distribuição. Cada padrão de fundo tem um par de topo, que é o mesmo desenho espelhado.",
+    rules: [
+      {
+        title: "1. Contexto",
+        text: "Um padrão de fundo só faz sentido depois de uma queda, e um de topo, depois de uma alta. Uma congestão no meio de uma tendência tende a ser de continuação.",
+      },
+      {
+        title: "2. Confirmação",
+        text: "O padrão só se completa com o rompimento: uma coluna de X acima do topo da congestão (fundo) ou de O abaixo do fundo dela (topo). São os mesmos sinais de compra e venda do gráfico de ponto e figura do RiskTrade.",
+      },
+      {
+        title: "3. Tamanho da base",
+        text: "Quanto mais larga a congestão, maior o movimento esperado. É a contagem horizontal: o número de colunas da base, vezes o tamanho da caixa e a reversão, somado ao fundo (ou subtraído do topo), dá o alvo.",
+      },
+      {
+        title: "4. Origem dos desenhos",
+        text: "Murphy reproduz esses padrões de A. H. Wheelan, que os estudou no gráfico de reversão de 1 caixa. Os diagramas daqui são esquemáticos: mostram a forma de cada padrão, que se reconhece do mesmo jeito em gráficos de 3 caixas.",
+      },
+    ],
+    chartLink: "Ver o gráfico de ponto e figura no painel",
+  },
   pages: {
     glossaryTitle: "Glossário · RiskTrade",
     glossaryDescription:
@@ -951,6 +998,10 @@ export const ptBR = {
     candlesHeading: "Padrões de candles",
     candlesSubtitle: "Candlesticks japoneses: velas básicas, padrões de reversão e de continuação.",
     patterns: "Padrões",
+    pnfTitle: "Padrões de ponto e figura · RiskTrade",
+    pnfDescription: "Os {count} padrões de reversão do ponto e figura (fundos e topos), com diagramas, psicologia e confirmação.",
+    pnfHeading: "Padrões de ponto e figura",
+    pnfSubtitle: "Padrões de reversão de fundo e de topo, como Murphy os apresenta no capítulo 11.",
   },
   lesson: {
     trail: "Trilha",
