@@ -14,6 +14,8 @@ import {
   type WatchlistEntry,
   type WatchlistQuote,
 } from "@/lib/watchlist";
+import { BellIcon, RadarBell, RadarSettingsPanel, RadarSignals } from "../radar/RadarParts";
+import { useSignalRadar, type RadarEntry, type SignalRadarState } from "../radar/useSignalRadar";
 import { Sparkline } from "./Sparkline";
 import { useWatchlist, watchlistActions } from "./useWatchlist";
 
@@ -76,7 +78,7 @@ interface Props {
 
 export function WatchlistPanel({ activeSymbol, onSelect }: Props) {
   const entries = useWatchlist();
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const w = t.watchlist;
   const quotes = useWatchlistQuotes(
     entries.map((e) => e.symbol),
@@ -85,6 +87,13 @@ export function WatchlistPanel({ activeSymbol, onSelect }: Props) {
   const [sort, setSort] = useState<SortKey>("change");
   const [tagFilter, setTagFilter] = useState<string | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
+  // Radar de sinais: um sino por favorito (sinais abertos embaixo dele) e a configuração no cabeçalho.
+  const radar = useSignalRadar(
+    entries.map((e) => e.symbol),
+    onSelect,
+  );
+  const [alertsOpen, setAlertsOpen] = useState(false);
+  const [bellOpen, setBellOpen] = useState<string | null>(null);
   const sortId = useId();
 
   const usedTags = useMemo(
@@ -106,6 +115,18 @@ export function WatchlistPanel({ activeSymbol, onSelect }: Props) {
         <h2 className="text-sm font-semibold">
           {w.title} <span className="font-normal text-muted">({entries.length})</span>
         </h2>
+        {entries.length > 0 && (
+          <button
+            type="button"
+            aria-expanded={alertsOpen}
+            aria-label={t.radar.settingsLabel}
+            title={t.radar.settingsLabel}
+            onClick={() => setAlertsOpen((v) => !v)}
+            className={`ml-auto rounded p-1 hover:bg-border/60 ${alertsOpen ? "bg-border/60 text-accent" : "text-muted"}`}
+          >
+            <BellIcon />
+          </button>
+        )}
         {entries.length > 1 && (
           <>
             <label htmlFor={sortId} className="sr-only">
@@ -126,6 +147,8 @@ export function WatchlistPanel({ activeSymbol, onSelect }: Props) {
           </>
         )}
       </header>
+
+      {alertsOpen && <RadarSettingsPanel radar={radar} locale={locale} />}
 
       {usedTags.length > 0 && (
         <div role="group" aria-label={w.filterByTag} className="flex flex-wrap gap-1">
@@ -148,7 +171,8 @@ export function WatchlistPanel({ activeSymbol, onSelect }: Props) {
       {entries.length === 0 ? (
         <p className="text-sm text-muted">{w.empty}</p>
       ) : (
-        <ul className="-mx-2 flex flex-col">
+        // Rolagem só na lista: o cabeçalho (alertas, ordem, etiquetas) fica sempre à vista.
+        <ul className="scrollbar-visible -mx-2 flex max-h-[70vh] flex-col overflow-y-auto pr-1 lg:max-h-[calc(100vh-12rem)]">
           {visible.map((entry) => (
             <WatchlistRow
               key={entry.symbol}
@@ -159,6 +183,13 @@ export function WatchlistPanel({ activeSymbol, onSelect }: Props) {
               editing={editing === entry.symbol}
               onSelect={() => onSelect(entry.symbol)}
               onToggleEditing={() => setEditing((cur) => (cur === entry.symbol ? null : entry.symbol))}
+              radar={radar}
+              radarEntry={radar.entries[entry.symbol]}
+              bellOpen={bellOpen === entry.symbol}
+              onToggleBell={() => {
+                setBellOpen((cur) => (cur === entry.symbol ? null : entry.symbol));
+                radar.markSeen(entry.symbol);
+              }}
             />
           ))}
         </ul>
@@ -175,9 +206,13 @@ interface RowProps {
   editing: boolean;
   onSelect: () => void;
   onToggleEditing: () => void;
+  radar: SignalRadarState;
+  radarEntry: RadarEntry | undefined;
+  bellOpen: boolean;
+  onToggleBell: () => void;
 }
 
-function WatchlistRow({ entry, quote, loading, active, editing, onSelect, onToggleEditing }: RowProps) {
+function WatchlistRow({ entry, quote, loading, active, editing, onSelect, onToggleEditing, radar, radarEntry, bellOpen, onToggleBell }: RowProps) {
   const { t, locale } = useI18n();
   const w = t.watchlist;
   const compact = new Intl.NumberFormat(locale, { notation: "compact", maximumFractionDigits: 1 });
@@ -186,6 +221,7 @@ function WatchlistRow({ entry, quote, loading, active, editing, onSelect, onTogg
   return (
     <li className={`rounded-xl px-2 py-2 ${active ? "bg-accent/10" : ""}`}>
       <div className="flex items-center gap-2">
+        <RadarBell symbol={entry.symbol} entry={radarEntry} open={bellOpen} onToggle={onToggleBell} />
         <button type="button" onClick={onSelect} className="flex min-w-0 flex-1 items-center gap-3 text-left">
           <div className="min-w-0 flex-1">
             <div className="font-mono text-sm font-semibold">{entry.symbol}</div>
@@ -246,6 +282,7 @@ function WatchlistRow({ entry, quote, loading, active, editing, onSelect, onTogg
       )}
 
       {editing && <TagEditor entry={entry} />}
+      {bellOpen && <RadarSignals symbol={entry.symbol} entry={radarEntry} radar={radar} />}
     </li>
   );
 }
