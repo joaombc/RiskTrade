@@ -966,6 +966,7 @@ export const enUS: Dictionary = {
     volume: "Volume",
   },
   candleUi: {
+    sections: { basic: "Basic candles", reversal: "Reversal patterns", continuation: "Continuation patterns" },
     searchLabel: "Search pattern",
     searchPlaceholder: "Search a pattern — e.g. martelo, engolfo, harami (names still in Portuguese)",
     type: "Type",

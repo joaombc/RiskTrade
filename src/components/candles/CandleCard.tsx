@@ -30,17 +30,30 @@ export function PatternBadges({ pattern }: { pattern: CandlePattern }) {
   );
 }
 
-/** Card compacto; o título, o diagrama e "Ver detalhes" abrem o card ampliado (#slug). */
-export function CandleCard({ pattern }: { pattern: CandlePattern }) {
+/**
+ * Card compacto; o título, o diagrama e "Ver detalhes" abrem o card ampliado (#slug). Nas seções de
+ * alta e de baixa, `pattern` chega só com as versões daquela direção, e `variantNames` mostra o nome
+ * da versão (ex.: "Engolfo de alta").
+ */
+export function CandleCard({
+  pattern,
+  variantNames = false,
+  heading: Heading = "h3",
+}: {
+  pattern: CandlePattern;
+  variantNames?: boolean;
+  /** Nível do título, conforme a seção em que o card está. */
+  heading?: "h3" | "h4" | "h5";
+}) {
   const { candleUi: c } = useI18n().t;
   return (
     <article className="flex flex-col gap-3 rounded-2xl border border-border bg-surface p-5 shadow-sm">
       <header className="flex flex-col gap-1.5">
-        <h3 className="text-lg font-semibold leading-snug">
+        <Heading className="text-lg font-semibold leading-snug">
           <a href={`#${pattern.slug}`} className="hover:underline">
             {pattern.name}
           </a>
-        </h3>
+        </Heading>
         {/* Em inglês o nome já é o original. */}
         {pattern.englishName !== pattern.name && <p className="text-xs italic text-muted">{pattern.englishName}</p>}
         <PatternBadges pattern={pattern} />
@@ -54,7 +67,7 @@ export function CandleCard({ pattern }: { pattern: CandlePattern }) {
         {pattern.variants.map((v) => (
           <figure key={v.name} className="flex flex-col items-center gap-1">
             <CandleDiagram variant={v} />
-            {pattern.variants.length > 1 && <figcaption className="text-[11px] text-muted">{v.name}</figcaption>}
+            {(variantNames || pattern.variants.length > 1) && <figcaption className="text-[11px] text-muted">{v.name}</figcaption>}
           </figure>
         ))}
       </a>

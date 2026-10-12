@@ -939,6 +939,7 @@ export const ptBR = {
     volume: "Volume",
   },
   candleUi: {
+    sections: { basic: "Velas básicas", reversal: "Padrões de reversão", continuation: "Padrões de continuação" },
     searchLabel: "Buscar padrão",
     searchPlaceholder: "Buscar padrão — ex: martelo, engolfo, estrela da manhã, harami",
     type: "Tipo",
