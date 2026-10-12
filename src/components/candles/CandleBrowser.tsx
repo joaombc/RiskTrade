@@ -4,12 +4,21 @@ import { useId, useState } from "react";
 import { fmt } from "@/i18n/format";
 import { useI18n } from "@/i18n/I18nProvider";
 import { searchCandles, type CandleFilters } from "@/lib/candles/search";
-import type { CandleKind, CandlePattern } from "@/lib/candles/types";
+import type { Bias, CandleKind, CandlePattern } from "@/lib/candles/types";
 import { useHashSlug } from "../glossary/useHashSlug";
 import { CandleCard } from "./CandleCard";
 import { CandleDialog } from "./CandleDialog";
 
 const KINDS: CandleKind[] = ["basic", "reversal", "continuation"];
+const SIDES: Exclude<Bias, "neutral">[] = ["bullish", "bearish"];
+
+/** O padrão só com as versões de uma direção (null se não tiver nenhuma). */
+function onlySide(pattern: CandlePattern, bias: Exclude<Bias, "neutral">): CandlePattern | null {
+  const variants = pattern.variants.filter((v) => v.bias === bias);
+  return variants.length > 0 ? { ...pattern, variants } : null;
+}
+
+const grid = "grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3";
 
 function Chip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
@@ -101,11 +110,43 @@ export function CandleBrowser({ patterns }: { patterns: CandlePattern[] }) {
           : fmt(results.length === 1 ? c.countOne : c.countMany, { n: results.length })}
       </p>
 
-      <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
-        {results.map((p) => (
-          <CandleCard key={p.slug} pattern={p} />
-        ))}
-      </div>
+      {/* Seções por tipo; reversão e continuação divididas em alta e baixa. Um padrão com as duas
+          versões aparece nas duas divisões, cada card só com o desenho daquela direção. */}
+      {KINDS.map((kind) => {
+        const items = results.filter((p) => p.kind === kind);
+        if (items.length === 0) return null;
+        return (
+          <section key={kind} aria-labelledby={`candles-${kind}`} className="flex flex-col gap-4">
+            <h3 id={`candles-${kind}`} className="text-lg font-semibold">
+              {c.sections[kind]} <span className="font-normal text-muted">({items.length})</span>
+            </h3>
+            {kind === "basic" ? (
+              <div className={grid}>
+                {items.map((p) => (
+                  <CandleCard key={p.slug} pattern={p} heading="h4" />
+                ))}
+              </div>
+            ) : (
+              SIDES.filter((side) => filters.bias === null || filters.bias === side).map((side) => {
+                const sided = items.flatMap((p) => onlySide(p, side) ?? []);
+                if (sided.length === 0) return null;
+                return (
+                  <div key={side} className="flex flex-col gap-3">
+                    <h4 className={`text-sm font-semibold ${side === "bullish" ? "text-positive" : "text-negative"}`}>
+                      {side === "bullish" ? c.bullish : c.bearish} <span className="font-normal text-muted">({sided.length})</span>
+                    </h4>
+                    <div className={grid}>
+                      {sided.map((p) => (
+                        <CandleCard key={`${p.slug}-${side}`} pattern={p} variantNames heading="h5" />
+                      ))}
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </section>
+        );
+      })}
 
       <CandleDialog pattern={open} onClose={close} />
     </div>
