@@ -270,7 +270,8 @@ export const PNF_PATTERNS: PnfPattern[] = [
       "Depois da queda, forma-se uma primeira faixa lateral estreita no fundo.",
       "Um repique sai da faixa, mas não se sustenta: o preço volta ao mesmo nível do fundo.",
       "Forma-se uma segunda faixa lateral, ao lado da primeira e na mesma altura.",
-      "Completa-se quando uma coluna de X passa o topo do repique entre as duas faixas. No topo, é o espelho: duas faixas de distribuição e rompimento para baixo.",
+      "Completa-se quando uma coluna de X passa o topo do repique entre as duas faixas.",
+      "No topo, é o espelho: duas faixas de distribuição e rompimento para baixo.",
     ],
     psychology:
       "As duas faixas mostram a mesma demanda no mesmo preço, em dois momentos: os compradores defendem aquele nível. O repique que falha tira os impacientes; quando a oferta acaba, o rompimento vem.",

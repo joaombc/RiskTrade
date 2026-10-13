@@ -109,7 +109,8 @@ export const PNF_PATTERNS_EN: Record<string, PnfTranslation> = {
       "After the decline, a first narrow sideways range forms at the bottom.",
       "A rally leaves the range but does not hold: price returns to the same low level.",
       "A second sideways range forms next to the first, at the same height.",
-      "It is complete when an X column rises above the top of the rally between the two ranges. At a top it is the mirror image: two distribution ranges and a breakdown.",
+      "It is complete when an X column rises above the top of the rally between the two ranges.",
+      "At a top it is the mirror image: two distribution ranges and a breakdown.",
     ],
     psychology:
       "The two ranges show the same demand at the same price at two different times: buyers defend that level. The failed rally shakes out the impatient; when supply runs out, the breakout comes.",

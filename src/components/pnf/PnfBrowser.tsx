@@ -3,8 +3,10 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { fmt } from "@/i18n/format";
 import { useI18n } from "@/i18n/I18nProvider";
+import { pnfDeck } from "@/lib/anki";
 import { searchPnfPatterns } from "@/lib/pnfPatterns/localize";
 import type { PnfGroup, PnfPattern } from "@/lib/pnfPatterns/patterns";
+import { AnkiDownloadButton } from "../anki/AnkiDownloadButton";
 import { useHashSlug } from "../glossary/useHashSlug";
 import { PnfDiagram } from "./PnfDiagram";
 
@@ -137,7 +139,8 @@ function PnfDialog({ pattern, onClose }: { pattern: PnfPattern | null; onClose: 
 
 /** Recebe os padrões já no idioma da página (montados no servidor). */
 export function PnfBrowser({ patterns }: { patterns: PnfPattern[] }) {
-  const { pnfUi: u } = useI18n().t;
+  const { t } = useI18n();
+  const u = t.pnfUi;
   const [query, setQuery] = useState("");
   /** Grupo escolhido nos botões de filtro; null = todos. */
   const [groupFilter, setGroupFilter] = useState<PnfGroup | null>(null);
@@ -184,9 +187,12 @@ export function PnfBrowser({ patterns }: { patterns: PnfPattern[] }) {
         })}
       </div>
 
-      <p className="text-sm text-muted" aria-live="polite">
-        {results.length === 0 ? u.noResults : fmt(results.length === 1 ? u.countOne : u.countMany, { n: results.length })}
-      </p>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-sm text-muted" aria-live="polite">
+          {results.length === 0 ? u.noResults : fmt(results.length === 1 ? u.countOne : u.countMany, { n: results.length })}
+        </p>
+        <AnkiDownloadButton fileName={t.anki.files.pnf} build={(render) => pnfDeck(patterns, (v) => render(<PnfDiagram variant={v} large />), t.anki)} />
+      </div>
 
       {GROUPS.map((group) => {
         const items = results.filter((p) => p.group === group);
