@@ -14,8 +14,8 @@ import {
   type WatchlistEntry,
   type WatchlistQuote,
 } from "@/lib/watchlist";
-import { BellIcon, RadarBell, RadarSettingsPanel, RadarSignals } from "../radar/RadarParts";
-import { useSignalRadar, type RadarEntry, type SignalRadarState } from "../radar/useSignalRadar";
+import { BellIcon, RadarBell, RadarDialog, RadarSettingsPanel } from "../radar/RadarParts";
+import { useSignalRadar, type RadarEntry } from "../radar/useSignalRadar";
 import { Sparkline } from "./Sparkline";
 import { useWatchlist, watchlistActions } from "./useWatchlist";
 
@@ -87,7 +87,7 @@ export function WatchlistPanel({ activeSymbol, onSelect }: Props) {
   const [sort, setSort] = useState<SortKey>("change");
   const [tagFilter, setTagFilter] = useState<string | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
-  // Radar de sinais: um sino por favorito (sinais abertos embaixo dele) e a configuração no cabeçalho.
+  // Radar de sinais: um sino por favorito (abre o card com os sinais) e a configuração no cabeçalho.
   const radar = useSignalRadar(
     entries.map((e) => e.symbol),
     onSelect,
@@ -183,17 +183,31 @@ export function WatchlistPanel({ activeSymbol, onSelect }: Props) {
               editing={editing === entry.symbol}
               onSelect={() => onSelect(entry.symbol)}
               onToggleEditing={() => setEditing((cur) => (cur === entry.symbol ? null : entry.symbol))}
-              radar={radar}
               radarEntry={radar.entries[entry.symbol]}
               bellOpen={bellOpen === entry.symbol}
-              onToggleBell={() => {
-                setBellOpen((cur) => (cur === entry.symbol ? null : entry.symbol));
-                radar.markSeen(entry.symbol);
-              }}
+              onToggleBell={() => setBellOpen(entry.symbol)}
             />
           ))}
         </ul>
       )}
+
+      <RadarDialog
+        symbol={bellOpen}
+        name={entries.find((e) => e.symbol === bellOpen)?.name ?? bellOpen ?? ""}
+        entry={bellOpen ? radar.entries[bellOpen] : undefined}
+        radar={radar}
+        locale={locale}
+        // Os sinais só deixam de ser "novos" ao fechar o card: dentro dele, a marca ainda aparece.
+        onClose={() => {
+          if (bellOpen) radar.markSeen(bellOpen);
+          setBellOpen(null);
+        }}
+        onOpenChart={(symbol) => {
+          radar.markSeen(symbol);
+          setBellOpen(null);
+          onSelect(symbol);
+        }}
+      />
     </aside>
   );
 }
@@ -206,13 +220,12 @@ interface RowProps {
   editing: boolean;
   onSelect: () => void;
   onToggleEditing: () => void;
-  radar: SignalRadarState;
   radarEntry: RadarEntry | undefined;
   bellOpen: boolean;
   onToggleBell: () => void;
 }
 
-function WatchlistRow({ entry, quote, loading, active, editing, onSelect, onToggleEditing, radar, radarEntry, bellOpen, onToggleBell }: RowProps) {
+function WatchlistRow({ entry, quote, loading, active, editing, onSelect, onToggleEditing, radarEntry, bellOpen, onToggleBell }: RowProps) {
   const { t, locale } = useI18n();
   const w = t.watchlist;
   const compact = new Intl.NumberFormat(locale, { notation: "compact", maximumFractionDigits: 1 });
@@ -282,7 +295,6 @@ function WatchlistRow({ entry, quote, loading, active, editing, onSelect, onTogg
       )}
 
       {editing && <TagEditor entry={entry} />}
-      {bellOpen && <RadarSignals symbol={entry.symbol} entry={radarEntry} radar={radar} />}
     </li>
   );
 }
