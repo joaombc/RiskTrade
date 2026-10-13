@@ -1,8 +1,10 @@
 "use client";
 
+import { useEffect, useRef } from "react";
+import type { Dictionary } from "@/i18n/dictionary";
 import { fmt } from "@/i18n/format";
 import { useI18n } from "@/i18n/I18nProvider";
-import { againstTrend, RADAR_INDICATORS, RADAR_INTERVALS, type RadarInterval } from "@/lib/radar";
+import { againstTrend, RADAR_INDICATORS, RADAR_INTERVALS, type RadarInterval, type RadarSignal } from "@/lib/radar";
 import type { RadarEntry, SignalRadarState } from "./useSignalRadar";
 
 /** Desenho do sino (contorno; preenchido quando `filled`). */
@@ -50,48 +52,153 @@ export function RadarBell({ symbol, entry, open, onToggle }: { symbol: string; e
   );
 }
 
-/** Sinais de um favorito, abertos pelo sino. */
-export function RadarSignals({ symbol, entry, radar }: { symbol: string; entry: RadarEntry | undefined; radar: SignalRadarState }) {
+/** Frase do que aconteceu em cada sinal (ex.: "o MACD cruzou a linha de sinal para cima"). */
+function explain(e: Dictionary["radar"]["explain"], s: RadarSignal): string {
+  return (s.detail === "failure" ? e.rsiFailure : e[s.indicator])[s.kind];
+}
+
+/**
+ * Card com os sinais de um favorito, aberto pelo sino: viés, tendência e os sinais de compra e de
+ * venda em colunas, cada um em frase. `symbol` null = fechado.
+ */
+export function RadarDialog({
+  symbol,
+  name,
+  entry,
+  radar,
+  locale,
+  onClose,
+  onOpenChart,
+}: {
+  symbol: string | null;
+  name: string;
+  entry: RadarEntry | undefined;
+  radar: SignalRadarState;
+  locale: string;
+  onClose: () => void;
+  onOpenChart: (symbol: string) => void;
+}) {
   const { radar: r } = useI18n().t;
+  const ref = useRef<HTMLDialogElement>(null);
+
+  useEffect(() => {
+    const dialog = ref.current;
+    if (!dialog) return;
+    if (symbol && !dialog.open) dialog.showModal();
+    if (!symbol && dialog.open) dialog.close();
+  }, [symbol]);
+
   const ago = (n: number) => (n === 0 ? r.today : n === 1 ? r.agoOne : fmt(r.agoMany, { n }));
-  if (!entry) return <p className="mt-2 text-xs text-muted">{r.loading}</p>;
-  if (!entry.analysis) return <p className="mt-2 text-xs text-muted">{entry.error ? r.itemError : r.insufficient}</p>;
-  const { analysis, score, signals } = entry;
-  return (
-    <div className="mt-2 flex flex-col gap-1.5 rounded-lg border border-border p-2.5 text-xs">
-      <p className="flex flex-wrap items-center gap-1.5">
-        {score && signals.length > 0 && (
-          <span
-            className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
-              score.bias === "bullish" ? "bg-positive/15 text-positive" : score.bias === "bearish" ? "bg-negative/15 text-negative" : "bg-border/60 text-muted"
-            }`}
-          >
-            {r.bias[score.bias]}
-            {score.strong && ` · ${r.strong}`}
-          </span>
+  const analysis = entry?.analysis ?? null;
+  const score = entry?.score ?? null;
+  const signals = entry?.signals ?? [];
+
+  const column = (kind: "buy" | "sell") => {
+    const list = signals.filter((s) => s.kind === kind);
+    return (
+      <section className={`flex flex-col gap-2 rounded-xl border p-4 ${kind === "buy" ? "border-positive/30" : "border-negative/30"}`}>
+        <h3 className={`text-sm font-semibold ${kind === "buy" ? "text-positive" : "text-negative"}`}>
+          {kind === "buy" ? r.buySignals : r.sellSignals} <span className="font-normal text-muted">({list.length})</span>
+        </h3>
+        {list.length === 0 ? (
+          <p className="text-sm text-muted">{r.noneSide}</p>
+        ) : (
+          <ul className="flex flex-col gap-2.5">
+            {list.map((s) => (
+              <li key={`${s.indicator}-${s.time}`} className="text-sm leading-snug">
+                <span className="font-semibold">{r.indicators[s.indicator]}:</span> {explain(r.explain, s)}.
+                <span className="mt-0.5 flex flex-wrap gap-1.5 text-xs text-muted">
+                  <span>{ago(s.barsAgo)}</span>
+                  {analysis && againstTrend(s, analysis.trend) && (
+                    <span className="rounded-full bg-border/60 px-1.5 font-medium">{r.against}</span>
+                  )}
+                  {symbol && radar.isFresh(symbol, s) && <span className="rounded-full bg-accent px-1.5 font-semibold text-white">{r.new}</span>}
+                </span>
+              </li>
+            ))}
+          </ul>
         )}
-        {analysis.trend && <span className="text-muted">{r.trend[analysis.trend]}</span>}
-      </p>
-      {signals.length === 0 ? (
-        <p className="text-muted">{r.none}</p>
-      ) : (
-        <ul className="flex flex-col gap-1">
-          {signals.map((s) => (
-            <li key={`${s.indicator}-${s.kind}-${s.time}`} className="flex flex-wrap items-center gap-x-1.5">
-              <span className={`font-semibold ${s.kind === "buy" ? "text-positive" : "text-negative"}`}>{r.kinds[s.kind]}</span>
-              <span>
-                {r.indicators[s.indicator]}
-                {s.detail && ` (${r.details[s.detail]})`}
-              </span>
-              <span className="text-muted">· {ago(s.barsAgo)}</span>
-              {againstTrend(s, analysis.trend) && <span className="text-muted">· {r.against}</span>}
-              {radar.isFresh(symbol, s) && <span className="font-semibold text-accent">· {r.new}</span>}
-            </li>
-          ))}
-        </ul>
+      </section>
+    );
+  };
+
+  return (
+    <dialog
+      ref={ref}
+      aria-labelledby="radar-dialog-title"
+      onClose={onClose}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+      className="m-auto max-h-[92vh] w-[min(44rem,calc(100vw-2rem))] overflow-y-auto rounded-2xl border border-border bg-surface p-0 text-foreground shadow-2xl backdrop:bg-black/60"
+    >
+      {symbol && (
+        <article className="flex flex-col gap-5 p-5 sm:p-6">
+          <header className="flex items-start justify-between gap-4">
+            <div className="flex flex-col gap-1.5">
+              <h2 id="radar-dialog-title" className="text-2xl font-bold tracking-tight">
+                <span className="sr-only">{fmt(r.dialogTitle, { symbol })}: </span>
+                <span className="font-mono">{symbol}</span>
+              </h2>
+              {name !== symbol && <p className="text-sm text-muted">{name}</p>}
+              {analysis && (
+                <p className="flex flex-wrap items-center gap-2 text-sm">
+                  {score && signals.length > 0 && (
+                    <span
+                      className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                        score.bias === "bullish" ? "bg-positive/15 text-positive" : score.bias === "bearish" ? "bg-negative/15 text-negative" : "bg-border/60 text-muted"
+                      }`}
+                    >
+                      {r.bias[score.bias]}
+                      {score.strong && ` · ${r.strong}`}
+                    </span>
+                  )}
+                  {score && <span className="text-muted">{signals.length === 0 ? r.none : fmt(r.counts, { buys: score.buys, sells: score.sells })}</span>}
+                  {analysis.trend && <span className="text-muted">· {r.trend[analysis.trend]}</span>}
+                </p>
+              )}
+            </div>
+            <button type="button" onClick={onClose} aria-label={r.close} className="rounded-lg p-2 text-muted hover:bg-border/60 hover:text-foreground">
+              <svg aria-hidden viewBox="0 0 20 20" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
+                <path d="m5 5 10 10M15 5 5 15" />
+              </svg>
+            </button>
+          </header>
+
+          {!entry ? (
+            <p className="text-sm text-muted">{r.loading}</p>
+          ) : !analysis ? (
+            <p className="text-sm text-muted">{entry.error ? r.itemError : r.insufficient}</p>
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2">
+              {column("buy")}
+              {column("sell")}
+            </div>
+          )}
+
+          <footer className="flex flex-col gap-3 border-t border-border pt-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <button
+                type="button"
+                onClick={() => onOpenChart(symbol)}
+                className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90"
+              >
+                {r.openChart} →
+              </button>
+              {radar.checkedAt && (
+                <span className="text-xs text-muted">
+                  {fmt(r.checked, {
+                    time: new Date(radar.checkedAt).toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" }),
+                    min: radar.settings.interval,
+                  })}
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-muted">{r.disclaimer}</p>
+          </footer>
+        </article>
       )}
-      <p className="text-[11px] text-muted">{r.disclaimer}</p>
-    </div>
+    </dialog>
   );
 }
 
