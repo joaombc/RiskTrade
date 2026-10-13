@@ -101,6 +101,14 @@ describe("padrões do ponto e figura", () => {
     }
   });
 
+  it("só o último item de reconhecimento descreve a versão de baixa (o baralho do Anki depende disso)", () => {
+    const bearish = /^(No topo|Venda|Triângulo de baixa|Linha de suporte de alta)/;
+    for (const p of PNF_ALL) {
+      expect(p.recognition.at(-1), p.slug).toMatch(bearish);
+      expect(p.recognition.slice(0, -1).some((r) => bearish.test(r) || r.includes("No topo")), p.slug).toBe(false);
+    }
+  });
+
   it("todo padrão tem os textos e a fonte do grupo", () => {
     for (const p of PNF_ALL) {
       expect(p.recognition.length, p.slug).toBeGreaterThanOrEqual(3);

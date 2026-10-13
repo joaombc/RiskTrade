@@ -3,15 +3,19 @@
 import { useId, useState } from "react";
 import { fmt } from "@/i18n/format";
 import { useI18n } from "@/i18n/I18nProvider";
+import { glossaryDeck } from "@/lib/anki";
 import { searchTerms } from "@/lib/glossary/search";
 import { CATEGORIES, type Category, type GlossaryTerm } from "@/lib/glossary/types";
+import { AnkiDownloadButton } from "../anki/AnkiDownloadButton";
+import { GlossaryDiagram } from "./GlossaryDiagram";
 import { TermCard } from "./TermCard";
 import { TermDialog } from "./TermDialog";
 import { useHashSlug } from "./useHashSlug";
 
 /** Recebe os termos já no idioma da página (montados no servidor). */
 export function GlossaryBrowser({ terms }: { terms: GlossaryTerm[] }) {
-  const { glossary: g } = useI18n().t;
+  const { t } = useI18n();
+  const g = t.glossary;
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<Category | null>(null);
   const inputId = useId();
@@ -57,11 +61,17 @@ export function GlossaryBrowser({ terms }: { terms: GlossaryTerm[] }) {
         </div>
       </div>
 
-      <p className="text-sm text-muted" aria-live="polite">
-        {results.length === 0
-          ? `${fmt(g.noResults, { query: query.trim() })}${category ? fmt(g.inCategory, { category: g.categories[category] }) : ""}.`
-          : fmt(results.length === 1 ? g.countOne : g.countMany, { n: results.length })}
-      </p>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-sm text-muted" aria-live="polite">
+          {results.length === 0
+            ? `${fmt(g.noResults, { query: query.trim() })}${category ? fmt(g.inCategory, { category: g.categories[category] }) : ""}.`
+            : fmt(results.length === 1 ? g.countOne : g.countMany, { n: results.length })}
+        </p>
+        <AnkiDownloadButton
+          fileName={t.anki.files.glossary}
+          build={(render) => glossaryDeck(terms, (term) => render(<GlossaryDiagram diagram={term.diagram} title={term.name} />), t.anki, (c) => g.categories[c])}
+        />
+      </div>
 
       <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
         {results.map((term) => (

@@ -3,10 +3,13 @@
 import { useId, useState } from "react";
 import { fmt } from "@/i18n/format";
 import { useI18n } from "@/i18n/I18nProvider";
+import { candleDeck } from "@/lib/anki";
 import { searchCandles, type CandleFilters } from "@/lib/candles/search";
 import type { Bias, CandleKind, CandlePattern } from "@/lib/candles/types";
+import { AnkiDownloadButton } from "../anki/AnkiDownloadButton";
 import { useHashSlug } from "../glossary/useHashSlug";
 import { CandleCard } from "./CandleCard";
+import { CandleDiagram } from "./CandleDiagram";
 import { CandleDialog } from "./CandleDialog";
 
 const KINDS: CandleKind[] = ["basic", "reversal", "continuation"];
@@ -36,7 +39,8 @@ function Chip({ active, onClick, children }: { active: boolean; onClick: () => v
 /** Recebe os padrões já no idioma da página (montados no servidor). */
 export function CandleBrowser({ patterns }: { patterns: CandlePattern[] }) {
   const counts = [...new Set(patterns.map((p) => p.candleCount))].sort((a, b) => a - b);
-  const { candleUi: c } = useI18n().t;
+  const { t } = useI18n();
+  const c = t.candleUi;
   const [filters, setFilters] = useState<CandleFilters>({ query: "", kind: null, bias: null, count: null });
   const set = (patch: Partial<CandleFilters>) => setFilters((f) => ({ ...f, ...patch }));
   const inputId = useId();
@@ -104,11 +108,14 @@ export function CandleBrowser({ patterns }: { patterns: CandlePattern[] }) {
         </div>
       </div>
 
-      <p className="text-sm text-muted" aria-live="polite">
-        {results.length === 0
-          ? c.noResults
-          : fmt(results.length === 1 ? c.countOne : c.countMany, { n: results.length })}
-      </p>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-sm text-muted" aria-live="polite">
+          {results.length === 0
+            ? c.noResults
+            : fmt(results.length === 1 ? c.countOne : c.countMany, { n: results.length })}
+        </p>
+        <AnkiDownloadButton fileName={t.anki.files.candles} build={(render) => candleDeck(patterns, (v) => render(<CandleDiagram variant={v} large />), t.anki)} />
+      </div>
 
       {/* Seções por tipo; reversão e continuação divididas em alta e baixa. Um padrão com as duas
           versões aparece nas duas divisões, cada card só com o desenho daquela direção. */}
