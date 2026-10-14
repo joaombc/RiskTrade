@@ -1,4 +1,5 @@
 import { CHANNEL_DIAGRAMS } from "./channel-diagrams";
+import { CYCLE_DIAGRAMS } from "./cycles-diagrams";
 import { MA_DIAGRAMS } from "./ma-diagrams";
 import { MACD_DIAGRAMS } from "./macd-diagrams";
 import { RSI_DIAGRAMS } from "./rsi-diagrams";
@@ -1186,6 +1187,109 @@ export const LESSONS: Lesson[] = [
       "Correções: zigue-zague (5-3-5), plana (3-3-5) e triângulo (normalmente na onda 4). Pela alternação, se a 2 foi simples, a 4 tende a ser complexa.",
       "Fibonacci dá alvos e retrações (38%, 50% e 62%). A ordem de importância é padrão, depois razão, depois tempo.",
       "Use Elliott junto com as outras ferramentas e não force contagens.",
+    ],
+  },
+  {
+    slug: "ciclos-de-tempo",
+    title: "Ciclos de tempo",
+    subtitle: "A dimensão do tempo: quando o mercado tende a virar",
+    summary:
+      "Amplitude, período e fase; os princípios dos ciclos (soma, harmonia, sincronismo, proporcionalidade, variação e nominalidade); a translação para a direita e para a esquerda; os ciclos mais conhecidos; como isolar um ciclo e como usá-lo junto com as outras ferramentas.",
+    readingMinutes: 11,
+    source: "Murphy, Technical Analysis of the Financial Markets, cap. 14 (Ciclos de tempo)",
+    relatedTerms: ["linha-de-tendencia", "linha-de-momentum", "suporte-e-resistencia", "bandas-de-bollinger"],
+    sections: [
+      {
+        heading: "A dimensão do tempo",
+        paragraphs: [
+          "A maior parte da análise técnica trata do preço: para onde o mercado vai e até onde. Os ciclos acrescentam a dimensão do tempo: quando um topo ou um fundo tende a acontecer. Murphy apresenta a análise de ciclos como um complemento, não um substituto: o preço diz o que está acontecendo; os ciclos ajudam a prever o momento.",
+          "A ideia é que os movimentos de preço seguem ritmos mais ou menos regulares, causados por forças que se repetem: estações do ano, ciclos econômicos, calendários de eleições e o próprio comportamento coletivo dos investidores. O trabalho de J. M. Hurst popularizou essa abordagem nos mercados.",
+        ],
+      },
+      {
+        heading: "Anatomia de um ciclo",
+        paragraphs: [
+          "Um ciclo se descreve por três medidas. A amplitude é a altura da onda, do fundo ao topo. O período é o tempo que ele leva para se completar. A fase é a posição da onda no tempo, ou seja, onde ficam os seus fundos.",
+          "Os analistas de ciclos medem de fundo a fundo, e não de topo a topo. Os fundos costumam ser mais nítidos e regulares; os topos variam mais, porque dependem da tendência maior (veja a translação, mais abaixo).",
+        ],
+        diagram: { diagram: CYCLE_DIAGRAMS.anatomy, caption: "O período vai de um fundo ao seguinte; a amplitude é a altura do fundo ao topo." },
+      },
+      {
+        heading: "Os princípios dos ciclos",
+        paragraphs: ["Murphy lista alguns princípios que descrevem como os ciclos se comportam e se combinam:"],
+        bullets: [
+          "Soma: todo movimento de preço é a soma de vários ciclos ativos ao mesmo tempo, de comprimentos diferentes.",
+          "Harmonia: ciclos vizinhos se relacionam por números inteiros pequenos, quase sempre 2: um ciclo costuma ter o dobro do comprimento do ciclo menor seguinte.",
+          "Sincronismo: ciclos de comprimentos diferentes tendem a fazer fundo juntos. Quando vários fundos coincidem, o fundo do preço é mais marcante.",
+          "Proporcionalidade: ciclos mais longos têm amplitudes maiores.",
+          "Variação: os princípios são tendências, não leis; os comprimentos variam um pouco de um ciclo para o outro.",
+          "Nominalidade: existe um conjunto de comprimentos de ciclo comum a todos os mercados, que serve de ponto de partida para a análise.",
+        ],
+        diagram: {
+          diagram: CYCLE_DIAGRAMS.summation,
+          caption: "O preço (linha cheia) é a soma do ciclo longo (tracejado) com um ciclo curto de metade do período (painel de baixo): os fundos coincidem.",
+        },
+      },
+      {
+        heading: "Translação para a direita e para a esquerda",
+        paragraphs: [
+          "Os fundos dos ciclos são mais regulares que os topos, e é justamente a posição do topo que informa sobre a tendência. Numa alta, o topo de cada ciclo tende a ficar depois do meio do ciclo: é a translação para a direita. O preço passa mais tempo subindo do que caindo.",
+          "Numa baixa, acontece o contrário: o topo vem antes do meio do ciclo, a translação para a esquerda. O preço sobe pouco tempo e passa a maior parte do ciclo caindo. Um ciclo que vira à esquerda depois de uma série de ciclos à direita é um aviso de que a tendência pode estar mudando; se o fundo seguinte ficar abaixo do anterior, o aviso se confirma.",
+        ],
+        diagram: { diagram: CYCLE_DIAGRAMS.rightTranslation, caption: "Translação para a direita: numa alta, o topo de cada ciclo fica depois do meio do ciclo." },
+      },
+      {
+        heading: "Translação para a esquerda",
+        paragraphs: [
+          "No desenho, a mesma série de ciclos numa tendência de baixa: os topos chegam cedo, antes do meio de cada ciclo, e os fundos ficam cada vez mais baixos.",
+        ],
+        diagram: { diagram: CYCLE_DIAGRAMS.leftTranslation, caption: "Translação para a esquerda: numa baixa, o topo vem antes do meio do ciclo." },
+      },
+      {
+        heading: "Os ciclos mais conhecidos",
+        paragraphs: ["Murphy reúne os ciclos em grupos pelo comprimento:"],
+        bullets: [
+          "Longo prazo: o ciclo de Kondratieff, de cerca de 54 anos, ligado a ondas longas da economia.",
+          "Ciclo de 4 anos das ações: fundos mais ou menos a cada quatro anos, muitas vezes associados ao calendário das eleições presidenciais americanas.",
+          "Ciclo anual e sazonalidade: padrões que se repetem em certas épocas do ano, muito usados em commodities agrícolas.",
+          "Ciclo primário (ou dominante): de um a vários anos; é o que dá a direção maior.",
+          "Ciclo de negociação: cerca de 4 semanas (20 a 28 pregões), importante para o curto prazo; ele se divide em dois ciclos de cerca de 2 semanas.",
+          "Modelo nominal de Hurst: uma escada de ciclos em que cada um tem cerca de metade do anterior, como 18 anos, 9 anos, 54 meses, 18 meses, 40 semanas, 20 semanas, 10 semanas, 5 semanas, 20 dias e 10 dias.",
+        ],
+      },
+      {
+        heading: "Como isolar um ciclo",
+        paragraphs: [
+          "O jeito mais simples é olhar os fundos importantes e medir a distância entre eles: se os fundos se repetem em intervalos parecidos, há um ciclo dominante. Daí se projeta a próxima janela de fundo.",
+          "A tendência atrapalha a leitura, então os analistas a removem. Uma média móvel com o comprimento do ciclo, centrada (deslocada para trás em metade do seu período), acompanha a tendência sem o ciclo. A diferença entre o preço e essa média é o oscilador sem tendência: ele oscila em torno de zero e deixa os fundos e topos do ciclo à vista. Como a média é centrada, o oscilador termina antes do último candle.",
+          "Há também métodos matemáticos, como a análise espectral (Fourier e a entropia máxima, MESA), que procuram os ciclos dominantes de uma série. Eles exigem cuidado, porque os mercados mudam de ritmo com o tempo.",
+        ],
+        diagram: {
+          diagram: CYCLE_DIAGRAMS.detrend,
+          caption: "Preço com tendência de alta e um ciclo de 20 candles: a média centrada segue a tendência, e o preço menos a média (painel de baixo) mostra só o ciclo.",
+        },
+      },
+      {
+        heading: "Ciclos e as outras ferramentas",
+        paragraphs: [
+          "Os ciclos ajudam a explicar por que certos comprimentos funcionam melhor nas outras ferramentas. Médias móveis e osciladores costumam render mais quando o período tem relação com um ciclo dominante: por exemplo, o IFR e o estocástico de 14 pregões medem cerca de metade de um ciclo de negociação de 28 pregões, e combinações de médias como 5, 10, 20 e 40 dias seguem a harmonia de 2.",
+          "Na prática, os ciclos funcionam como filtro de tempo. Numa tendência de alta, os fundos do ciclo são os momentos de procurar compras; numa baixa, os topos são os de procurar vendas. A decisão continua com o preço: o ciclo indica a janela, e um sinal de preço (rompimento de linha de tendência, cruzamento de médias, sinal de oscilador) confirma.",
+        ],
+      },
+      {
+        heading: "Cuidados",
+        paragraphs: [
+          "Os ciclos são tendências, não relógios. Os comprimentos variam, às vezes um ciclo se inverte (um topo aparece onde se esperava um fundo) e, em tendências fortes, um ciclo pode quase sumir. Murphy recomenda usar os ciclos junto com a análise de preço e não operar só porque uma data chegou.",
+        ],
+      },
+    ],
+    takeaways: [
+      "Ciclos acrescentam o tempo à análise: ajudam a prever quando, enquanto o preço diz o quê.",
+      "Mede-se de fundo a fundo; amplitude, período e fase descrevem o ciclo.",
+      "Princípios: soma, harmonia (quase sempre 2), sincronismo, proporcionalidade, variação e nominalidade.",
+      "Topo depois do meio do ciclo (translação para a direita) é sinal de alta; antes (para a esquerda), de baixa.",
+      "O oscilador sem tendência (preço menos a média centrada) deixa o ciclo à vista.",
+      "Use os ciclos como janela de tempo e espere a confirmação do preço.",
     ],
   },
 ];
