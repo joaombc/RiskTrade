@@ -38,6 +38,25 @@ describe("topos e fundos", () => {
     expect(highs.map((s) => s.price)).toEqual([112.5]);
   });
 
+  it("candle de expansão (topo e fundo ao mesmo tempo) vira um ponto só, sem índice repetido", () => {
+    // O candle 10 tem a máxima e a mínima além dos vizinhos (como a abertura de um pregão com gap).
+    const closes = [100, 101, 102, 103, 104, 105, 104, 103, 102, 101, 100, 101, 102, 103, 104, 105, 104, 103, 102, 101, 100];
+    const bars: Bar[] = closes.map((close, i) => ({
+      time: i,
+      open: close,
+      high: i === 10 ? 110 : close + 0.5,
+      low: i === 10 ? 90 : close - 0.5,
+      close,
+      volume: 1,
+    }));
+    const swings = findSwings(bars, 3);
+    const indices = swings.map((s) => s.index);
+    expect(new Set(indices).size).toBe(indices.length);
+    expect(swings.every((s, k) => k === 0 || s.kind !== swings[k - 1].kind)).toBe(true);
+    // Depois do topo do candle 5, o candle 10 entra como fundo (continua a alternância).
+    expect(swings.find((s) => s.index === 10)).toMatchObject({ kind: "low", price: 90 });
+  });
+
   it("no mesmo nível: diferença de até meio ATR", () => {
     expect(compareSwing(100.4, 100, 0.5)).toBe("equal");
     expect(compareSwing(100.6, 100, 0.5)).toBe("higher");

@@ -60,12 +60,19 @@ function pushAlternating(list: Swing[], swing: Swing): void {
   list.push(swing);
 }
 
-/** Candidatos a topo e fundo, em ordem; um candle pode ser os dois (candle de expansão). */
+/**
+ * Candidatos a topo e fundo, em ordem. Um candle de expansão pode ser topo e fundo ao mesmo tempo:
+ * aí ele vira um ponto só, do tipo que continua a alternância (o oposto do candidato anterior),
+ * para não haver dois pontos no mesmo candle.
+ */
 function swingCandidates(bars: Bar[], window: number): Swing[] {
   const out: Swing[] = [];
   for (let i = 0; i < bars.length; i++) {
-    if (isSwing(bars, i, "high", window)) out.push({ index: i, kind: "high", price: bars[i].high, confirmedAt: i + window });
-    if (isSwing(bars, i, "low", window)) out.push({ index: i, kind: "low", price: bars[i].low, confirmedAt: i + window });
+    const high = isSwing(bars, i, "high", window);
+    const low = isSwing(bars, i, "low", window);
+    if (!high && !low) continue;
+    const kind = high && low ? (out[out.length - 1]?.kind === "high" ? "low" : "high") : high ? "high" : "low";
+    out.push({ index: i, kind, price: kind === "high" ? bars[i].high : bars[i].low, confirmedAt: i + window });
   }
   return out;
 }
