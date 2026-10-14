@@ -86,6 +86,7 @@ import {
   type TrendReading,
 } from "@/lib/trend";
 import { findTrendLines, trendLinesToDrawings } from "@/lib/trendlines";
+import { elliottCounts, loadElliottEnabled, saveElliottEnabled } from "@/lib/elliott";
 import { defaultBoxSize, loadChartType, pointFigure, readPointFigure, saveChartType, type ChartType } from "@/lib/pointFigure";
 import { loadMacdEnabled, macd, macdCrosses, readMacd, saveMacdEnabled } from "@/lib/macd";
 import { loadMomentumPeriod, momentum, readMomentum, saveMomentumPeriod, zeroCrossings, type MomentumPeriod } from "@/lib/momentum";
@@ -127,6 +128,7 @@ import { StochasticPanel } from "./StochasticPanel";
 import { WilliamsRPanel } from "./WilliamsRPanel";
 import { MacdPanel } from "./MacdPanel";
 import { trendLineName, TrendPanel } from "./TrendPanel";
+import { ElliottPanel } from "./ElliottPanel";
 import { PointFigureChart } from "./PointFigureChart";
 import { PointFigurePanel } from "./PointFigurePanel";
 import { DrawingsPrimitive } from "./DrawingsPrimitive";
@@ -452,6 +454,20 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
     () => (bars && currentTrend ? findTrendLines(bars, trendSwings, currentTrend) : []),
     [bars, trendSwings, currentTrend],
   );
+  // Ondas de Elliott (Murphy, cap. 13): contagem automática sobre os topos e fundos do prazo escolhido,
+  // com os níveis de Fibonacci da onda atual. O prazo segue o período do gráfico (curto prazo nos
+  // intradiários, intermediário no diário); uma escolha manual vale enquanto o tipo de gráfico não muda.
+  const [elliottOn, setElliottOn] = useState(loadElliottEnabled);
+  const [elliottChoice, setElliottChoice] = useState<{ intraday: boolean; degree: TrendDegree } | null>(null);
+  const intradayChart = isIntraday(range);
+  const elliottAuto = elliottChoice?.intraday !== intradayChart;
+  const elliottDegree: TrendDegree = elliottAuto ? (intradayChart ? "short" : "intermediate") : elliottChoice!.degree;
+  const elliottWindow = TREND_WINDOWS[elliottDegree];
+  const elliott = useMemo(() => {
+    if (!bars || !elliottOn) return null;
+    return { counts: elliottCounts(bars, findSwings(bars, elliottWindow)), trend: readTrend(bars, elliottWindow)?.trend ?? null };
+  }, [bars, elliottOn, elliottWindow]);
+  const elliottBest = elliott?.counts[0] ?? null;
   // Ponto e figura (Murphy, cap. 11): alternativa aos candles. A caixa escolhida vale só para o ativo
   // em que foi escolhida; em outro ativo, volta ao tamanho padrão dele.
   const [chartType, setChartType] = useState<ChartType>(loadChartType);
@@ -885,6 +901,10 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
   }, [trendDegree]);
 
   useEffect(() => {
+    saveElliottEnabled(elliottOn);
+  }, [elliottOn]);
+
+  useEffect(() => {
     saveChartType(chartType);
   }, [chartType]);
 
@@ -1091,6 +1111,68 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
       });
     };
   }, [bars, trendLines, showTrendLines, theme]);
+
+  // Ondas de Elliott: linha ligando as ondas (tracejada até o ponto em formação) e os níveis de
+  // Fibonacci da onda atual e da invalidação como linhas de preço, com rótulo no eixo.
+  useEffect(() => {
+    const handles = handlesRef.current;
+    if (!handles || !bars || !elliottBest) return;
+    const pane = pricePaneIndex(handles);
+    const time = (i: number) => bars[i].time as UTCTimestamp;
+    const options = (lineStyle: LineStyle) => ({
+      color: theme.drawings.target,
+      lineWidth: 2 as const,
+      lineStyle,
+      priceLineVisible: false,
+      lastValueVisible: false,
+      crosshairMarkerVisible: false,
+      autoscaleInfoProvider: () => null,
+    });
+    const confirmed = elliottBest.points.filter((p) => !p.provisional);
+    const forming = elliottBest.points.find((p) => p.provisional);
+    const series = [handles.chart.addSeries(LineSeries, options(LineStyle.Solid), pane)];
+    series[0].setData(confirmed.map((p) => ({ time: time(p.index), value: p.price })));
+    const lastConfirmed = confirmed[confirmed.length - 1];
+    if (forming && lastConfirmed) {
+      const dashed = handles.chart.addSeries(LineSeries, options(LineStyle.Dashed), pane);
+      dashed.setData([
+        { time: time(lastConfirmed.index), value: lastConfirmed.price },
+        { time: time(forming.index), value: forming.price },
+      ]);
+      series.push(dashed);
+    }
+    const pct = (r: number) => `${(r * 100).toLocaleString(locale, { maximumFractionDigits: 1 })}%`;
+    const lines = elliottBest.levels.map((level) =>
+      handles.candles.createPriceLine({
+        price: level.price,
+        color: theme.drawings.target,
+        lineWidth: 1,
+        lineStyle: LineStyle.Dotted,
+        axisLabelVisible: true,
+        title: level.kind === "retracement" ? pct(level.ratio) : `${level.ratio.toLocaleString(locale)}×`,
+      }),
+    );
+    if (elliottBest.invalidation) {
+      lines.push(
+        handles.candles.createPriceLine({
+          price: elliottBest.invalidation.price,
+          color: theme.down,
+          lineWidth: 1,
+          lineStyle: LineStyle.Dashed,
+          axisLabelVisible: true,
+          title: t.elliott.axisInvalidation,
+        }),
+      );
+    }
+    return () => {
+      if (!handlesRef.current) return;
+      const alive = handlesRef.current.candles.getPane().getSeries();
+      series.forEach((s) => {
+        if (alive.includes(s)) handles.chart.removeSeries(s);
+      });
+      lines.forEach((line) => handles.candles.removePriceLine(line));
+    };
+  }, [bars, elliottBest, theme, locale, t]);
 
   // Bandas de Bollinger: bandas de cima e de baixo e a média central tracejada, numa cor neutra.
   useEffect(() => {
@@ -1511,6 +1593,22 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
         text: mk.swing[sw.kind][sw.step ?? "first"],
       }),
     );
+    // Ondas de Elliott: o número (ou letra) de cada onda, acima dos topos e abaixo dos fundos; "?" no ponto em formação.
+    const wavePoints = elliottBest?.points ?? [];
+    const elliottMarkers = wavePoints.flatMap((p, k): SeriesMarker<Time>[] => {
+      if (p.label === "0") return [];
+      const neighbor = wavePoints[k - 1] ?? wavePoints[k + 1];
+      return [
+        {
+          time: time(p.index),
+          position: p.price > neighbor.price ? "aboveBar" : "belowBar",
+          shape: "square",
+          size: 0.5,
+          color: theme.drawings.target,
+          text: p.provisional ? `${p.label}?` : p.label,
+        },
+      ];
+    });
     const exampleMarkers = resolvedExample.markers.map(
       (m): SeriesMarker<Time> => ({
         time: m.time as UTCTimestamp,
@@ -1522,7 +1620,7 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
     );
     // A API exige marcadores em ordem cronológica.
     handles.priceMarkers.setMarkers(
-      [...divergenceMarkers, ...crossMarkers, ...envelopeMarkers, ...fourWeekMarkers, ...trendMarkers, ...exampleMarkers].sort(
+      [...divergenceMarkers, ...crossMarkers, ...envelopeMarkers, ...fourWeekMarkers, ...trendMarkers, ...elliottMarkers, ...exampleMarkers].sort(
         (a, b) => (a.time as number) - (b.time as number),
       ),
     );
@@ -1579,6 +1677,7 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
     showFourWeekSignals,
     fourWeek.entryWeeks,
     trendSwings,
+    elliottBest,
     t,
   ]);
 
@@ -1628,6 +1727,9 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
       ...(bands ? [{ label: t.ma.bollinger, color: theme.drawings.muted }] : []),
       ...(trendDegree
         ? [{ label: fmt(t.chart.series.trend, { degree: t.ma.trendDegrees[trendDegree].toLocaleLowerCase(locale) }), color: theme.trend.zigzag }]
+        : []),
+      ...(elliottBest
+        ? [{ label: fmt(t.chart.series.elliott, { degree: t.ma.trendDegrees[elliottDegree].toLocaleLowerCase(locale) }), color: theme.drawings.target }]
         : []),
       ...(showTrendLines
         ? trendLines.map((line) => ({ label: t.trend.lines.names[trendLineName(line)], color: line.side === "support" ? theme.up : theme.down }))
@@ -1751,6 +1853,8 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
             bollinger={bollingerOn}
             onBollingerChange={setBollingerOn}
             macd={macdOn}
+            elliott={elliottOn}
+            onElliottChange={setElliottOn}
             onMacdChange={setMacdOn}
             fourWeek={fourWeek}
             onFourWeekChange={setFourWeek}
@@ -1903,6 +2007,18 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
                   ...trendLinesToDrawings(bars, trendLines).map((d) => ({ ...d, id: crypto.randomUUID() })),
                 ])
               }
+            />
+          )}
+          {bars && bars.length > 0 && !loading && elliottOn && elliott && (
+            <ElliottPanel
+              bars={bars}
+              counts={elliott.counts}
+              degree={elliottDegree}
+              onDegreeChange={(degree) => setElliottChoice({ intraday: intradayChart, degree })}
+              auto={elliottAuto}
+              onAuto={() => setElliottChoice(null)}
+              trend={elliott.trend}
+              intraday={isIntraday(range)}
             />
           )}
           {bars && bars.length > 0 && !loading && bollingerOn && (
