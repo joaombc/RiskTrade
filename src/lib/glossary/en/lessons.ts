@@ -86,6 +86,18 @@ export const LESSON_LABELS_EN: Record<string, string> = {
   "histograma vira": "histogram turns",
   cruzamento: "crossover",
   "MACD mais baixo": "lower MACD",
+  // Ciclos de tempo
+  "período": "period",
+  "amplitude": "amplitude",
+  "fundo": "trough",
+  "fundos juntos": "troughs together",
+  "ciclo longo": "long cycle",
+  "ciclo curto": "short cycle",
+  "meio do ciclo": "cycle midpoint",
+  "topo à direita": "crest to the right",
+  "topo à esquerda": "crest to the left",
+  "média centrada": "centered average",
+  "preço − média": "price − average",
 };
 
 export const LESSONS_EN: Record<string, LessonTranslation> = {
@@ -978,6 +990,100 @@ export const LESSONS_EN: Record<string, LessonTranslation> = {
       "Corrections: zigzag (5-3-5), flat (3-3-5) and triangle (normally in wave 4). By alternation, if 2 was simple, 4 tends to be complex.",
       "Fibonacci gives targets and retracements (38%, 50% and 62%). The order of importance is pattern, then ratio, then time.",
       "Use Elliott together with the other tools and don't force counts.",
+    ],
+  },
+  "ciclos-de-tempo": {
+    title: "Time Cycles",
+    subtitle: "The time dimension: when the market tends to turn",
+    summary:
+      "Amplitude, period and phase; the cyclic principles (summation, harmonicity, synchronicity, proportionality, variation and nominality); right and left translation; the best-known cycles; how to isolate a cycle and how to use it with the other tools.",
+    source: `${MURPHY}, ch. 14 (Time Cycles)`,
+    sections: [
+      {
+        heading: "The time dimension",
+        paragraphs: [
+          "Most of technical analysis deals with price: where the market is going and how far. Cycles add the time dimension: when a top or a bottom tends to happen. Murphy presents cycle analysis as a complement, not a replacement: price tells what is happening; cycles help forecast the timing.",
+          "The idea is that price moves follow more or less regular rhythms, driven by recurring forces: the seasons, business cycles, election calendars and the collective behavior of investors itself. J. M. Hurst's work popularized this approach in the markets.",
+        ],
+      },
+      {
+        heading: "Anatomy of a cycle",
+        paragraphs: [
+          "A cycle is described by three measures. Amplitude is the height of the wave, from trough to crest. Period is the time it takes to complete. Phase is the position of the wave in time, that is, where its troughs fall.",
+          "Cycle analysts measure from trough to trough, not crest to crest. Troughs tend to be sharper and more regular; crests vary more, because they depend on the larger trend (see translation, below).",
+        ],
+        caption: "The period runs from one trough to the next; the amplitude is the height from trough to crest.",
+      },
+      {
+        heading: "The cyclic principles",
+        paragraphs: ["Murphy lists a few principles that describe how cycles behave and combine:"],
+        bullets: [
+          "Summation: every price move is the sum of several cycles active at the same time, of different lengths.",
+          "Harmonicity: neighboring cycles are related by small whole numbers, usually 2: a cycle tends to be twice as long as the next smaller one.",
+          "Synchronicity: cycles of different lengths tend to bottom together. When several troughs coincide, the price low is more pronounced.",
+          "Proportionality: longer cycles have larger amplitudes.",
+          "Variation: the principles are tendencies, not laws; lengths vary somewhat from one cycle to the next.",
+          "Nominality: there is a set of cycle lengths common to all markets, which serves as a starting point for the analysis.",
+        ],
+        caption: "Price (solid line) is the sum of the long cycle (dashed) and a short cycle with half the period (lower panel): the troughs coincide.",
+      },
+      {
+        heading: "Right and left translation",
+        paragraphs: [
+          "Cycle troughs are more regular than crests, and it is precisely where the crest falls that tells about the trend. In an uptrend, each cycle's crest tends to come after the midpoint of the cycle: this is right translation. Price spends more time rising than falling.",
+          "In a downtrend the opposite happens: the crest comes before the midpoint of the cycle, left translation. Price rises briefly and spends most of the cycle falling. A cycle that translates left after a series of right-translated cycles warns that the trend may be changing; if the next trough is lower than the previous one, the warning is confirmed.",
+        ],
+        caption: "Right translation: in an uptrend, each cycle's crest comes after the midpoint of the cycle.",
+      },
+      {
+        heading: "Left translation",
+        paragraphs: [
+          "The drawing shows the same series of cycles in a downtrend: the crests come early, before the middle of each cycle, and the troughs get lower and lower.",
+        ],
+        caption: "Left translation: in a downtrend, the crest comes before the midpoint of the cycle.",
+      },
+      {
+        heading: "The best-known cycles",
+        paragraphs: ["Murphy groups cycles by length:"],
+        bullets: [
+          "Long term: the Kondratieff cycle, about 54 years long, tied to long waves in the economy.",
+          "The 4-year stock cycle: lows roughly every four years, often associated with the U.S. presidential election calendar.",
+          "The annual cycle and seasonality: patterns that repeat at certain times of the year, widely used in agricultural commodities.",
+          "The primary (or dominant) cycle: one to several years; it sets the main direction.",
+          "The trading cycle: about 4 weeks (20 to 28 trading days), important in the short term; it splits into two cycles of about 2 weeks.",
+          "Hurst's nominal model: a ladder of cycles in which each is about half the previous one, such as 18 years, 9 years, 54 months, 18 months, 40 weeks, 20 weeks, 10 weeks, 5 weeks, 20 days and 10 days.",
+        ],
+      },
+      {
+        heading: "How to isolate a cycle",
+        paragraphs: [
+          "The simplest way is to look at the important troughs and measure the distance between them: if the troughs repeat at similar intervals, there is a dominant cycle. From there, the next trough window is projected.",
+          "The trend gets in the way, so analysts remove it. A moving average as long as the cycle, centered (shifted back by half its period), follows the trend without the cycle. The difference between price and that average is the detrended oscillator: it swings around zero and exposes the cycle's troughs and crests. Because the average is centered, the oscillator ends before the last candle.",
+          "There are also mathematical methods, such as spectral analysis (Fourier and maximum entropy, MESA), that search for the dominant cycles in a series. They need care, because markets change rhythm over time.",
+        ],
+        caption: "Price with an uptrend and a 20-candle cycle: the centered average follows the trend, and price minus the average (lower panel) shows only the cycle.",
+      },
+      {
+        heading: "Cycles and the other tools",
+        paragraphs: [
+          "Cycles help explain why certain lengths work better in the other tools. Moving averages and oscillators tend to work better when their period relates to a dominant cycle: for example, the 14-day RSI and stochastic measure about half of a 28-day trading cycle, and average combinations such as 5, 10, 20 and 40 days follow the harmonicity of 2.",
+          "In practice, cycles work as a time filter. In an uptrend, cycle troughs are the moments to look for buys; in a downtrend, crests are the moments to look for sells. The decision still rests with price: the cycle points to the window, and a price signal (a trendline break, a moving average crossover, an oscillator signal) confirms it.",
+        ],
+      },
+      {
+        heading: "Cautions",
+        paragraphs: [
+          "Cycles are tendencies, not clocks. Lengths vary, sometimes a cycle inverts (a crest shows up where a trough was expected) and, in strong trends, a cycle can almost disappear. Murphy recommends using cycles together with price analysis and not trading just because a date has arrived.",
+        ],
+      },
+    ],
+    takeaways: [
+      "Cycles add time to the analysis: they help forecast when, while price tells what.",
+      "Measure from trough to trough; amplitude, period and phase describe the cycle.",
+      "Principles: summation, harmonicity (usually 2), synchronicity, proportionality, variation and nominality.",
+      "A crest after the cycle midpoint (right translation) is bullish; before it (left translation), bearish.",
+      "The detrended oscillator (price minus the centered average) exposes the cycle.",
+      "Use cycles as a time window and wait for price confirmation.",
     ],
   },
 };
