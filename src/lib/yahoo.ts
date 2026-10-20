@@ -159,6 +159,37 @@ export async function getWatchlistQuotes(symbols: string[]): Promise<WatchlistQu
   );
 }
 
+/** Preço e moeda de vários ativos numa chamada só; ativos sem cotação ficam de fora. */
+export async function getLastPrices(symbols: string[]): Promise<Record<string, { price: number; currency: string }>> {
+  const quotes = await yahooFinance.quote(symbols, { return: "array" });
+  return Object.fromEntries(
+    quotes.flatMap((q) => (q.regularMarketPrice === undefined ? [] : [[q.symbol, { price: q.regularMarketPrice, currency: q.currency ?? "" }]])),
+  );
+}
+
+/**
+ * Câmbio de cada moeda para `to` (quanto vale 1 unidade dela em `to`). Pence (GBp) vira libra ÷ 100.
+ * Moeda sem cotação fica de fora do resultado.
+ */
+export async function getFxRates(currencies: string[], to: string): Promise<Record<string, number>> {
+  const base = (c: string) => (c === "GBp" ? "GBP" : c.toUpperCase());
+  const needed = [...new Set(currencies.filter(Boolean).map(base))].filter((c) => c !== to);
+  const rates: Record<string, number> = { [to]: 1 };
+  if (needed.length) {
+    const quotes = await yahooFinance.quote(
+      needed.map((c) => `${c}${to}=X`),
+      { return: "array" },
+    );
+    for (const q of quotes) if (q.regularMarketPrice) rates[q.symbol.slice(0, 3)] = q.regularMarketPrice;
+  }
+  const out: Record<string, number> = {};
+  for (const c of currencies) {
+    const rate = rates[base(c)];
+    if (rate !== undefined) out[c] = c === "GBp" ? rate / 100 : rate;
+  }
+  return out;
+}
+
 /**
  * Nome, moeda, tipo e setor (só ações) de cada ativo, para classificá-lo num grupo da carteira.
  * Ativos sem cotação ficam de fora; o setor que não vier fica null.
