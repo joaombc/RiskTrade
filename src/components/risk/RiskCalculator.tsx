@@ -1,8 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useId, useMemo, useState } from "react";
 import { fmt } from "@/i18n/format";
 import { useI18n } from "@/i18n/I18nProvider";
+import { syncAccountFromRiskSettings } from "@/lib/portfolioAccount";
 import {
   computeRiskPlan,
   MIN_REWARD_RISK,
@@ -60,7 +62,7 @@ interface Props {
 }
 
 export function RiskCalculator({ symbol, currency, currentPrice, onLevelsChange }: Props) {
-  const { t, locale } = useI18n();
+  const { t, locale, href } = useI18n();
   const r = t.risk;
   // Montado só no cliente (após a cotação), então o localStorage está disponível.
   const [settings, setSettings] = useState<Settings>(() => load(SETTINGS_KEY, { capital: "", riskPercent: "1" }));
@@ -74,7 +76,11 @@ export function RiskCalculator({ symbol, currency, currentPrice, onLevelsChange 
     }),
   );
 
-  useEffect(() => save(SETTINGS_KEY, settings), [settings]);
+  useEffect(() => {
+    save(SETTINGS_KEY, settings);
+    // Capital e risco são os mesmos da conta em Minha carteira.
+    syncAccountFromRiskSettings(settings.capital, settings.riskPercent);
+  }, [settings]);
   useEffect(() => save(PLAN_KEY_PREFIX + symbol, plan), [symbol, plan]);
 
   const entry = parseDecimal(plan.entry);
@@ -125,7 +131,12 @@ export function RiskCalculator({ symbol, currency, currentPrice, onLevelsChange 
       <header className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <div>
           <h2 className="text-sm font-semibold">{r.title}</h2>
-          <p className="text-xs text-muted">{r.subtitle}</p>
+          <p className="text-xs text-muted">
+            {r.subtitle}{" "}
+            <Link href={href("/carteira")} className="font-medium text-accent hover:underline">
+              {r.accountLink}
+            </Link>
+          </p>
         </div>
         <div role="group" aria-label={r.direction} className="flex rounded-lg bg-border/60 p-0.5 text-xs font-medium">
           {(["long", "short"] as const).map((d) => (

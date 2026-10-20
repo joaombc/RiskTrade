@@ -223,8 +223,8 @@ export function PortfolioLessonCard() {
   );
 }
 
-/** Os três elementos (o quê, quando, quanto) e o que a página vai fazer. */
-export function PortfolioIntro() {
+/** Os três elementos (o quê, quando, quanto), as seções prontas (children) e o que ainda vem. */
+export function PortfolioIntro({ children }: { children?: React.ReactNode }) {
   const p = useI18n().t.portfolio;
   return (
     <>
@@ -247,6 +247,8 @@ export function PortfolioIntro() {
           ))}
         </ol>
       </section>
+
+      {children}
 
       <section aria-labelledby="secoes-carteira" className="flex flex-col gap-3">
         <h2 id="secoes-carteira" className="text-xl font-semibold">
