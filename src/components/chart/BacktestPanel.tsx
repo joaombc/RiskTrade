@@ -10,8 +10,9 @@ import {
   PARAM_GRID,
   sameParams,
   saveBacktestSettings,
-  SYSTEM_IDS,
-  systemSignals,
+  settingsSignals,
+  STOP_PERCENTS,
+  TESTED_SYSTEMS,
   type BacktestResult,
   type BacktestSettings,
   type SystemId,
@@ -19,6 +20,7 @@ import {
   type TradeMode,
 } from "@/lib/backtest";
 import type { Bar } from "@/lib/drawings/types";
+import { RuleBuilder } from "./RuleBuilder";
 
 interface Props {
   bars: Bar[];
@@ -50,12 +52,9 @@ export function BacktestPanel({ bars, warmup, intraday, open, onOpenChange }: Pr
     saveBacktestSettings(settings);
   }, [settings]);
 
-  const result = useMemo(
-    () => (open ? backtest(bars, systemSignals(system, params[system], bars, warmup), options) : null),
-    [open, bars, warmup, system, params, options],
-  );
+  const result = useMemo(() => (open ? backtest(bars, settingsSignals(settings, bars, warmup), options) : null), [open, bars, warmup, settings, options]);
   const rows = useMemo(
-    () => (open && showOptimization ? optimize(system, bars, warmup, options) : null),
+    () => (open && showOptimization && system !== "custom" ? optimize(system, bars, warmup, options) : null),
     [open, showOptimization, system, bars, warmup, options],
   );
 
@@ -81,6 +80,7 @@ export function BacktestPanel({ bars, warmup, intraday, open, onOpenChange }: Pr
     return fmt(l[id as "maCross" | "macd"], p as unknown as Record<string, number>);
   };
   const setParams = (p: SystemParams[SystemId]) => setSettings((s) => ({ ...s, params: { ...s.params, [s.system]: p } }));
+  const preset = system === "custom" ? null : system;
 
   if (!open) {
     return (
@@ -112,7 +112,7 @@ export function BacktestPanel({ bars, warmup, intraday, open, onOpenChange }: Pr
 
       <div role="group" aria-label={b.system} className="flex flex-wrap items-center gap-1.5">
         <span className="mr-1 text-xs font-semibold">{b.system}</span>
-        {SYSTEM_IDS.map((id) => (
+        {TESTED_SYSTEMS.map((id) => (
           <button
             key={id}
             type="button"
@@ -127,21 +127,31 @@ export function BacktestPanel({ bars, warmup, intraday, open, onOpenChange }: Pr
       </div>
       <p className="text-xs text-muted">{b.systemHints[system]}</p>
 
+      {system === "custom" && (
+        <RuleBuilder
+          rules={settings.rules}
+          onChange={(rules) => setSettings((s) => ({ ...s, rules }))}
+          shortSide={options.mode === "longShort"}
+        />
+      )}
+
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs">
-        <label className="flex items-center gap-1.5">
-          <span className="font-semibold">{b.params}</span>
-          <select
-            value={PARAM_GRID[system].findIndex((p) => sameParams(p, params[system]))}
-            onChange={(e) => setParams(PARAM_GRID[system][Number(e.target.value)])}
-            className="rounded-md border border-border bg-surface px-2 py-1"
-          >
-            {PARAM_GRID[system].map((p, k) => (
-              <option key={k} value={k}>
-                {paramLabel(system, p)}
-              </option>
-            ))}
-          </select>
-        </label>
+        {preset && (
+          <label className="flex items-center gap-1.5">
+            <span className="font-semibold">{b.params}</span>
+            <select
+              value={PARAM_GRID[preset].findIndex((p) => sameParams(p, params[preset]))}
+              onChange={(e) => setParams(PARAM_GRID[preset][Number(e.target.value)])}
+              className="rounded-md border border-border bg-surface px-2 py-1"
+            >
+              {PARAM_GRID[preset].map((p, k) => (
+                <option key={k} value={k}>
+                  {paramLabel(preset, p)}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         <div role="group" aria-label={b.mode} className="flex items-center gap-1.5">
           <span className="font-semibold">{b.mode}</span>
           {(["longShort", "longOnly"] as TradeMode[]).map((mode) => (
@@ -166,6 +176,23 @@ export function BacktestPanel({ bars, warmup, intraday, open, onOpenChange }: Pr
             {COSTS.map((c) => (
               <option key={c} value={c}>
                 {num(c)}%
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="flex items-center gap-1.5" title={b.stopHint}>
+          <span className="font-semibold">{b.stop}</span>
+          <select
+            value={options.stopPercent ?? ""}
+            onChange={(e) =>
+              setSettings((s) => ({ ...s, options: { ...s.options, stopPercent: e.target.value === "" ? null : Number(e.target.value) } }))
+            }
+            className="rounded-md border border-border bg-surface px-2 py-1"
+          >
+            <option value="">{b.stopNone}</option>
+            {STOP_PERCENTS.map((p) => (
+              <option key={p} value={p}>
+                {num(p, 0)}%
               </option>
             ))}
           </select>
@@ -223,6 +250,7 @@ export function BacktestPanel({ bars, warmup, intraday, open, onOpenChange }: Pr
                         </td>
                         <td className="px-2 py-1.5">
                           {trade.open ? <span className="text-muted">{b.openTrade}</span> : dateOf(trade.exitIndex)} · {num(trade.exitPrice)}
+                          {trade.stopped && <span className="ml-1 rounded bg-negative/10 px-1 text-negative">{b.stopped}</span>}
                         </td>
                         <td className={`px-2 py-1.5 text-right font-medium ${trade.returnPercent > 0 ? "text-positive" : "text-negative"}`}>
                           {pct(trade.returnPercent)}
@@ -236,7 +264,8 @@ export function BacktestPanel({ bars, warmup, intraday, open, onOpenChange }: Pr
         </>
       )}
 
-      <div className="flex flex-col gap-2">
+      {system === "custom" && <p className="text-xs text-muted">{b.custom.optimizeNote}</p>}
+      <div className={`flex flex-col gap-2 ${system === "custom" ? "hidden" : ""}`}>
         <button type="button" aria-pressed={showOptimization} onClick={() => setShowOptimization((v) => !v)} className={`w-fit ${pressed(showOptimization)}`}>
           {b.optimize}
         </button>
@@ -257,7 +286,7 @@ export function BacktestPanel({ bars, warmup, intraday, open, onOpenChange }: Pr
                 </thead>
                 <tbody>
                   {rows.map(({ params: p, result: r }) => {
-                    const current = sameParams(p, params[system]);
+                    const current = preset !== null && sameParams(p, params[preset]);
                     return (
                       <tr
                         key={JSON.stringify(p)}
@@ -265,7 +294,7 @@ export function BacktestPanel({ bars, warmup, intraday, open, onOpenChange }: Pr
                         className={`cursor-pointer border-t border-border hover:bg-border/40 ${current ? "bg-accent/10 font-semibold" : ""}`}
                       >
                         <td className="px-2 py-1.5">
-                          {paramLabel(system, p)}
+                          {preset && paramLabel(preset, p)}
                           {current && <span className="ml-1 font-normal text-muted">({b.current})</span>}
                         </td>
                         <td className={`px-2 py-1.5 text-right ${r.totalReturn >= 0 ? "text-positive" : "text-negative"}`}>{pct(r.totalReturn)}</td>

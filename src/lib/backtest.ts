@@ -1,5 +1,6 @@
 import type { Bar } from "./drawings/types";
 import { macd, macdCrosses } from "./macd";
+import { customSignals, DEFAULT_RULES, isValidCondition, type CustomRules } from "./customSystem";
 import { computeMovingAverage, crossings } from "./movingAverages";
 import { parabolicSar, sarFlips } from "./parabolicSar";
 import { channelSystem } from "./priceChannel";
@@ -13,6 +14,9 @@ import { channelSystem } from "./priceChannel";
 
 export type SystemId = "maCross" | "fourWeek" | "sar" | "macd";
 export const SYSTEM_IDS: SystemId[] = ["maCross", "fourWeek", "sar", "macd"];
+/** Os sistemas prontos e o montado pelo usuário ("crie o seu"). */
+export type TestedSystem = SystemId | "custom";
+export const TESTED_SYSTEMS: TestedSystem[] = [...SYSTEM_IDS, "custom"];
 
 export interface SystemParams {
   maCross: { fast: number; slow: number };
@@ -79,9 +83,12 @@ export interface BacktestOptions {
   mode: TradeMode;
   /** Custo de cada execução (corretagem + derrapagem), em % do preço. */
   costPercent: number;
+  /** Stop de perda em % do preço de entrada; null = sem stop. */
+  stopPercent: number | null;
 }
 
-export const DEFAULT_OPTIONS: BacktestOptions = { mode: "longShort", costPercent: 0.1 };
+export const DEFAULT_OPTIONS: BacktestOptions = { mode: "longShort", costPercent: 0.1, stopPercent: null };
+export const STOP_PERCENTS = [2, 5, 8, 10, 15] as const;
 
 export interface Trade {
   direction: 1 | -1;
@@ -96,6 +103,8 @@ export interface Trade {
   profit: number;
   /** Ainda aberta no último candle (avaliada pelo fechamento). */
   open: boolean;
+  /** Encerrada pelo stop de perda. */
+  stopped: boolean;
 }
 
 export interface BacktestResult {
@@ -122,9 +131,18 @@ const TARGET: Record<TradeMode, Record<SystemSignal["kind"], 1 | -1 | 0>> = {
   longOnly: { buy: 1, sell: 0, exit: 0 },
 };
 
-/** Simula os sinais: cada sinal no candle i é executado na abertura do candle i + 1. */
-export function backtest(bars: Pick<Bar, "open" | "close">[], signals: SystemSignal[], options: BacktestOptions = DEFAULT_OPTIONS): BacktestResult {
+/**
+ * Simula os sinais: cada sinal no candle i é executado na abertura do candle i + 1. O stop de
+ * perda é executado no próprio candle em que o preço o toca (na abertura, se ela já passou do
+ * stop); depois dele, o sistema só volta para o mesmo lado com um sinal novo.
+ */
+export function backtest(
+  bars: Pick<Bar, "open" | "high" | "low" | "close">[],
+  signals: SystemSignal[],
+  options: BacktestOptions = DEFAULT_OPTIONS,
+): BacktestResult {
   const cost = options.costPercent / 100;
+  const stop = options.stopPercent === null ? null : options.stopPercent / 100;
   const orders = new Map<number, 1 | -1 | 0>();
   signals.forEach((s) => s.index + 1 < bars.length && orders.set(s.index + 1, TARGET[options.mode][s.kind]));
 
@@ -134,11 +152,17 @@ export function backtest(bars: Pick<Bar, "open" | "close">[], signals: SystemSig
   let position: 0 | 1 | -1 = 0;
   let entry = { index: 0, price: 0, capital: 1 };
   let inMarket = 0;
+  // Lado encerrado pelo stop: as ordens para ele são ignoradas até chegar uma ordem diferente.
+  let stoppedSide: 0 | 1 | -1 = 0;
   // Capital da posição aberta, avaliado num preço (custo de entrada já descontado).
   const valueAt = (price: number) => entry.capital * (1 - cost) * (1 + position * (price / entry.price - 1));
 
   bars.forEach((bar, i) => {
-    const target = orders.get(i);
+    let target = orders.get(i);
+    if (target !== undefined && stoppedSide !== 0) {
+      if (target === stoppedSide) target = undefined;
+      else stoppedSide = 0;
+    }
     if (target !== undefined && target !== position) {
       if (position !== 0) {
         capital = valueAt(bar.open) * (1 - cost);
@@ -148,6 +172,17 @@ export function backtest(bars: Pick<Bar, "open" | "close">[], signals: SystemSig
       if (position !== 0) entry = { index: i, price: bar.open, capital };
     }
     if (position !== 0) inMarket++;
+    if (position !== 0 && stop !== null) {
+      const level = entry.price * (1 - position * stop);
+      const hit = position === 1 ? bar.low <= level : bar.high >= level;
+      if (hit) {
+        const price = position === 1 ? Math.min(bar.open, level) : Math.max(bar.open, level);
+        capital = valueAt(price) * (1 - cost);
+        trades.push(closeTrade(position, entry, i, price, capital, false, true));
+        stoppedSide = position;
+        position = 0;
+      }
+    }
     equity.push(position === 0 ? capital : valueAt(bar.close));
   });
   const last = bars.length - 1;
@@ -158,7 +193,15 @@ export function backtest(bars: Pick<Bar, "open" | "close">[], signals: SystemSig
   return { trades, equity, buyHold, ...stats(trades, equity), buyHoldReturn: ((buyHold.at(-1) ?? 1) - 1) * 100, exposure: bars.length ? inMarket / bars.length : 0 };
 }
 
-function closeTrade(direction: 1 | -1, entry: { index: number; price: number; capital: number }, exitIndex: number, exitPrice: number, capital: number, open: boolean): Trade {
+function closeTrade(
+  direction: 1 | -1,
+  entry: { index: number; price: number; capital: number },
+  exitIndex: number,
+  exitPrice: number,
+  capital: number,
+  open: boolean,
+  stopped = false,
+): Trade {
   return {
     direction,
     entryIndex: entry.index,
@@ -168,6 +211,7 @@ function closeTrade(direction: 1 | -1, entry: { index: number; price: number; ca
     returnPercent: (capital / entry.capital - 1) * 100,
     profit: capital - entry.capital,
     open,
+    stopped,
   };
 }
 
@@ -211,12 +255,20 @@ export function optimize<K extends SystemId>(id: K, bars: Bar[], warmup: number[
 export const sameParams = (a: object, b: object) => JSON.stringify(a) === JSON.stringify(b);
 
 export interface BacktestSettings {
-  system: SystemId;
+  system: TestedSystem;
   params: SystemParams;
+  rules: CustomRules;
   options: BacktestOptions;
 }
 
-export const DEFAULT_SETTINGS: BacktestSettings = { system: "maCross", params: DEFAULT_PARAMS, options: DEFAULT_OPTIONS };
+export const DEFAULT_SETTINGS: BacktestSettings = { system: "maCross", params: DEFAULT_PARAMS, rules: DEFAULT_RULES, options: DEFAULT_OPTIONS };
+
+/** Sinais do sistema escolhido nas configurações (pronto ou montado). */
+export function settingsSignals(settings: BacktestSettings, bars: Bar[], warmup: number[] = []): SystemSignal[] {
+  const { system } = settings;
+  if (system === "custom") return customSignals(bars, settings.rules, settings.options.mode === "longShort", warmup);
+  return systemSignals(system, settings.params[system], bars, warmup);
+}
 
 const STORAGE_KEY = "risktrade:backtest:v1";
 
@@ -224,13 +276,22 @@ const STORAGE_KEY = "risktrade:backtest:v1";
 export function loadBacktestSettings(): BacktestSettings {
   try {
     const raw = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "null");
-    if (!raw || !SYSTEM_IDS.includes(raw.system)) return DEFAULT_SETTINGS;
+    if (!raw || !TESTED_SYSTEMS.includes(raw.system)) return DEFAULT_SETTINGS;
     const params = Object.fromEntries(
       SYSTEM_IDS.map((id) => [id, PARAM_GRID[id].some((p) => sameParams(p, raw.params?.[id] ?? {})) ? raw.params[id] : DEFAULT_PARAMS[id]]),
     ) as unknown as SystemParams;
     const mode: TradeMode = raw.options?.mode === "longOnly" ? "longOnly" : "longShort";
     const cost = Number(raw.options?.costPercent);
-    return { system: raw.system, params, options: { mode, costPercent: Number.isFinite(cost) && cost >= 0 && cost <= 5 ? cost : DEFAULT_OPTIONS.costPercent } };
+    const stop = (STOP_PERCENTS as readonly number[]).includes(raw.options?.stopPercent) ? (raw.options.stopPercent as number) : null;
+    const conditions = (list: unknown) => (Array.isArray(list) ? list.filter(isValidCondition) : null);
+    const entry = conditions(raw.rules?.entry);
+    const exit = conditions(raw.rules?.exit);
+    return {
+      system: raw.system,
+      params,
+      rules: entry && exit ? { entry, exit } : DEFAULT_RULES,
+      options: { mode, costPercent: Number.isFinite(cost) && cost >= 0 && cost <= 5 ? cost : DEFAULT_OPTIONS.costPercent, stopPercent: stop },
+    };
   } catch {
     return DEFAULT_SETTINGS;
   }
