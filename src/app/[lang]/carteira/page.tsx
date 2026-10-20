@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { AccountPanel } from "@/components/portfolio/AccountPanel";
 import { AssetsPanel } from "@/components/portfolio/AssetsPanel";
+import { PlanPanel } from "@/components/portfolio/PlanPanel";
 import { PortfolioIntro, PortfolioLessonCard } from "@/components/portfolio/PortfolioLesson";
 import { SiteHeader } from "@/components/SiteHeader";
 import { hasLocale } from "@/i18n/config";
@@ -30,6 +31,7 @@ export default async function PortfolioPage({ params }: PageProps<"/[lang]/carte
       <PortfolioIntro>
         <AccountPanel />
         <AssetsPanel />
+        <PlanPanel />
       </PortfolioIntro>
     </main>
   );
