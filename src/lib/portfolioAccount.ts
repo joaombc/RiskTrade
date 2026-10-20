@@ -121,6 +121,8 @@ export function accountBudget(account: Account): AccountBudget | null {
 }
 
 const STORAGE_KEY = "risktrade:portfolio:account:v1";
+/** Avisa os outros painéis da página que a conta mudou. */
+export const ACCOUNT_CHANGE_EVENT = "risktrade:portfolio-account-change";
 /** Capital e risco da "Gestão de risco" do painel do ativo (mesmo formato de lá). */
 const RISK_SETTINGS_KEY = "risktrade:risk-settings:v1";
 
@@ -157,6 +159,7 @@ export function loadAccount(): Account {
 export function saveAccount(account: Account): void {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(account));
+    window.dispatchEvent(new Event(ACCOUNT_CHANGE_EVENT));
     const risk = JSON.parse(localStorage.getItem(RISK_SETTINGS_KEY) ?? "{}");
     localStorage.setItem(
       RISK_SETTINGS_KEY,
