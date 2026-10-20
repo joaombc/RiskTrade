@@ -1,18 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useState, useSyncExternalStore } from "react";
 import type { PlanItem } from "@/app/api/plan/route";
 import { fmt } from "@/i18n/format";
 import { useI18n } from "@/i18n/I18nProvider";
 import { accountBudget, type Account } from "@/lib/portfolioAccount";
 import type { PortfolioAsset } from "@/lib/portfolioAssets";
 import { finalAction, lotOf, sizePosition, type FinalReason, type PlanAction, type PlanReason, type TradePlan } from "@/lib/tradePlan";
+import { BuyForm } from "./BuyForm";
+import type { Exposure } from "./PortfolioLive";
 import { useAccount } from "./useAccount";
 import { usePortfolioAssets } from "./usePortfolioAssets";
+import type { PortfolioPlans } from "./usePortfolioPlans";
 
-/** Atualização dos planos, como as cotações. */
-const REFRESH_MS = 60_000;
 const SETTINGS_KEY = "risktrade:portfolio:plan:v1";
 /** Ordem dos cards: o que pede ação primeiro. */
 const ACTION_ORDER: PlanAction[] = ["enterNow", "enterLimit", "enterStop", "wait", "stayOut"];
@@ -37,7 +38,7 @@ function saveAllowShort(allowShort: boolean) {
 }
 
 /** Plano em tempo real de cada ativo acompanhado (Murphy, cap. 16): o quê, quando e quanto. */
-export function PlanPanel() {
+export function PlanPanel({ plans, exposure }: { plans: PortfolioPlans; exposure: Exposure }) {
   const { t, locale } = useI18n();
   const p = t.portfolio.plan;
   const assets = usePortfolioAssets();
@@ -45,33 +46,7 @@ export function PlanPanel() {
   const hydrated = useHydrated();
   const [allowShort, setAllowShort] = useState<boolean | null>(null);
   if (hydrated && allowShort === null) setAllowShort(loadAllowShort());
-  const [items, setItems] = useState<Record<string, PlanItem>>({});
-  const [checkedAt, setCheckedAt] = useState<number | null>(null);
-  const [failed, setFailed] = useState(false);
-
-  const symbolsKey = assets.map((a) => a.symbol).join(",");
-  useEffect(() => {
-    if (!symbolsKey) return;
-    const controller = new AbortController();
-    const load = async () => {
-      try {
-        const res = await fetch(`/api/plan?symbols=${encodeURIComponent(symbolsKey)}&currency=${account.currency}`, { signal: controller.signal });
-        if (!res.ok) throw new Error();
-        const data: { items: PlanItem[]; checkedAt: string } = await res.json();
-        setItems(Object.fromEntries(data.items.map((i) => [i.symbol, i])));
-        setCheckedAt(Date.parse(data.checkedAt));
-        setFailed(false);
-      } catch {
-        if (!controller.signal.aborted) setFailed(true);
-      }
-    };
-    load();
-    const id = setInterval(() => document.visibilityState === "visible" && load(), REFRESH_MS);
-    return () => {
-      controller.abort();
-      clearInterval(id);
-    };
-  }, [symbolsKey, account.currency]);
+  const { items, checkedAt, failed } = plans;
 
   const short = allowShort === true;
   const cards = assets
@@ -115,7 +90,15 @@ export function PlanPanel() {
             {cards.map(({ asset, item, final }) => (
               <li key={asset.symbol}>
                 {item?.plan && final ? (
-                  <PlanCard asset={asset} item={item} plan={item.plan} action={final.action} finalReason={final.reason} account={account} />
+                  <PlanCard
+                    asset={asset}
+                    item={item}
+                    plan={item.plan}
+                    action={final.action}
+                    finalReason={final.reason}
+                    account={account}
+                    exposure={exposure}
+                  />
                 ) : (
                   <div className="rounded-xl border border-border p-4 text-sm text-muted">{fmt(p.error, { symbol: asset.symbol })}</div>
                 )}
@@ -146,12 +129,14 @@ interface CardProps {
   action: PlanAction;
   finalReason: FinalReason | null;
   account: Account;
+  exposure: Exposure;
 }
 
-function PlanCard({ asset, item, plan, action, finalReason, account }: CardProps) {
+function PlanCard({ asset, item, plan, action, finalReason, account, exposure }: CardProps) {
   const { t, locale, href } = useI18n();
   const p = t.portfolio.plan;
   const side = plan.side ?? "long";
+  const [buying, setBuying] = useState(false);
   const currency = item.currency || asset.currency;
   const num = (v: number, digits = 2) => v.toLocaleString(locale, { minimumFractionDigits: digits, maximumFractionDigits: digits });
   const price = (v: number) => {
@@ -175,7 +160,16 @@ function PlanCard({ asset, item, plan, action, finalReason, account }: CardProps
   const lot = lotOf(asset.symbol);
   const size =
     budget && plan.entry !== null && plan.stop !== null && item.fx
-      ? sizePosition({ ...account.limits, capital: account.capital!, entry: plan.entry, stop: plan.stop, fx: item.fx, lot })
+      ? sizePosition({
+          ...account.limits,
+          capital: account.capital!,
+          entry: plan.entry,
+          stop: plan.stop,
+          fx: item.fx,
+          lot,
+          invested: exposure.total,
+          assetInvested: exposure.bySymbol[asset.symbol] ?? 0,
+        })
       : null;
 
   const reasonText = (r: PlanReason): string => {
@@ -293,7 +287,13 @@ function PlanCard({ asset, item, plan, action, finalReason, account }: CardProps
               </span>
             </>
           ) : (
-            <span className="text-muted">{fmt(p.tooSmall, { lot: lot.toLocaleString(locale) })}</span>
+            <span className="text-muted">
+              {size?.limitedBy === "asset" && (exposure.bySymbol[asset.symbol] ?? 0) > 0
+                ? fmt(p.assetFull, { pct: num(account.limits.maxPerAsset, 0) })
+                : size?.limitedBy === "cash" && exposure.total > 0
+                  ? fmt(p.cashFull, { pct: num(account.limits.maxInvested, 0) })
+                  : fmt(p.tooSmall, { lot: lot.toLocaleString(locale) })}
+            </span>
           )}
         </div>
       )}
@@ -306,6 +306,30 @@ function PlanCard({ asset, item, plan, action, finalReason, account }: CardProps
               {p.confluence[c]}
             </span>
           ))}
+        </div>
+      )}
+
+      {plan.side && plan.entry !== null && plan.stop !== null && (
+        <div>
+          {buying ? (
+            <BuyForm
+              asset={asset}
+              side={plan.side}
+              plan={plan}
+              quantity={size?.quantity ?? 0}
+              lot={lot}
+              currency={currency}
+              onDone={() => setBuying(false)}
+            />
+          ) : (
+            <button
+              type="button"
+              onClick={() => setBuying(true)}
+              className="rounded-lg border border-border px-3 py-1.5 text-xs font-semibold hover:bg-border/60"
+            >
+              {plan.side === "long" ? p.bought : p.sold}
+            </button>
+          )}
         </div>
       )}
 

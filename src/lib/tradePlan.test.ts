@@ -118,3 +118,11 @@ describe("rompimentos", () => {
     else expect(["enterNow", "enterLimit", "wait"]).toContain(plan.action);
   });
 });
+
+describe("quantidade com posições abertas", () => {
+  it("o limite por ativo desconta o que já está no ativo", () => {
+    const base = { capital: 100_000, maxInvested: 50, maxPerAsset: 15, riskPerTrade: 2, fx: 1, lot: 1 };
+    // 15.000 − 10.000 já no ativo = 5.000 ÷ 50 = 100 ações.
+    expect(sizePosition({ ...base, entry: 50, stop: 48, assetInvested: 10_000, invested: 10_000 })).toMatchObject({ quantity: 100, limitedBy: "asset" });
+  });
+});

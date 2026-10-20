@@ -339,8 +339,9 @@ export interface SizeInput {
   fx: number;
   /** Múltiplo de negociação: 100 (lote da B3), 1 ou fração (cripto). */
   lot: number;
-  /** Já investido na carteira, na moeda da conta (as posições abertas, na história seguinte). */
+  /** Já investido na carteira e só neste ativo, na moeda da conta (as posições abertas). */
   invested?: number;
+  assetInvested?: number;
 }
 
 export interface PositionSize {
@@ -367,7 +368,7 @@ export function sizePosition(input: SizeInput): PositionSize {
   const pct = (p: number) => (capital * p) / 100;
   const limits = {
     risk: unitRisk > 0 ? pct(input.riskPerTrade) / unitRisk : 0,
-    asset: unitValue > 0 ? pct(input.maxPerAsset) / unitValue : 0,
+    asset: unitValue > 0 ? Math.max(0, pct(input.maxPerAsset) - (input.assetInvested ?? 0)) / unitValue : 0,
     cash: unitValue > 0 ? Math.max(0, pct(input.maxInvested) - (input.invested ?? 0)) / unitValue : 0,
   };
   const limitedBy = (Object.keys(limits) as (keyof typeof limits)[]).reduce((a, b) => (limits[b] < limits[a] ? b : a));
