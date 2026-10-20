@@ -122,6 +122,7 @@ import type { OpenInterestSeries } from "@/lib/openInterest";
 import { useTheme } from "@/lib/theme";
 import type { PlanLevel } from "@/lib/risk";
 import { CrossSignalPanel } from "./CrossSignalPanel";
+import { BacktestPanel } from "./BacktestPanel";
 import { BollingerPanel } from "./BollingerPanel";
 import { CustomRangeInput } from "./CustomRangeInput";
 import { DivergencePanel } from "./DivergencePanel";
@@ -153,6 +154,7 @@ const MAGNET_PX = 10;
 /** Deslocamento máximo (px) entre pressionar e soltar para contar como clique, não arrasto. */
 const CLICK_TOLERANCE_PX = 5;
 const NO_LEVELS: PlanLevel[] = [];
+const NO_WARMUP: number[] = [];
 /**
  * Intervalo de atualização do gráfico, em todos os períodos: no intradiário entram candles
  * novos; no diário, o candle de hoje acompanha o pregão (e com ele médias, sinais e OBV).
@@ -536,6 +538,9 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
   const [showRocSignals, setShowRocSignals] = useState(true);
   const rocValues = useMemo(() => (bars && rocPeriod ? roc(bars, rocPeriod, warmup) : null), [bars, rocPeriod, warmup]);
   const rocReading = useMemo(() => (rocValues ? readRoc(rocValues) : null), [rocValues]);
+
+  // Teste de sistemas (Murphy, cap. 15): o painel continua aberto ao trocar de período ou de ativo.
+  const [backtestOpen, setBacktestOpen] = useState(false);
 
   const [cciOn, setCciOn] = useState(loadCciEnabled);
   const [showCciSignals, setShowCciSignals] = useState(true);
@@ -2344,6 +2349,9 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
             />
           )}
           <OpenInterestNote symbol={symbol} range={range} bars={bars ?? []} series={openInterest} loading={loading} />
+          {bars && bars.length > 0 && !loading && (
+            <BacktestPanel bars={bars} warmup={warmup ?? NO_WARMUP} intraday={isIntraday(range)} open={backtestOpen} onOpenChange={setBacktestOpen} />
+          )}
         </>
       )}
     </section>
