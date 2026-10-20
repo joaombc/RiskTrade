@@ -43,6 +43,8 @@ export async function GET(request: Request) {
   const params = new URL(request.url).searchParams;
   const symbols = [...new Set((params.get("symbols") ?? "").split(",").map((s) => s.trim().toUpperCase()).filter(Boolean))];
   const currency = (params.get("currency") ?? "BRL") as Currency;
+  // Moedas extras para o câmbio (as das posições encerradas, no histórico da carteira).
+  const extraCurrencies = (params.get("currencies") ?? "").split(",").map((c) => c.trim()).filter((c) => /^[A-Za-z]{3}$/.test(c));
   const withBars = new Set((params.get("withBars") ?? "").split(",").map((s) => s.trim().toUpperCase()));
   if (symbols.length === 0 || symbols.length > MAX_PORTFOLIO_ASSETS || !symbols.every((s) => SYMBOL_PATTERN.test(s))) {
     return Response.json({ error: "Lista de ativos inválida.", code: "invalid_symbols" }, { status: 400 });
@@ -76,10 +78,9 @@ export async function GET(request: Request) {
   }
   await Promise.all(Array.from({ length: Math.min(CONCURRENCY, symbols.length) }, worker));
 
-  const rates = await getFxRates(
-    items.flatMap((i) => (i.currency ? [i.currency] : [])),
-    currency,
-  ).catch(() => ({}) as Record<string, number>);
+  const rates = await getFxRates([...items.flatMap((i) => (i.currency ? [i.currency] : [])), ...extraCurrencies], currency).catch(
+    () => ({}) as Record<string, number>,
+  );
   for (const item of items) if (item.currency) item.fx = rates[item.currency];
-  return Response.json({ items, checkedAt: new Date().toISOString() });
+  return Response.json({ items, rates, checkedAt: new Date().toISOString() });
 }

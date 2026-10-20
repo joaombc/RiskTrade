@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { isClosed } from "@/lib/positions";
 import { PlanPanel } from "./PlanPanel";
 import { PositionsPanel } from "./PositionsPanel";
+import { SummaryPanel } from "./SummaryPanel";
 import { useAccount } from "./useAccount";
 import { usePortfolioAssets } from "./usePortfolioAssets";
 import { usePortfolioPlans } from "./usePortfolioPlans";
@@ -23,7 +24,12 @@ export function PortfolioLive() {
   const open = positions.filter((p) => !isClosed(p));
   const symbols = [...new Set([...assets.map((a) => a.symbol), ...open.map((p) => p.symbol)])];
   const withBars = [...new Set(open.map((p) => p.symbol))];
-  const plans = usePortfolioPlans(symbols, withBars, account.currency);
+  const plans = usePortfolioPlans(
+    symbols,
+    withBars,
+    account.currency,
+    positions.map((p) => p.currency),
+  );
 
   const exposure = useMemo<Exposure>(() => {
     const bySymbol: Record<string, number> = {};
@@ -43,6 +49,7 @@ export function PortfolioLive() {
     <>
       <PlanPanel plans={plans} exposure={exposure} />
       <PositionsPanel plans={plans} positions={positions} />
+      <SummaryPanel plans={plans} positions={positions} />
     </>
   );
 }
