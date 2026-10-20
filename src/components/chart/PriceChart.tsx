@@ -28,7 +28,11 @@ import {
 import { apiErrorMessage } from "@/i18n/apiError";
 import { fmt } from "@/i18n/format";
 import { useI18n } from "@/i18n/I18nProvider";
+import { ADX_PERIOD, ADX_STRONG, ADX_WEAK, diCrosses, dmi, loadAdxEnabled, readAdx, saveAdxEnabled } from "@/lib/adx";
 import { bollinger, loadBollingerEnabled, readBollinger, saveBollingerEnabled } from "@/lib/bollinger";
+import { CCI_OVERBOUGHT, CCI_OVERSOLD, CCI_PERIOD, cci, cciExits, loadCciEnabled, readCci, saveCciEnabled } from "@/lib/cci";
+import { loadSarEnabled, parabolicSar, readSar, saveSarEnabled, sarFlips } from "@/lib/parabolicSar";
+import { loadRocPeriod, readRoc, roc, saveRocPeriod, type RocPeriod } from "@/lib/roc";
 import {
   channelSystemState,
   loadFourWeekSettings,
@@ -91,12 +95,14 @@ import { defaultBoxSize, loadChartType, pointFigure, readPointFigure, saveChartT
 import { loadMacdEnabled, macd, macdCrosses, readMacd, saveMacdEnabled } from "@/lib/macd";
 import { loadMomentumPeriod, momentum, readMomentum, saveMomentumPeriod, zeroCrossings, type MomentumPeriod } from "@/lib/momentum";
 import {
-  HISTORY_RANGES,
+  DAILY_RANGES,
   isIntraday,
+  isWeekly,
   rangeSpec,
   sameBars,
+  toggleWeekly,
+  WEEKLY_RANGES,
   type HistoryRange,
-  type PresetRange,
 } from "@/lib/market";
 import {
   computeMovingAverage,
@@ -127,6 +133,10 @@ import { RsiPanel } from "./RsiPanel";
 import { StochasticPanel } from "./StochasticPanel";
 import { WilliamsRPanel } from "./WilliamsRPanel";
 import { MacdPanel } from "./MacdPanel";
+import { AdxPanel } from "./AdxPanel";
+import { CciPanel } from "./CciPanel";
+import { RocPanel } from "./RocPanel";
+import { SarPanel } from "./SarPanel";
 import { trendLineName, TrendPanel } from "./TrendPanel";
 import { ElliottPanel } from "./ElliottPanel";
 import { PointFigureChart } from "./PointFigureChart";
@@ -142,7 +152,6 @@ import { CHART_THEMES } from "./theme";
 const MAGNET_PX = 10;
 /** Deslocamento máximo (px) entre pressionar e soltar para contar como clique, não arrasto. */
 const CLICK_TOLERANCE_PX = 5;
-const RANGE_KEYS = Object.keys(HISTORY_RANGES) as PresetRange[];
 const NO_LEVELS: PlanLevel[] = [];
 /**
  * Intervalo de atualização do gráfico, em todos os períodos: no intradiário entram candles
@@ -187,7 +196,7 @@ const ENVELOPE_STYLE: Record<EnvelopePercent, LineStyle> = {
   10: LineStyle.LargeDashed,
 };
 const NO_EXAMPLE: ResolvedExample = { drawings: [], markers: [] };
-/** Altura do gráfico conforme o número de painéis opcionais abertos (0 a 7). */
+/** Altura do gráfico conforme o número de painéis opcionais abertos (0 a 10). */
 const CHART_HEIGHT = [
   "h-[560px] sm:h-[640px]",
   "h-[680px] sm:h-[780px]",
@@ -197,6 +206,9 @@ const CHART_HEIGHT = [
   "h-[1160px] sm:h-[1340px]",
   "h-[1280px] sm:h-[1480px]",
   "h-[1400px] sm:h-[1620px]",
+  "h-[1520px] sm:h-[1760px]",
+  "h-[1640px] sm:h-[1900px]",
+  "h-[1760px] sm:h-[2040px]",
 ];
 
 /**
@@ -508,8 +520,29 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
   const [showMacdSignals, setShowMacdSignals] = useState(true);
   const macdLines = useMemo(() => (bars && macdOn ? macd(bars, warmup) : null), [bars, macdOn, warmup]);
   const macdReading = useMemo(() => (macdLines ? readMacd(macdLines) : null), [macdLines]);
+
+  // Ferramentas de Wilder e Lambert (Murphy, cap. 15) e a taxa de variação (cap. 10).
+  const [adxOn, setAdxOn] = useState(loadAdxEnabled);
+  const [showAdxSignals, setShowAdxSignals] = useState(true);
+  const adxLines = useMemo(() => (bars && adxOn ? dmi(bars) : null), [bars, adxOn]);
+  const adxReading = useMemo(() => (adxLines ? readAdx(adxLines) : null), [adxLines]);
+
+  const [sarOn, setSarOn] = useState(loadSarEnabled);
+  const [showSarSignals, setShowSarSignals] = useState(true);
+  const sarPoints = useMemo(() => (bars && sarOn ? parabolicSar(bars) : null), [bars, sarOn]);
+  const sarReading = useMemo(() => (bars && sarPoints ? readSar(bars, sarPoints) : null), [bars, sarPoints]);
+
+  const [rocPeriod, setRocPeriod] = useState<RocPeriod | null>(loadRocPeriod);
+  const [showRocSignals, setShowRocSignals] = useState(true);
+  const rocValues = useMemo(() => (bars && rocPeriod ? roc(bars, rocPeriod, warmup) : null), [bars, rocPeriod, warmup]);
+  const rocReading = useMemo(() => (rocValues ? readRoc(rocValues) : null), [rocValues]);
+
+  const [cciOn, setCciOn] = useState(loadCciEnabled);
+  const [showCciSignals, setShowCciSignals] = useState(true);
+  const cciValues = useMemo(() => (bars && cciOn ? cci(bars) : null), [bars, cciOn]);
+  const cciReading = useMemo(() => (cciValues ? readCci(cciValues) : null), [cciValues]);
   const fourWeekSystem = useMemo(() => {
-    if (!bars || !fourWeek.enabled || isIntraday(range)) return null;
+    if (!bars || !fourWeek.enabled || rangeSpec(range).interval !== "1d") return null;
     const entryBars = fourWeek.entryWeeks * WEEK_BARS;
     const exitBars = (fourWeek.exitWeeks ?? fourWeek.entryWeeks) * WEEK_BARS;
     const entry = priceChannel(bars, entryBars);
@@ -935,6 +968,22 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
   useEffect(() => {
     saveMacdEnabled(macdOn);
   }, [macdOn]);
+
+  useEffect(() => {
+    saveAdxEnabled(adxOn);
+  }, [adxOn]);
+
+  useEffect(() => {
+    saveSarEnabled(sarOn);
+  }, [sarOn]);
+
+  useEffect(() => {
+    saveRocPeriod(rocPeriod);
+  }, [rocPeriod]);
+
+  useEffect(() => {
+    saveCciEnabled(cciOn);
+  }, [cciOn]);
 
   useEffect(() => {
     paneOrderRef.current = paneOrder;
@@ -1504,6 +1553,153 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
     };
   }, [bars, macdLines, showMacdSignals, theme, arrange]);
 
+  // ADX: +DI (verde), −DI (vermelho) e ADX no mesmo painel, linhas de 20 e 25, e setas nos
+  // cruzamentos dos DI.
+  useEffect(() => {
+    const handles = handlesRef.current;
+    if (!handles || !bars || !adxLines) return;
+    const adxSeries = addPaneSeries(handles, "adx", LineSeries, { color: theme.adx, lineWidth: 2, priceLineVisible: false });
+    const pane = adxSeries.getPane().paneIndex();
+    const [plus, minus] = [theme.up, theme.down].map((color) =>
+      handles.chart.addSeries(LineSeries, { color, lineWidth: 1, priceLineVisible: false, crosshairMarkerVisible: false }, pane),
+    );
+    (
+      [
+        [ADX_STRONG, LineStyle.Dashed],
+        [ADX_WEAK, LineStyle.Dotted],
+      ] as const
+    ).forEach(([price, lineStyle]) =>
+      adxSeries.createPriceLine({ price, color: theme.drawings.muted, lineWidth: 1, lineStyle, axisLabelVisible: true }),
+    );
+    const time = (i: number) => bars[i].time as UTCTimestamp;
+    const toData = (values: (number | null)[]) =>
+      values.map((value, i) => (value === null ? { time: time(i) } : { time: time(i), value }));
+    adxSeries.setData(toData(adxLines.adx));
+    plus.setData(toData(adxLines.plusDI));
+    minus.setData(toData(adxLines.minusDI));
+    createSeriesMarkers(
+      plus,
+      showAdxSignals
+        ? diCrosses(adxLines).map(
+            (c): SeriesMarker<Time> => ({
+              time: time(c.index),
+              position: c.dir === "up" ? "belowBar" : "aboveBar",
+              shape: c.dir === "up" ? "arrowUp" : "arrowDown",
+              color: c.dir === "up" ? theme.up : theme.down,
+            }),
+          )
+        : [],
+    );
+    arrange();
+    return () => {
+      // Os DI saem primeiro: o painel só é removido quando fica vazio (junto com o ADX).
+      [plus, minus].forEach((s) => isAlive(handles.chart, s) && handles.chart.removeSeries(s));
+      removePaneSeries(handles, "adx", adxSeries);
+      arrange();
+    };
+  }, [bars, adxLines, showAdxSignals, theme, arrange]);
+
+  // Taxa de variação: linha zero tracejada e setas nos cruzamentos dela.
+  useEffect(() => {
+    const handles = handlesRef.current;
+    if (!handles || !bars || !rocPeriod || !rocValues) return;
+    const series = addPaneSeries(handles, "roc", LineSeries, { color: theme.roc, lineWidth: 2, priceLineVisible: false });
+    series.createPriceLine({ price: 0, color: theme.drawings.muted, lineWidth: 1, lineStyle: LineStyle.Dashed, axisLabelVisible: false });
+    series.setData(
+      bars.map((b, i) => {
+        const value = rocValues[i];
+        return value === null ? { time: b.time as UTCTimestamp } : { time: b.time as UTCTimestamp, value };
+      }),
+    );
+    createSeriesMarkers(
+      series,
+      showRocSignals
+        ? zeroCrossings(rocValues).map(
+            (c): SeriesMarker<Time> => ({
+              time: bars[c.index].time as UTCTimestamp,
+              position: c.dir === "up" ? "belowBar" : "aboveBar",
+              shape: c.dir === "up" ? "arrowUp" : "arrowDown",
+              color: c.dir === "up" ? theme.up : theme.down,
+            }),
+          )
+        : [],
+    );
+    arrange();
+    return () => {
+      removePaneSeries(handles, "roc", series);
+      arrange();
+    };
+  }, [bars, rocPeriod, rocValues, showRocSignals, theme, arrange]);
+
+  // CCI: linhas de +100, 0 e −100, e setas nas saídas das zonas.
+  useEffect(() => {
+    const handles = handlesRef.current;
+    if (!handles || !bars || !cciValues) return;
+    const series = addPaneSeries(handles, "cci", LineSeries, { color: theme.cci, lineWidth: 2, priceLineVisible: false });
+    (
+      [
+        [CCI_OVERBOUGHT, LineStyle.Dashed, true],
+        [0, LineStyle.Dotted, false],
+        [CCI_OVERSOLD, LineStyle.Dashed, true],
+      ] as const
+    ).forEach(([price, lineStyle, axisLabelVisible]) =>
+      series.createPriceLine({ price, color: theme.drawings.muted, lineWidth: 1, lineStyle, axisLabelVisible }),
+    );
+    series.setData(
+      bars.map((b, i) => {
+        const value = cciValues[i];
+        return value === null ? { time: b.time as UTCTimestamp } : { time: b.time as UTCTimestamp, value };
+      }),
+    );
+    createSeriesMarkers(
+      series,
+      showCciSignals
+        ? cciExits(cciValues).map(
+            (s): SeriesMarker<Time> => ({
+              time: bars[s.index].time as UTCTimestamp,
+              position: s.kind === "buy" ? "belowBar" : "aboveBar",
+              shape: s.kind === "buy" ? "arrowUp" : "arrowDown",
+              color: s.kind === "buy" ? theme.up : theme.down,
+            }),
+          )
+        : [],
+    );
+    arrange();
+    return () => {
+      removePaneSeries(handles, "cci", series);
+      arrange();
+    };
+  }, [bars, cciValues, showCciSignals, theme, arrange]);
+
+  // SAR parabólico: só os pontos sobre o preço, verdes abaixo (comprado) e vermelhos acima (vendido).
+  useEffect(() => {
+    const handles = handlesRef.current;
+    if (!handles || !bars || !sarPoints) return;
+    const series = handles.chart.addSeries(
+      LineSeries,
+      {
+        color: theme.drawings.muted,
+        lineVisible: false,
+        pointMarkersVisible: true,
+        pointMarkersRadius: 2,
+        priceLineVisible: false,
+        lastValueVisible: false,
+        crosshairMarkerVisible: false,
+      },
+      pricePaneIndex(handles),
+    );
+    series.setData(
+      bars.map((b, i) => {
+        const point = sarPoints[i];
+        const time = b.time as UTCTimestamp;
+        return point ? { time, value: point.sar, color: point.long ? theme.up : theme.down } : { time };
+      }),
+    );
+    return () => {
+      if (handlesRef.current?.candles.getPane().getSeries().includes(series)) handles.chart.removeSeries(series);
+    };
+  }, [bars, sarPoints, theme]);
+
   // Exemplo do glossário: aproxima o gráfico da janela do padrão (uma vez por exemplo carregado).
   useEffect(() => {
     const handles = handlesRef.current;
@@ -1609,6 +1805,13 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
         },
       ];
     });
+    // Viradas do SAR parabólico: a seta sai do lado do novo ponto, só com a inicial (são muitas).
+    const sarMarkers = (showSarSignals && sarPoints ? sarFlips(sarPoints) : []).map(
+      (f): SeriesMarker<Time> =>
+        f.kind === "buy"
+          ? { time: time(f.index), position: "belowBar", shape: "arrowUp", color: theme.up, text: mk.buy[0] }
+          : { time: time(f.index), position: "aboveBar", shape: "arrowDown", color: theme.down, text: mk.sell[0] },
+    );
     const exampleMarkers = resolvedExample.markers.map(
       (m): SeriesMarker<Time> => ({
         time: m.time as UTCTimestamp,
@@ -1620,7 +1823,7 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
     );
     // A API exige marcadores em ordem cronológica.
     handles.priceMarkers.setMarkers(
-      [...divergenceMarkers, ...crossMarkers, ...envelopeMarkers, ...fourWeekMarkers, ...trendMarkers, ...elliottMarkers, ...exampleMarkers].sort(
+      [...divergenceMarkers, ...crossMarkers, ...envelopeMarkers, ...fourWeekMarkers, ...trendMarkers, ...elliottMarkers, ...sarMarkers, ...exampleMarkers].sort(
         (a, b) => (a.time as number) - (b.time as number),
       ),
     );
@@ -1678,6 +1881,8 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
     fourWeek.entryWeeks,
     trendSwings,
     elliottBest,
+    sarPoints,
+    showSarSignals,
     t,
   ]);
 
@@ -1734,6 +1939,7 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
       ...(showTrendLines
         ? trendLines.map((line) => ({ label: t.trend.lines.names[trendLineName(line)], color: line.side === "support" ? theme.up : theme.down }))
         : []),
+      ...(sarPoints ? [{ label: t.chart.series.sar, color: sarReading?.long === false ? theme.down : theme.up }] : []),
       ...(fourWeekSystem
         ? [
             { label: fmt(t.chart.markers.channelHigh, { n: fourWeek.entryWeeks }), color: theme.down },
@@ -1753,6 +1959,15 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
           { label: t.chart.series.macdHistogram, color: theme.up },
         ]
       : [],
+    adx: adxOn
+      ? [
+          { label: fmt(t.chart.series.adx, { n: ADX_PERIOD }), color: theme.adx },
+          { label: t.chart.series.plusDI, color: theme.up },
+          { label: t.chart.series.minusDI, color: theme.down },
+        ]
+      : [],
+    roc: rocPeriod ? [{ label: fmt(t.chart.series.roc, { n: rocPeriod }), color: theme.roc }] : [],
+    cci: cciOn ? [{ label: fmt(t.chart.series.cci, { n: CCI_PERIOD }), color: theme.cci }] : [],
     williamsR: williamsPeriod ? [{ label: fmt(t.chart.series.williamsR, { n: williamsPeriod }), color: theme.williamsR }] : [],
     stochastic: stochasticPeriod
       ? [
@@ -1786,7 +2001,16 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
           )}
         </h2>
         <div role="group" aria-label={t.chart.period} className="flex flex-wrap items-center gap-1">
-          {RANGE_KEYS.map((r) => (
+          <button
+            type="button"
+            aria-pressed={isWeekly(range)}
+            title={t.chart.weeklyHint}
+            onClick={() => setRange(toggleWeekly(range))}
+            className={`mr-1 rounded-md border px-2 py-1 text-xs font-medium ${isWeekly(range) ? "border-foreground bg-foreground text-background" : "border-border text-muted hover:bg-border/60"}`}
+          >
+            {t.chart.weekly}
+          </button>
+          {(isWeekly(range) ? WEEKLY_RANGES : DAILY_RANGES).map((r) => (
             <button
               key={r}
               type="button"
@@ -1855,6 +2079,14 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
             macd={macdOn}
             elliott={elliottOn}
             onElliottChange={setElliottOn}
+            adx={adxOn}
+            onAdxChange={setAdxOn}
+            sar={sarOn}
+            onSarChange={setSarOn}
+            cci={cciOn}
+            onCciChange={setCciOn}
+            roc={rocPeriod}
+            onRocChange={setRocPeriod}
             onMacdChange={setMacdOn}
             fourWeek={fourWeek}
             onFourWeekChange={setFourWeek}
@@ -1908,7 +2140,7 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
       <div
         ref={wrapperRef}
         // No ponto e figura o gráfico de candles só fica oculto: desenhos e painéis voltam como estavam.
-        className={`relative ${pointFigureOn ? "hidden" : ""} ${CHART_HEIGHT[(openInterest ? 1 : 0) + (momentumPeriod ? 1 : 0) + (showMaOscillator ? 1 : 0) + (rsiPeriod ? 1 : 0) + (stochasticPeriod ? 1 : 0) + (williamsPeriod ? 1 : 0) + (macdOn ? 1 : 0)]}`}
+        className={`relative ${pointFigureOn ? "hidden" : ""} ${CHART_HEIGHT[(openInterest ? 1 : 0) + (momentumPeriod ? 1 : 0) + (showMaOscillator ? 1 : 0) + (rsiPeriod ? 1 : 0) + (stochasticPeriod ? 1 : 0) + (williamsPeriod ? 1 : 0) + (macdOn ? 1 : 0) + (adxOn ? 1 : 0) + (rocPeriod ? 1 : 0) + (cciOn ? 1 : 0)]}`}
       >
         <div ref={containerRef} className={`h-full w-full ${tool ? "cursor-crosshair" : ""}`} />
         <PaneHandles
@@ -2043,6 +2275,25 @@ export function PriceChart({ symbol, levels = NO_LEVELS, initialRange = "1y", ex
               show={showMacdSignals}
               onShowChange={setShowMacdSignals}
             />
+          )}
+          {bars && bars.length > 0 && !loading && adxOn && (
+            <AdxPanel bars={bars} reading={adxReading} intraday={isIntraday(range)} show={showAdxSignals} onShowChange={setShowAdxSignals} />
+          )}
+          {bars && bars.length > 0 && !loading && sarOn && (
+            <SarPanel bars={bars} reading={sarReading} intraday={isIntraday(range)} show={showSarSignals} onShowChange={setShowSarSignals} />
+          )}
+          {bars && bars.length > 0 && !loading && rocPeriod && (
+            <RocPanel
+              bars={bars}
+              period={rocPeriod}
+              reading={rocReading}
+              intraday={isIntraday(range)}
+              show={showRocSignals}
+              onShowChange={setShowRocSignals}
+            />
+          )}
+          {bars && bars.length > 0 && !loading && cciOn && (
+            <CciPanel bars={bars} reading={cciReading} intraday={isIntraday(range)} show={showCciSignals} onShowChange={setShowCciSignals} />
           )}
           {bars && bars.length > 0 && !loading && williamsPeriod && (
             <WilliamsRPanel

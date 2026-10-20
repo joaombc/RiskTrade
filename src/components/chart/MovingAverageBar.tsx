@@ -21,6 +21,7 @@ import {
   type MovingAverageKind,
 } from "@/lib/movingAverages";
 import { MOMENTUM_PERIODS, type MomentumPeriod } from "@/lib/momentum";
+import { ROC_PERIODS, type RocPeriod } from "@/lib/roc";
 import { RSI_PERIODS, type RsiPeriod } from "@/lib/rsi";
 import { STOCHASTIC_PERIODS, type StochasticPeriod } from "@/lib/stochastic";
 import { TREND_DEGREES, TREND_WINDOWS, type TrendDegree } from "@/lib/trend";
@@ -39,6 +40,15 @@ interface Props {
   onMacdChange: (enabled: boolean) => void;
   elliott: boolean;
   onElliottChange: (enabled: boolean) => void;
+  adx: boolean;
+  onAdxChange: (enabled: boolean) => void;
+  sar: boolean;
+  onSarChange: (enabled: boolean) => void;
+  cci: boolean;
+  onCciChange: (enabled: boolean) => void;
+  /** Período da taxa de variação; null = desligada. */
+  roc: RocPeriod | null;
+  onRocChange: (period: RocPeriod | null) => void;
   fourWeek: FourWeekSettings;
   onFourWeekChange: (settings: FourWeekSettings) => void;
   /** Período da linha de momentum; null = desligada. */
@@ -72,6 +82,14 @@ export function MovingAverageBar({
   onMacdChange,
   elliott,
   onElliottChange,
+  adx,
+  onAdxChange,
+  sar,
+  onSarChange,
+  cci,
+  onCciChange,
+  roc,
+  onRocChange,
   fourWeek,
   onFourWeekChange,
   momentum,
@@ -213,6 +231,24 @@ export function MovingAverageBar({
         <input type="checkbox" checked={elliott} onChange={(e) => onElliottChange(e.target.checked)} />
         <span className="font-semibold">{m.elliott}</span>
       </label>
+
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs">
+        <label className="flex items-center gap-1.5" title={m.adxHint}>
+          <input type="checkbox" checked={adx} onChange={(e) => onAdxChange(e.target.checked)} />
+          <span className="font-semibold">{m.adx}</span>
+          <span className="text-muted">{m.adxParams}</span>
+        </label>
+        <label className="flex items-center gap-1.5" title={m.sarHint}>
+          <input type="checkbox" checked={sar} onChange={(e) => onSarChange(e.target.checked)} />
+          <span className="font-semibold">{m.sar}</span>
+          <span className="text-muted">{m.sarParams}</span>
+        </label>
+        <label className="flex items-center gap-1.5" title={m.cciHint}>
+          <input type="checkbox" checked={cci} onChange={(e) => onCciChange(e.target.checked)} />
+          <span className="font-semibold">{m.cci}</span>
+          <span className="text-muted">{m.cciParams}</span>
+        </label>
+      </div>
 
       <div role="group" aria-label={m.fourWeek} className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs">
         <label className="flex items-center gap-1.5" title={m.fourWeekHint}>
@@ -374,6 +410,29 @@ export function MovingAverageBar({
               aria-pressed={active}
               onClick={() => onWilliamsRChange(active ? null : period)}
               title={fmt(m.williamsRPeriod, { n: period, action: active ? m.hide : m.show })}
+              className={`${chip} px-2.5 py-1 tabular-nums ${
+                active ? "border-foreground bg-foreground text-background" : "border-border text-muted hover:bg-border/60 hover:text-foreground"
+              }`}
+            >
+              {period}
+            </button>
+          );
+        })}
+      </div>
+
+      <div role="group" aria-label={m.roc} className="flex flex-wrap items-center gap-1.5">
+        <span className="mr-1 text-xs font-semibold" title={m.rocHint}>
+          {m.roc}
+        </span>
+        {ROC_PERIODS.map((period) => {
+          const active = roc === period;
+          return (
+            <button
+              key={period}
+              type="button"
+              aria-pressed={active}
+              onClick={() => onRocChange(active ? null : period)}
+              title={fmt(m.rocPeriod, { n: period, action: active ? m.hide : m.show })}
               className={`${chip} px-2.5 py-1 tabular-nums ${
                 active ? "border-foreground bg-foreground text-background" : "border-border text-muted hover:bg-border/60 hover:text-foreground"
               }`}

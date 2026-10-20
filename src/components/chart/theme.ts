@@ -18,6 +18,12 @@ export interface ChartTheme {
   williamsR: string;
   /** MACD: linha do MACD e linha de sinal (o histograma usa as cores de alta e baixa). */
   macd: { line: string; signal: string };
+  /** ADX (a linha da força); +DI e −DI usam as cores de alta e baixa. */
+  adx: string;
+  /** Taxa de variação. */
+  roc: string;
+  /** CCI. */
+  cci: string;
   /** Tendência: fundo do gráfico em cada trecho (bem transparente) e o zigue-zague dos topos e fundos. */
   trend: { up: string; down: string; lateral: string; zigzag: string };
   drawings: Palette;
@@ -36,6 +42,9 @@ export const CHART_THEMES: Record<"light" | "dark", ChartTheme> = {
     stochastic: { k: "#4338ca", d: "#e11d48" },
     williamsR: "#4d7c0f",
     macd: { line: "#0369a1", signal: "#ea580c" },
+    adx: "#1e293b",
+    roc: "#b45309",
+    cci: "#be185d",
     trend: { up: "rgba(5, 150, 105, 0.12)", down: "rgba(220, 38, 38, 0.12)", lateral: "rgba(107, 114, 128, 0.12)", zigzag: "#64748b" },
     drawings: {
       primary: "#2563eb",
@@ -59,6 +68,9 @@ export const CHART_THEMES: Record<"light" | "dark", ChartTheme> = {
     stochastic: { k: "#818cf8", d: "#fb7185" },
     williamsR: "#a3e635",
     macd: { line: "#38bdf8", signal: "#fdba74" },
+    adx: "#e2e8f0",
+    roc: "#fbbf24",
+    cci: "#f472b6",
     trend: { up: "rgba(52, 211, 153, 0.12)", down: "rgba(248, 113, 113, 0.12)", lateral: "rgba(154, 163, 175, 0.1)", zigzag: "#94a3b8" },
     drawings: {
       primary: "#60a5fa",
