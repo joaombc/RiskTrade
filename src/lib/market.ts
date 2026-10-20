@@ -37,7 +37,7 @@ export interface DailyBar {
 /** Formato aceito para tickers do Yahoo (ex: AAPL, PETR4.SA, BTC-USD, ^BVSP, EURUSD=X). */
 export const SYMBOL_PATTERN = /^[A-Za-z0-9.\-=^]{1,20}$/;
 
-export type ChartInterval = "5m" | "15m" | "30m" | "60m" | "1d";
+export type ChartInterval = "5m" | "15m" | "30m" | "60m" | "1d" | "1wk";
 
 export interface HistoryRangeSpec {
   label: string;
@@ -64,9 +64,24 @@ export const HISTORY_RANGES = {
   "1y": { label: "1A", interval: "1d", days: 365 },
   "2y": { label: "2A", interval: "1d", days: 730 },
   "5y": { label: "5A", interval: "1d", days: 1826 },
+  // Candles semanais (Murphy: a visão de longo prazo), ligados pelo botão "Semanal".
+  w1y: { label: "1A", interval: "1wk", days: 365 },
+  w2y: { label: "2A", interval: "1wk", days: 730 },
+  w5y: { label: "5A", interval: "1wk", days: 1826 },
+  w10y: { label: "10A", interval: "1wk", days: 3652 },
 } as const satisfies Record<string, HistoryRangeSpec>;
 /** Períodos dos botões do gráfico. */
 export type PresetRange = keyof typeof HISTORY_RANGES;
+
+/** Botões do modo diário/intradiário e do modo semanal. */
+export const DAILY_RANGES = ["1d", "5d", "2w", "3w", "1mo", "3m", "6m", "1y", "2y", "5y"] as const satisfies readonly PresetRange[];
+export const WEEKLY_RANGES = ["w1y", "w2y", "w5y", "w10y"] as const satisfies readonly PresetRange[];
+
+/** O mesmo período no outro modo: diário ↔ semanal (sem par, cai no período padrão do modo). */
+export function toggleWeekly(range: HistoryRange): HistoryRange {
+  const pairs: Record<string, PresetRange> = { "1y": "w1y", "2y": "w2y", "5y": "w5y", w1y: "1y", w2y: "2y", w5y: "5y", w10y: "5y" };
+  return pairs[range] ?? (isWeekly(range) ? "1y" : "w2y");
+}
 /** Período digitado: os últimos N pregões ("n200"). */
 export type CustomRange = `n${number}`;
 export type HistoryRange = PresetRange | CustomRange;
@@ -129,6 +144,8 @@ export const WARMUP_DAYS: Record<ChartInterval, number> = {
   "30m": 40,
   "60m": 90,
   "1d": 600,
+  // 400 semanas de aquecimento.
+  "1wk": 2800,
 };
 
 /**
@@ -148,10 +165,18 @@ export const INTERVAL_LABELS: Record<ChartInterval, string> = {
   "30m": "candles de 30 min",
   "60m": "candles de 1 h",
   "1d": "candles diários",
+  "1wk": "candles semanais",
 };
 
+/** Candles de minutos ou horas (os períodos curtos). */
 export function isIntraday(range: HistoryRange): boolean {
-  return rangeSpec(range).interval !== "1d";
+  const { interval } = rangeSpec(range);
+  return interval !== "1d" && interval !== "1wk";
+}
+
+/** Candles semanais. */
+export function isWeekly(range: HistoryRange): boolean {
+  return rangeSpec(range).interval === "1wk";
 }
 
 /** Pausa a partir da qual consideramos que o pregão terminou (mercados com horário). */
