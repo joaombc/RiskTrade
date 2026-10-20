@@ -3,6 +3,7 @@ import YahooFinance from "yahoo-finance2";
 import type { ChartResultArrayQuote } from "yahoo-finance2/modules/chart";
 import { getAaiiSentiment } from "./aaii";
 import type { Bar } from "./drawings/types";
+import type { AssetInfo } from "./portfolioAssets";
 import {
   averageVolume,
   lastSessions,
@@ -155,6 +156,26 @@ export async function getWatchlistQuotes(symbols: string[]): Promise<WatchlistQu
       volume: q.regularMarketVolume ?? 0,
       sparkline: (await recentCloses(q.symbol, period1)).slice(-SPARKLINE_SESSIONS),
     })),
+  );
+}
+
+/**
+ * Nome, moeda, tipo e setor (só ações) de cada ativo, para classificá-lo num grupo da carteira.
+ * Ativos sem cotação ficam de fora; o setor que não vier fica null.
+ */
+export async function getAssetInfos(symbols: string[]): Promise<AssetInfo[]> {
+  const quotes = await yahooFinance.quote(symbols, { return: "array" });
+  return Promise.all(
+    quotes.map(async (q) => {
+      const sector =
+        q.quoteType === "EQUITY"
+          ? await yahooFinance
+              .quoteSummary(q.symbol, { modules: ["assetProfile"] })
+              .then((r) => r.assetProfile?.sector ?? null)
+              .catch(() => null)
+          : null;
+      return { symbol: q.symbol, name: q.longName ?? q.shortName ?? q.symbol, currency: q.currency ?? "", quoteType: q.quoteType ?? "", sector };
+    }),
   );
 }
 
