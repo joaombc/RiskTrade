@@ -21,7 +21,8 @@ const ACTION_ORDER: PlanAction[] = ["enterNow", "enterLimit", "enterStop", "wait
 const noSubscription = () => () => {};
 const useHydrated = () => useSyncExternalStore(noSubscription, () => true, () => false);
 
-function loadAllowShort(): boolean {
+/** "Operar vendido também" (lido também pelos alertas). */
+export function loadAllowShort(): boolean {
   try {
     return JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? "{}").allowShort === true;
   } catch {
