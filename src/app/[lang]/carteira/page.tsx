@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { AccountPanel } from "@/components/portfolio/AccountPanel";
 import { PortfolioIntro, PortfolioLessonCard } from "@/components/portfolio/PortfolioLesson";
 import { SiteHeader } from "@/components/SiteHeader";
 import { hasLocale } from "@/i18n/config";
@@ -25,7 +26,9 @@ export default async function PortfolioPage({ params }: PageProps<"/[lang]/carte
         <p className="mt-1 text-muted">{t.pages.portfolioSubtitle}</p>
       </div>
       <PortfolioLessonCard />
-      <PortfolioIntro />
+      <PortfolioIntro>
+        <AccountPanel />
+      </PortfolioIntro>
     </main>
   );
 }
