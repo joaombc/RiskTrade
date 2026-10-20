@@ -29,17 +29,21 @@ export interface PlanItem {
   currency?: string;
   /** Quanto vale 1 unidade da moeda do ativo na moeda da conta. */
   fx?: number;
+  /** Candles diários (com o de hoje ao vivo), só dos ativos pedidos em `withBars` (posições abertas). */
+  bars?: Bar[];
   error?: true;
 }
 
 /**
  * Plano de cada ativo da carteira (Murphy, cap. 16): tendência no diário e no semanal, entrada,
- * stop e alvo. A quantidade depende da conta e é calculada no navegador.
+ * stop e alvo. A quantidade depende da conta e é calculada no navegador, assim como a gestão das
+ * posições abertas (por isso os candles delas vão junto).
  */
 export async function GET(request: Request) {
   const params = new URL(request.url).searchParams;
   const symbols = [...new Set((params.get("symbols") ?? "").split(",").map((s) => s.trim().toUpperCase()).filter(Boolean))];
   const currency = (params.get("currency") ?? "BRL") as Currency;
+  const withBars = new Set((params.get("withBars") ?? "").split(",").map((s) => s.trim().toUpperCase()));
   if (symbols.length === 0 || symbols.length > MAX_PORTFOLIO_ASSETS || !symbols.every((s) => SYMBOL_PATTERN.test(s))) {
     return Response.json({ error: "Lista de ativos inválida.", code: "invalid_symbols" }, { status: 400 });
   }
@@ -63,7 +67,7 @@ export async function GET(request: Request) {
           quote && last
             ? [...bars.slice(0, -1), { ...last, close: quote.price, high: Math.max(last.high, quote.price), low: Math.min(last.low, quote.price) }]
             : bars;
-        items[k] = { symbol, plan: tradePlan(live, weekly), currency: quote?.currency };
+        items[k] = { symbol, plan: tradePlan(live, weekly), currency: quote?.currency, ...(withBars.has(symbol) ? { bars: live } : {}) };
       } catch (error) {
         console.error("[api/plan]", symbol, error);
         items[k] = { symbol, error: true };
