@@ -9,6 +9,7 @@ const LINKS = [
   { href: "/glossario", key: "glossary" },
   { href: "/candles", key: "candles" },
   { href: "/ponto-e-figura", key: "pointFigure" },
+  { href: "/carteira", key: "portfolio" },
 ] as const;
 
 export async function SiteHeader({ current, lang }: { current: (typeof LINKS)[number]["href"]; lang: Locale }) {
